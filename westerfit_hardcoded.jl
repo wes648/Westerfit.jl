@@ -118,7 +118,8 @@ function theta(J::Float64,Nf)::Float64
     return out
 end
 function vecvalpair(m)
-    out = @. 11 - div((m-(m%2))*((-1)^(m%2)),2)
+#This function provides the definitional pairing of the torsional eigenvalues to the eigenvector elements
+	out = @. 11 - div((m-(m%2))*((-1)^(m%2)),2)
 #    out = @. 11 + out
     return out
 end
