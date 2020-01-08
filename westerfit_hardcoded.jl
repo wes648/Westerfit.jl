@@ -25,6 +25,7 @@ println("")
 using LinearAlgebra
 using LinearAlgebra.BLAS
 using Profile
+using DelimitedFiles
 #using Traceur
 
 #Etors = zeros(5,3)
@@ -481,7 +482,6 @@ function RotSpiTorCalc(Nmax,sigma,tvals,tvecs)
     return energies
 end
 
-Nmax = 10
 #Ators = TorCalc(Nmax+1,0)
 #E1tors = TorCalc(Nmax+1,1)
 #E2tors = TorCalc(Nmax+1,-1)
@@ -511,33 +511,31 @@ function fullandfinal()
 end
 #There is still plenty of optimizations to do here
 #also need to figure out what's up with σ=±1
-@time finalenergies=fullandfinal()
-
 """
 Transitions will be done by explicit expressions with the 6 possibilities
 ΔJ= 0,ΔN=+1,ΔK=-1  a
     index=2J
-    (J+2-K)(J+1-K)/(4J+4)
+    (N+2-K)(N+1-K)/(4N+4)
 
 ΔJ= 0,ΔN=+1,ΔK= 0  b
     index=2J+1
-    (J+1+K)(J+1-K)/(J+1)
+    (N+1+K)(N+1-K)/(N+1)
 
 ΔJ=+1,ΔN= 0,ΔK=-1  a
     index=2N+2
-    (J+1-K)(J+K)(2J+1)/4J(J+1)
+    (N+1-K)(N+K)(2N+1)/4N(N+1)
 
 ΔJ=+1,ΔN= 0,ΔK= 0  b
     index=2N+3
-    (2J+1)K^2/(J^2+J)
+    (2N+1)K^2/(N^2+N)
 
 ΔJ=+1,ΔN=+1,ΔK=-1  a
     index=2J+2N+5
-    (J+2-K)(J+1-K)/(4J+4)
+    (N+2-K)(N+1-K)/(4N+4)
 
 ΔJ=+1,ΔN=+1,ΔK= 0  b
     index=2J+2N+6
-    (J+1+K)(J+1-K)/(J+1)
+    (N+1+K)(N+1-K)/(N+1)
 
 We will only calculate the ΔJ+ΔN≥0 for the speed. This is justified by the program
     not being intended for vibrational spectra
@@ -556,7 +554,9 @@ I also need to make a list of the excluded terms for the a-types as a function o
 
 
 
-function TraCalc(Nmax,energies)
+function TraCalc(Nmax,energies,sigma,vt)
+    #much of the following array creation should be moved into a separate function as TraCalc
+    #This is because it will be the same for each vt and σ pair. Doing this first could open up parallel options
     arr = collect(1:Nmax-1)
     arr = collect(Iterators.flatten(zip(arr,arr)))
     #this excluded list is for the levels that won't have a-type transitions
@@ -570,45 +570,243 @@ function TraCalc(Nmax,energies)
     posjs = collect(0.5:Nmax-0.5)
 #    println(posjs)
     jinds = fill(posjs[1],Int64(4*posjs[1]+2))
-    for i = 2:length(posjs)-1
+    for i = 2:length(posjs)
         jtemp = fill(posjs[i],Int64(4*posjs[i]+2))
         jinds = vcat(jinds,jtemp)
     end
-    jtemp = fill(posjs[end],Int64(2*posjs[end]))
-    jinds = vcat(jinds,jtemp)
+    #jtemp = fill(posjs[end],Int64(2*posjs[end]))
+    #jinds = vcat(jinds,jtemp)
 #    println(jinds)
     #this list has the N value for the level of indentical index
-    ninds = zeros(Int64,length(jinds))
+    ninds = zeros(Int64,length(energies))
+    #this list has the K value for the level of indentical index
+    kinds = zeros(Int64,length(energies))
     shift=1
-    for i=1:length(posjs)-1
+    for i=1:length(posjs)
         inds = shift+1
+        #indm = shift+2+2*i
         indf = 4*i+2+shift
-        ninds[inds:indf]=fill(i,indf-inds+1)
+        ninds[inds:indf] = fill(i,indf-inds+1)
+        newks = collect(Int64,-i:i)
+        newks = vcat(newks,newks)
+        kinds[inds:indf] = newks
         shift += 4*i+2
     end
+    ninds = ninds[1:length(jinds)]
+    kinds = kinds[1:length(jinds)]
 #    println(ninds)
 #    println(size(jinds))
 #    println(size(ninds))
-    for i=1:length(energies)
-        #calcbs
-        #if i in exclude
-        #    nothing
-        #else
+#   freqs is actually frequencies[1] and intensities[2] and type[3]
+    freqs = Array{Float64}(undef,0,3)
+#   states contains the indices of the states for a given frequency
+    states = Array{Int64}(undef,0,2)
+    leng = size(energies)[1]
+#    println(length(posjs))
+#    println(length(ninds))
+#    println(length(kinds))
+#    println(length(jinds))
+#    println(size(energies))
+#    println(leng)
+    #there has to be a better way to do the following but alas
+    sigind = sigma + 1
+    vtind = vt + 1
+    for i=1:leng
+        N = ninds[i]
+        K = kinds[i]
+        J = jinds[i]
+        #ΔJ= 0,ΔN=+1,ΔK= 0  b
+        indexu = i+2*J+1
+        indexu = convert(Int64,indexu)
+        if (indexu≤leng)&&(J-N>0)
+            freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+            intent = (N+1+K)*(N+1-K)/(N+1)
+            type = 1.0
+            if freq > 0
+#                freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [indexu i]
+                states = vcat(states,state)
+            else
+                freq = abs(freq)
+                #freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [i indexu]
+                states = vcat(states,state)
+            end
+        else
+            nothing
+        end
+        #ΔJ=+1,ΔN= 0,ΔK= 0  b
+        indexu = i+2*N+1
+        indexu = convert(Int64,indexu)
+        if (indexu≤leng)&&(J-N<0)
+            freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+            intent = (2*N+1)*K^2/(N^2+N)
+            type = 2.0
+            if freq > 0
+                #freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [indexu i]
+                states = vcat(states,state)
+            else
+                freq = abs(freq)
+                #freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [i indexu]
+                states = vcat(states,state)
+            end
+        else
+            nothing
+        end
+        #ΔJ=+1,ΔN=+1,ΔK= 0  b
+        indexu = i+2*J+2*N+4
+        indexu = convert(Int64,indexu)
+        if indexu≤leng
+            freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+            intent = (N+1+K)*(N+1-K)/(N+1)
+            type = 3.0
+            if freq > 0
+                #freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [indexu i]
+                states = vcat(states,state)
+            else
+                freq = abs(freq)
+                #freqline = [freq intent]
+                freqline = [freq intent type]
+                freqs = vcat(freqs,freqline)
+                state = [i indexu]
+                states = vcat(states,state)
+            end
+        else
+            nothing
+        end
+        if i in exclude
+            nothing
+        else
         #   calcas
-        #end
-    #end
-    """
-    I want two arrays. One of the energy differences and one of the indices of the
-        two levels
-    for i in 1:energies!=exclude
-        calc as
-        calc bs
+            #ΔJ= 0,ΔN=+1,ΔK=-1  a
+            indexu = i+2*J
+            indexu = convert(Int64,indexu)
+            if (indexu≤leng)&&(J-N>0)
+                freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+                intent = (N+2-K)*(N+1-K)/(4*N+4)
+                type = 4.0
+                if freq > 0
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [indexu i]
+                    states = vcat(states,state)
+                else
+                    freq = abs(freq)
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [i indexu]
+                    states = vcat(states,state)
+                end
+            else
+                nothing
+            end
+            #ΔJ=+1,ΔN= 0,ΔK=-1  a
+            indexu = i+2*N+2
+            indexu = convert(Int64,indexu)
+            if (indexu≤leng)&&(J-N<0)
+                freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+                intent = (N+1-K)*(N+K)*(2*N+1)/(4*N*(N+1))
+                type = 5.0
+                if freq > 0
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [indexu i]
+                    states = vcat(states,state)
+                else
+                    freq = abs(freq)
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [i indexu]
+                    states = vcat(states,state)
+                end
+            else
+                nothing
+            end
+            #ΔJ=+1,ΔN=+1,ΔK=-1  a
+            indexu = i + 2*J+2*N+3
+            indexu = convert(Int64,indexu)
+            if indexu≤leng
+                freq = energies[indexu,vtind,sigind]-energies[i,vtind,sigind]
+                intent = (N+2-K)*(N+1-K)/(4*N+4)
+                type = 6.0
+                if freq > 0
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [indexu i]
+                    states = vcat(states,state)
+                else
+                    freq = abs(freq)
+                    #freqline = [freq intent]
+                    freqline = [freq intent type]
+                    freqs = vcat(freqs,freqline)
+                    state = [i indexu]
+                    states = vcat(states,state)
+                end
+            else
+                nothing
+            end
+        end
     end
-    for i in 1:excluded
-    """
+    #At this point there are two vital arrays: freqs and states
+    #println(sigma==0)
+    #println(size(states))
+    #println(size(freqs))
+    #println(states)
+    #println(ninds)
+    #println(ninds[states[:,1]])
+    if sigma==0
+        ju = jinds[states[:,1]]
+        jl = jinds[states[:,2]]
+        nu = ninds[states[:,1]]
+        nl = ninds[states[:,2]]
+        ku = kinds[states[:,1]]
+        kl = kinds[states[:,2]]
+        sigs = fill(sigma, length(ju))
+        open("./AStates.txt", "w") do io
+            writedlm(io, [ju nu ku sigs jl nl kl sigs freqs])
+        end
+    else
+        ju = jinds[states[:,1]]
+        jl = jinds[states[:,2]]
+        nu = ninds[states[:,1]]
+        nl = ninds[states[:,2]]
+        ku = kinds[states[:,1]]
+        kl = kinds[states[:,2]]
+        sigs = fill(sigma, length(ju))
+        open("EStates.txt", "w") do io
+            writedlm(io, [ju nu ku sigs jl nl kl sigs freqs])
+        end
+    end
+    return freqs, states
 end
 
-TraCalc(Nmax,finalenergies)
+
+#Nmax = 4
+#println(Nmax)
+
+@time finalenergies=fullandfinal()
+
+@time Afrequencies, Aqnindices = TraCalc(Nmax,finalenergies,0,0)
+@time Efrequencies, Eqnindices = TraCalc(Nmax,finalenergies,1,0)
+
 
 println()
 println("A mircle has come to pass. This code seems to have properly run")
