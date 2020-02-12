@@ -1,20 +1,31 @@
 """
 This will serve as a test form for TorSpiSymCalc with a hardcoded Hamiltonian
 A generalized from of SymCalc currently exists. This should make the creation
-of TorSpiSymFit easier. Or at least I hope it will
+of WesterFit easier. Or at least I hope it will
+
+QN assign needs to be reworked in near entirety
+Perhaps doing separate diagonalizations of the isolated vt states and then trying
+	to match the eigenvalues between that and the global?
+	This would be super slow but could work
+I should try to understand eigenvector composition methods better
+
+I presently understand why other people don't like this shit but once this is
+working again, my confusion towards them will return
 """
 
 println("")
 #using GenericLinearAlgebra
 using LinearAlgebra
 using LinearAlgebra.BLAS
-using Profile
+#using Profile
 using DelimitedFiles
+#using Pkg
+#Pkg.add("WignerSymbols")
 #using Traceur
 
 #Etors = zeros(5,3)
 useSpi=true
-useTor=true
+useTor=false
 useNatUnits=false
 A = 0.0
 B = 0.0
@@ -31,9 +42,9 @@ V6 = 0.0
 rho = 0.0
 fv3 = 0.0
 fv6 = 0.0
-ezz = 0.0
-exx = 0.0
-eyy = 0.0
+eaa = 0.0
+ebb = 0.0
+ecc = 0.0
 exz = 0.0
 ezx = 0.0
 DelsK = 0.0
@@ -56,10 +67,12 @@ vthardcap = 10
 #vtmax is the highest vt that is output by the program.
 println("Westersim!")
 print("Enter molecule name: ")
+println("")
 #molnam = readline()
-molnam = "belgi"
+molnam = "spinrot"
 include("$molnam.inp")
 ρ=rho
+Dab = 0.5*Dab
 #useSpi=true
 #useTor=false
 #const Jmax = Jamx
@@ -68,17 +81,21 @@ include("$molnam.inp")
 if useNatUnits==true
     F = 29979.2458*F
     V3 = 29979.2458*V3
-	println("F=$F")
-	println("V3=$V3")
+	#println("F=$F")
+	#println("V3=$V3")
+	#println(A)
+	#println(B)
+	#println(C)
+	#println(Dab)
 else
     nothing
 end
 
 if useSpi==true
-    ao = -(ezz+eyy+exx)/3.0
-    a = -(2.0*ezz-eyy-exx)/6.0
+    ao = -(eaa+ecc+ebb)/3.0
+    a = -(2.0*eaa-ecc-ebb)/6.0
     d = -(ezx + exz)*0.5
-    b = -(exx-eyy)*0.5
+    b = -(ebb-ecc)*0.5
 else
     ao = 0.0
     a = 0.0
@@ -148,40 +165,33 @@ function Htors(K,sigma::Float64)
     Tormat = diagm(0=>ondiags, 1=>of1diag, 2=>of2diag)
     Tormat = Hermitian(Tormat)
     Tormat = eigen!(Tormat)
-#   #println(Tormat.values)
-#   return Tormat.values, Tormat.vectors
-    return Tormat
+	#if K==0
+	#	println(Tormat.values/29979.2458)
+	#else
+	#	nothing
+	#end
+    return Tormat.values,Tormat.vectors
 end
-function tormatch(eigs)#vals,vecs)#,p)
-#    println(p)
-#    matched = @. findmax(eigs.vectors[:,p])[2]
-#    println(matched)
-#   #matched = zeros(Int64,2*vthardcap+1)
-#   #second = zeros(Int64,2*vthardcap+1)
-    assigned = zeros(Float64,2*vthardcap+1)
-    reordered = zeros(Float64,(2*vthardcap+1,2*vthardcap+1))
-#   #parray = collect(Int64,1:2*vthardcap)
+function tormatch(vects)#vals,vecs)#,p)
     test = collect(Int64,1:2*vthardcap+1)
     newindices = vecvalpair(test)
-    eigs.values[newindices] = eigs.values[test]
-    eigs.vectors[:,newindices] = eigs.vectors[:,test]
-    return eigs#assigned,reordered
+    vects[test,:] = vects[newindices,:]# = vects[test,:]
+    return vects
 end
 function TorCalc(Nm,sigma::Float64)
     #Okay so I need to reorder the eigenvectors as well.
     #I will out put a 3D array of eigenvectors and a 2D of values.
+	#dimenions are m,vt,k
     #This will not be truncated. Truncation will occur in what is called in the next stage
     #marray = collect(1:21)
-    toreigs = Htors(-Nm,sigma)
-    toreigs = tormatch(toreigs)#tores,torvs)#,marray)
-    torvals = toreigs.values
-    torvecs = toreigs.vectors
+    torvals,torvecs = Htors(-Nm,sigma)
+    torvecs = tormatch(torvecs)#tores,torvs)#,marray)
 	karray = collect(Float64,-Nm+1:Nm)
     for k in karray
-        neweigs = Htors(k,sigma)
-        neweigs = tormatch(toreigs)#tores,torvs)#,marray)
-        torvals = hcat(torvals,neweigs.values)
-        torvecs = cat(torvecs,neweigs.vectors,dims=3)
+        newvals,newvecs = Htors(k,sigma)
+        newvecs = tormatch(newvecs)#tores,torvs)#,marray)
+        torvals = hcat(torvals,newvals)
+        torvecs = cat(torvecs,newvecs,dims=3)
     end
     return torvals,torvecs
 end
@@ -291,12 +301,12 @@ end
 
 function Ht0K0m0N(tvals,tvecs,thet,J,N,K,vt,sigma)
     out = zeros(Float64,2*vthardcap+1)
-    for m in -vthardcap:vthardcap
-        mp = m+vthardcap+1
-        out[mp] = tvals[mp,K+Nmax+1]
-        out[mp] += eta*(3.0*m+sigma)*K*thet
+    for m in 0:vt#2*vthardcap
+        mp = m+1
+        out[mp] = eta*(3.0*m+sigma)*K*thet
         #the vt+1 here is to adjust for Julia's array indexing
         out[mp] *= tvecs[mp,vt+1,K+Nmax+1]^2
+		out[mp] += tvals[mp,K+Nmax+1]
     end
     out = sum(out)
     return out
@@ -307,7 +317,7 @@ function Ht0K0m1N(jphi,J,N,K,vt,sigma,tvecs)
         mp = m+vthardcap+1
         out[mp] = eta*(3.0*m+sigma)
         out[mp] *= sqrt(N^2 - K^2)*jphi
-        out[mp] *= tvecs[mp,vt+1,K+Nmax+1]*tvecs[mp,vt+2,K+Nmax+1]
+        out[mp] *= tvecs[mp,vt+1,K+Nmax+1]*tvecs[mp,vt+1,K+Nmax+1]
     end
     out = sum(out)
     return out
@@ -317,8 +327,28 @@ end
 #function Ht1K0m0N(J,N,vt,sigma)
 #function Ht2K0m0N(J,N,vt,sigma)
 #function Ht0K1m0N(J,N,vt,sigma)
-#function Ht1K1m0N(J,N,vt,sigma)
-#function Ht2K1m0N(J,N,vt,sigma)
+function Ht1K1m0N(J,N,K,vt,sigma,tvecs)
+	Nt2 = N*(N+1)
+	out = zeros(Float64,2*vthardcap+1)
+	for m in -vthardcap:vthardcap
+		mp = m+vthardcap+1
+		out[mp] = Dab*sqrt(Nt2-K*(K-1))*(K-0.5)
+		out[mp] *= tvecs[mp,vt,K+Nmax+1]*tvecs[mp,vt+1,K+Nmax]
+	end
+	out = sum(out)
+	return out
+end
+function Ht2K1m0N(J,N,K,vt,sigma,tvecs)
+	Nt2 = N*(N+1)
+	out = zeros(Float64,2*vthardcap+1)
+	for m in -vthardcap:vthardcap
+		mp = m+vthardcap+1
+		out[mp] = sqrt((Nt2-K*(K-1))*(Nt2-(K-1)*(K-2)))*(0.25*(B-C) + delN*Nt2 + 0.5*delK*(K^2 + (K-2)^2))
+		out[mp] *= tvecs[mp,vt,K+Nmax+1]*tvecs[mp,vt+1,K+Nmax-1]
+	end
+	out = sum(out)
+	return out
+end
 #function Ht0K2m0N(J,N,vt,sigma)
 #function Ht1K2m0N(J,N,vt,sigma)
 #function Ht2K2m0N(J,N,vt,sigma)
@@ -331,8 +361,8 @@ end
 #function Ht1K2m1N(J,N,vt,sigma)
 #function Ht2K2m1N(J,N,vt,sigma)
 
-function Hspitor0N(J,N,v,sigma,tvals,tvecs)
-    thet = theta(J,N)
+function Hspitor0N(J,N,v,sigma,thet,tvals,tvecs)
+	#thet = theta(J,N)
     #karray = collect(Int64,-N:N)
     elems = zeros(Float64,2*N+1)
     for k in -N:N
@@ -340,6 +370,18 @@ function Hspitor0N(J,N,v,sigma,tvals,tvecs)
     end
     out = diagm(0=>elems)
     return out
+end
+function Hspitor0N1v(J,N,v,sigma,tvecs)
+	o1elems = zeros(Float64,2*N)
+	o2elems = zeros(Float64,2*N-1)
+	o1elems[1] = Ht1K1m0N(J,N,-N+1,v,sigma,tvecs)
+	for k in (-N+2):N
+		o1elems[k+N] = Ht1K1m0N(J,N,k,v,sigma,tvecs)
+		o2elems[k+N-1] = Ht2K1m0N(J,N,k,v,sigma,tvecs)
+	end
+	out = diagm(1=>o1elems,2=>o2elems)
+	out = Symmetric(out)
+	return out
 end
 function Hspitor1N(J,N,m,sigma,tvecs)#this one is also fixed
     jphi = -1.0/(J+0.5)
@@ -354,24 +396,50 @@ function Hspitor1N(J,N,m,sigma,tvecs)#this one is also fixed
 end
 
 function Htot(J::Float64,N,sigma::Float64,tvals,tvecs)
-    #
+    #okay so the whole vt stacking has to be fully inverted.
+	#starting at vtcalc and adding a front pad of zeros(2*N+1,vtcalc)
+	#then interate through with front and back pads of zeros
+	#frontzeros = zeros(2*N+1,v)
+	#backzeros = zeros(2*N+1, vtcalc-v-1)
+	#This has gotten obscenely hideous and I'm afraid of trying to clean it up
+	#New design idea: build vt=0 matrix
+	#for vt in 1:vtcalc
+	#add [vt-1|vt] mat
+	#hcat to vt-1 mat
+	#build vt mat
+	#hcat zeros to vtmat
+	#counter idea:
+	#	nested for loops for each vt to maximize the interaction terms
     thet = theta(J,N)
-    marray = collect(Float64,-vthardcap:vthardcap)
     Hsrumat = Hrot(N) + Hspi0N(J,N)
-    Numat = Hsrumat + Hspitor0N(J,N,0,sigma,tvals,tvecs)
+    Numat = Hsrumat + Hspitor0N(J,N,0,sigma,thet,tvals,tvecs)
+	#zpad = zeros(Float64,2*N+1,(2*N+1)*vtcalc)
+	#Numat = hcat(zpad,Numat)
     Hsrlmat = Hrot(N-1) + Hspi0N(J,N-1)
-    Nlmat = Hsrlmat + Hspitor0N(J,N-1,0,sigma,tvals,tvecs)
+    Nlmat = Hsrlmat + Hspitor0N(J,N-1,0,sigma,thet,tvals,tvecs)
+	#zpad = zeros(Float64,2*N-1,(2*N-1)*vtcalc)
+	#Nlmat = hcat(zpad,Nlmat)
     URsrmat = Hspi1N(J,N)
-    URmat = URsrmat + Hspitor1N(J,N,0,sigma,tvecs)
+    URmat = URsrmat + Hspitor1N(J,N,vtcalc,sigma,tvecs)
     for vt in 1:vtcalc
-        #I should figure out how to vectorize this but that's a problem for future Wes
-        vtumat = Hsrumat + Hspitor0N(J,N,vt,sigma,tvals,tvecs)
-        Numat = cat(Numat, vtumat,dims=(1,2))
-        vtlmat = Hsrlmat + Hspitor0N(J,N-1,vt,sigma,tvals,tvecs)
-        Nlmat = cat(Nlmat,vtlmat;dims=(1,2))
+		#I should figure out how to vectorize this but that's a problem for future Wes
+		vt1umat = Hspitor0N1v(J,N,vt,sigma,tvecs)
+		vt1umat = vcat(zeros((vt-1)*(2*N+1),2*N+1),vt1umat)
+		Numat = hcat(Numat,vt1umat)
+		vtumat = Hsrumat + Hspitor0N(J,N,vt,sigma,thet,tvals,tvecs)
+		vtumat = hcat(zeros(2*N+1,vt*(2*N+1)),vtumat)
+		Numat = vcat(Numat,vtumat)
+		vt1lmat = Hspitor0N1v(J,N-1,vt,sigma,tvecs)
+		vt1lmat = vcat(zeros((vt-1)*(2*N-1),2*N-1),vt1lmat)
+		Nlmat = hcat(Nlmat,vt1lmat)
+		vtlmat = Hsrlmat + Hspitor0N(J,N-1,vt,sigma,thet,tvals,tvecs)
+		vtlmat = hcat(zeros(2*N-1,vt*(2*N-1)),vtlmat)
+		Nlmat = vcat(Nlmat,vtlmat)
+        #Nlmat = cat(Nlmat,vtlmat;dims=(1,2))
         vturmat = URsrmat + Hspitor1N(J,N,vt,sigma,tvecs)
         URmat = cat(URmat,vturmat;dims=(1,2))
-		println(vt)
+		#println("vt=$vt")
+		#println(size(Numat))
     end
     #LLmat = transpose(zeros(Float64,size(URmat)))
 	URmat = URmat
@@ -383,20 +451,20 @@ function Htot(J::Float64,N,sigma::Float64,tvals,tvecs)
 	#	nothing
 	#end
 	#Htotmat = convert.(ComplexF64,Hermitian(Htotmat))
+	Htotmat = Symmetric(Htotmat)
     return Htotmat
 end
 #
 function Htotf0(J::Float64,sigma::Float64,tvals,tvecs)
     thet = 0.5#theta(0.5,1.0)
     Hsrumat = Hrot(1) + Hspi0Nf0(J,1)
-    Numat = Hsrumat + Hspitor0N(J,1,0,sigma,tvals,tvecs)
-    #Hsrlmat = 0.0 #Hrot(N-1) + Hspi0N(J,N-1)
-    Nlmat = 0.0 #Hsrlmat + Hspitor0N(J,N-1,0,sigma)
-    URsrmat = Hspi1Nf0(J,1)
+    Numat = Hsrumat + Hspitor0N(J,1,0,sigma,thet,tvals,tvecs)
+	Nlmat = Hspitor0N(J,0,0,sigma,thet,tvals,tvecs)
+	URsrmat = Hspi1Nf0(J,1)
     URmat = URsrmat + Hspitor1N(J,1,0,sigma,tvecs)
     for vt in 1:vtcalc
         #I should figure out how to vectorize this but that's a problem for future Wes
-        vtumat = Hsrumat + Hspitor0N(J,1,vt,sigma,tvals,tvecs)
+        vtumat = Hsrumat + Hspitor0N(J,1,vt,sigma,thet,tvals,tvecs)
         Numat = cat(Numat, vtumat,dims=(1,2))
         vtlmat = 0.0#Hsrlmat + Hspitor0N(J,N-1,vt,sigma)
         Nlmat = cat(Nlmat,vtlmat;dims=(1,2))
@@ -407,6 +475,8 @@ function Htotf0(J::Float64,sigma::Float64,tvals,tvecs)
     Htotmat = [Nlmat URmat; LLmat Numat]
 	#println(Htotmat)
 	#Htotmat = convert.(ComplexF64,Hermitian(Htotmat))
+	Htotmat = Symmetric(Htotmat)
+	#println(size(Htotmat))
     return Htotmat
 end
 
@@ -416,57 +486,62 @@ end
 #the bins will be temorary 2D arrays, one for each N
 #then each column will share an vt value
 #finally each column will be sorted to assign the K
-function qnassign(J::Float64,sigma::Float64,eigs)
+function qnassign(J::Float64,sigma::Float64,eigs,tvecs)
     Nu = Int64(J+0.5)
     Nl = Int64(J-0.5)
-    vtcalcd = vtcalc+1
-    Nueigs = zeros(2*Nu+1,vtcalcd)
-    Nleigs = zeros(2*Nl+1,vtcalcd)
+    Nueigs = zeros(2*Nu+1,vtcalc+1)
+    Nleigs = zeros(2*Nl+1,vtcalc+1)
     for i in 1:length(eigs.values)
         energy = eigs.values[i]
-        #println(energy)
+		vect = eigs.vectors[:,i]
         #we are using the highest value in the eigenvector to understand where in
         #the original matrix each eigenvalue came from to figure out what it's QNs must be
         index = iamax(eigs.vectors[:,i])
         #this if statement determines if N = J±1/2
-        if index<=((vtcalcd)*(2*J))
+		#we should try to assign vt by projecting the K spanning torsional wavefunction
+		#	on to a subset of the full wavefunction
+		vtcheck = zeros(Float64,vtcalc+1)
+        if index<=((vtcalc+1)*(2*J))
             N = Nl
             vtp = convert(Int64,floor(index/(2*N+1.01)))+1
             Nleigs[findfirst(isequal(0.0),Nleigs[:,vtp]),vtp] = energy
         else
             N = Nu
             #Then we use it to determine vt
-            index = index-(vtcalcd)*(2*J)
+            index = index-(vtcalc+1)*(2*J)
             vtp = convert(Int64,floor(index/(2*N+1.01)))+1
-            Nueigs[findfirst(isequal(0.0),Nueigs[:,vtp]),vtp] = energy
+			Nueigs[findfirst(isequal(0.0),Nueigs[:,vtp]),vtp] = energy
         end
     end
-    #sort by energy to "assign" K
+    #sort by energy to "assign" τ
+	#This will need to be changed but like not right now
     vmaxind = vtmax+1
-#    vmaxind = 2*(vtcalc-vtmax)
-#    vminind = 2*(vtcalc-2*vtmax)
-#    println("$vmaxind, $vminind")
-#    println(size(Nueigs))
-#    println(Nueigs)
     Nueigs = sort(Nueigs[:,1:vmaxind],dims=1)
     Nleigs = sort(Nleigs[:,1:vmaxind],dims=1)
     Jeigs = vcat(Nleigs[:,1:vmaxind],Nueigs[:,1:vmaxind])
+	#if Nu==15
+	#	println(Nueigs)
+	#else
+	#	nothing
+	#end
     return Jeigs
 end
 
 function TSRDiag(N,sigma,tvals,tvecs)
     J = N-0.5
+	#println("N=$N")
     Hmat = Htot(J,N,sigma,tvals,tvecs)
     Hmat = eigen!(Hmat)
-    output = qnassign(J, sigma, Hmat)
+    output = qnassign(J, sigma, Hmat, tvecs)
     return output
 end
 
 function TSRDiagf0(sigma,tvals,tvecs)
     #J = 0.5
     Hmat = Htotf0(0.5,sigma,tvals,tvecs)
+	#println(size(Hmat))
     Hmat = eigen!(Hmat)
-    output = qnassign(0.5, sigma, Hmat)
+    output = qnassign(0.5, sigma, Hmat, tvecs)
     return output
 end
 
@@ -481,35 +556,20 @@ function RotSpiTorCalc(Nmax,sigma::Float64,tvals,tvecs)
     return energies
 end
 
-#Ators = TorCalc(Nmax+1,0)
-#E1tors = TorCalc(Nmax+1,1)
-#E2tors = TorCalc(Nmax+1,-1)
-#TorEs = cat(E2tors,Ators,E1tors,dims=3)
-#println(size(TorEs))
-#U = UniformScaling(2)
-#Etors = U \ (E1tors+E2tors)
-#@time a=RotSpiTorCalc(Nmax,0)
-#println(size(a))
-#@time b=RotSpiTorCalc(Nmax,-1)
-#println(size(b))
-#@time c=RotSpiTorCalc(Nmax,1)
-#println(size(c))
-
 function fullandfinal()
-    σ0val,σ0vec = TorCalc(Nmax+1,0.0)
-    σ1val,σ1vec = TorCalc(Nmax+1,1.0)
-    #println(σ0val)
-    #E2tors = TorCalc(Nmax+1,-1)
-    #alltors = cat(E2tors,Ators,E1tors,dims=3)
-	#σ0val = zeros(size(σ0val))
-	#σ0vec = zeros(size(σ0vec))
-    sig0ful=RotSpiTorCalc(Nmax,0.0,σ0val,σ0vec)
-#    println(size(sig0ful))
-    sig1ful=RotSpiTorCalc(Nmax,1.0,σ1val,σ1vec)
-#    println(size(sig1ful))
-    #sigm1ful=RotSpiTorCalc(Nmax,-1)
-    #println(size(sigm1ful))
-    #sig1ful = zeros(size(sig0ful))
+    σ0val,σ0vec = TorCalc(Nmax,0.0)
+	sig0ful=RotSpiTorCalc(Nmax,0.0,σ0val,σ0vec)
+	if useTor==true
+    	σ1val,σ1vec = TorCalc(Nmax,1.0)
+		#σ1val,σ1vec = TorCalc(Nmax,-1.0)
+		sig1ful=RotSpiTorCalc(Nmax,1.0,σ1val,σ1vec)
+	else
+		σ0val = zeros(size(σ0val))
+		σ0vec = zeros(size(σ0vec))
+		σ1val = zeros(size(σ0val))
+		σ1vec = zeros(size(σ0vec))
+		sig1ful=zeros(size(sig0ful))
+	end
     finaleigs = cat(sig0ful,sig1ful,dims=3)
 end
 #There is still plenty of optimizations to do here
@@ -756,15 +816,7 @@ function TraCalc(Nmax,energies,sigma,vt)
         end
     end
     #At this point there are two vital arrays: freqs and states
-    #println(sigma==0)
-    #println(size(states))
-    #println(size(freqs))
-    #println(states)
-    #println(ninds)
-    #println(ninds[states[:,1]])
     neworder = sortperm(freqs[:,1])
-    #println(size(freqs))
-    #println(neworder)
     freqs = freqs[neworder,:]
     states = states[neworder,:]
     if sigma==0
@@ -774,9 +826,13 @@ function TraCalc(Nmax,energies,sigma,vt)
         jl = jl+fill(0.5,size(jl))
         nu = ninds[states[:,1]]
         nl = ninds[states[:,2]]
-        #ku = kinds[states[:,1]]
-        #kl = kinds[states[:,2]]
-        ku = kinds[states[:,1]]
+
+		tauinds = kinds + ninds
+		ka = floor.(0.5*(tauinds+ones(size(kinds))))
+        kc = 2*ninds-tauinds+ones(size(kinds))
+        kc = floor.(0.5*kc)
+
+		ku = kinds[states[:,1]]
         ku += nu
         kau = ku+ones(size(ku))
         kau = floor.(0.5*(kau))
@@ -793,9 +849,9 @@ function TraCalc(Nmax,energies,sigma,vt)
             writedlm(io, [nu kau kcu ju  nl kal kcl jl sigs sigs freqs])
 #            writedlm(io, [ju nu ku sigs jl nl kl sigs freqs])
         end
-		egys = energies[:,vtind,sigind]./29979.2458
+		egys = energies[:,vtind,sigind]#./29979.2458
 		open("AStates_$molnam.egy","w") do io
-			writedlm(io, [egys ninds kinds jinds])
+			writedlm(io, [egys ninds ka kc jinds])
 		end
     else
         ju = jinds[states[:,1]]
@@ -803,7 +859,11 @@ function TraCalc(Nmax,energies,sigma,vt)
         nu = ninds[states[:,1]]
         nl = ninds[states[:,2]]
         ku = kinds[states[:,1]]
-        kau = floor.(0.5*(ku+ones(size(ku))))
+		tauinds = kinds + ninds
+		ka = floor.(0.5*(tauinds+ones(size(kinds))))
+        kc = 2*ninds-tauinds+ones(size(kinds))
+        kc = floor.(0.5*kc)
+		kau = floor.(0.5*(ku+ones(size(ku))))
         kcu = 2*nu+ones(size(ku))-ku
         kcu = floor.(0.5*kcu)
         kl = kinds[states[:,2]]
@@ -815,16 +875,15 @@ function TraCalc(Nmax,energies,sigma,vt)
             writedlm(io, [ju nu kau kcu sigs jl nl kal kcl sigs freqs])
 #            writedlm(io, [ju nu ku sigs jl nl kl sigs freqs])
         end
-		egys = energies[:,vtind,sigind]./29979.2458
+		egys = energies[:,vtind,sigind]#./29979.2458
 		open("EStates_$molnam.egy","w") do io
-			writedlm(io, [egys ninds kinds jinds])
+			writedlm(io, [egys ninds ka kc jinds])
 		end
     end
     return freqs, states
 end
 
 
-Nmax = 15
 println(Nmax)
 
 @time finalenergies=fullandfinal()
@@ -834,8 +893,11 @@ println(Nmax)
 #Juno.profiler()
 #Juno.profiler(fullandfinal())
 @time Afrequencies, Aqnindices = TraCalc(Nmax,finalenergies,0,0)
-@time Efrequencies, Eqnindices = TraCalc(Nmax,finalenergies,1,0)
-
+if useTor==true
+	@time Efrequencies, Eqnindices = TraCalc(Nmax,finalenergies,1,0)
+else
+	nothing
+end
 
 println()
 println("A mircle has come to pass. This code seems to have properly run")
