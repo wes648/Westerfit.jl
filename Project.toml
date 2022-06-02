@@ -1,0 +1,10 @@
+name = "westerfit"
+uuid = "f202a280-4a11-4d8a-9d54-4c7a90dde5df"
+authors = ["wes648 <jhwesterfield@ucdavis.edu>"]
+version = "0.1.0"
+
+[deps]
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
