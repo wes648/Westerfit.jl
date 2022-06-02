@@ -1,0 +1,226 @@
+
+function θ(j::Float64,n,s::Float64)::Float64
+   if s==0.5
+      out = (n-j)/(j+0.5)
+   #elseif n==0.0
+   #   out = 0.0
+   else
+      out = n*(n+1.0) + s*(s+1.0) - j*(j+1.0)
+      out = out/(2.0*n*(n+1.0))
+   end
+   return out
+end
+function ϕ(j::Float64,n,s::Float64)::Float64
+   if s==0.5
+      out = -1.0/(j+0.5)
+   else
+      out = (n-j+s)*(n+j+s+1)*(s+j-n+1)*(n+j-s)
+      out *= 1.0/((2.0*n-1.0)*(2.0*n+1.0))
+      out = -sqrt(out)/n
+   end
+   return out
+end
+function fh(x,y)
+   out = sqrt(x*(x+1.0) - y*(y+1.0))
+   return out
+end
+function gh(x,y)
+   out = sqrt((x-y)*(x-y-1.0))
+   return out
+end
+
+function Htorm0(pr,N,K,m,σ)
+   #<m K|Htor|m K> =
+   out = @. pr[5]*(m)^2  - 2*pr[6]*(m)*K + pr[7]*0.5
+end
+function Htorm1(pr,N,K,m,σ)
+   #<m+1 K|Htor|m K> = -V3/4
+   out = @. -pr[7]*0.25 + 0.0*m*K
+end
+function Hr0K(pr,N,K)
+   #<N K |Hrot| N K>
+   out = @. (0.5*(pr[2] + pr[3])+ pr[13]*N*(N+1.0))*N*(N+1.0) + (pr[1] - 0.5*(pr[2] + pr[3]))*K^2
+end
+function Hr1K(pr,N,K)
+   #<N K+1 | H |N K>
+   out = @. pr[4]*sqrt(N*(N+1.0)-K*(K-1.0))*(K-0.5)
+end
+function Hr2K(pr,N,K)
+   #<N K+2 |Hrot| N K>
+   out = @. 0.25*(pr[2] - pr[3])*sqrt((N*(N+1.0) - K*(K - 1.0))*(N*(N+1.0) - (K - 1.0)*(K - 2.0)))
+end
+function Hrot(pr,N)
+   if Float64(N)==0.0
+      return [0.0]
+   else
+      karray = collect(Float64,-N:N)
+      nd = length(karray)
+      ondiags = Hr0K(pr,N,karray)
+      of1diag = Hr1K(pr,N,karray[2:end])
+      of2diag = Hr2K(pr,N,karray[3:end])
+      Rotmat = spdiagm(nd,nd,0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
+#      Rotmat = Symmetric(Rotmat)
+      return Rotmat
+   end
+end
+function Htor(pr,mcalc,N,σ)
+   tnp = convert(Int,2*N+1)
+   if mcalc==0
+      return spzeros(tnp,tnp)
+   else
+   tmp = convert(Int,2*mcalc+1)
+   ks = kron(ones(Float64,2*mcalc+1),collect(Float64,-N:N))
+   ms = kron(NFOLD .* collect(-mcalc:mcalc) .+ σ, ones(Float64,tnp))
+   ondiags = Htorm0(pr,N,ks,ms,σ)
+   of1diags = Htorm1(pr,N,ks[tnp+1:end],ms[tnp+1:end],σ)
+   out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
+   return out
+   end
+end
+function Htr(pr,N,m,σ)
+   nd = 2*N+1
+   md = 2*m+1
+   out = zeros(Float64,md*nd,md*nd)
+   out = kron(eye(md),Hrot(pr,N))
+   out += Htor(m,N,σ)
+   return out
+end
+function Hs0K0N(pr,J,N,S,thet,K)
+#   <J S N K| Hsr |J S N K>
+   out  = @. -0.5*pr[8]*(J*(J+1.0)-N*(N+1)-S*(S+1.0)) + thet*(pr[9]*(3.0*K^2 - N*(N+1)))
+end
+function Hs1K0N(pr,J,N,thet,K)
+#   <J S N K-1| Hsr |J S N K>
+   out = @. pr[11]*(K-0.5)*fh(N,K-1.0)*thet
+end
+function Hs2K0N(pr,J,N,thet,K)
+   #   <J S N K-2| Hsr |J S N K>
+   out = @. thet*0.5*pr[10]*sqrt((N*(N+1)-K*(K-1.0))*(N*(N+1)-(K-1.0)*(K-2.0)))
+end
+function Hsm2K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
+#   <J S N+1 K-2| Hsr |J S N K>
+   #out = @. -0.25*(srp[3]+srp[12]*(K*(N-K)+(K-2)*(N-K+2)))*f(N,K-1)*g(N,-K+1.0)
+   out = @. 0.25*pr[10]*fh(N+1.0,K-2.0)*gh(N+1.0,K-1.0).*ϕ
+end
+function Hsm1K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
+#   <J S N+1 K-1| Hsr |J S N K>
+   out = @. 0.25*pr[11]*(N+2.0*K)*gh(N+1.0,K-1.0).*ϕ
+end
+function Hs0K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
+#   <J S N+1 K| Hsr |J S N K>
+   out = @. 1.5*pr[9]*K*sqrt((N+1.0)^2 - K^2).*ϕ
+end
+function Hs1K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
+#   <J S N+1 K+1| Hsr |J S N K>
+   out = @. 0.25*pr[11]*(N-2.0*K)*gh(N+1.0,-K-1.0).*ϕ
+end
+function Hs2K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
+#   <J S N+1 K+2| Hsr |J S N K>
+   out = @. -0.25*pr[10]*fh(N+1.0,K+1.0)*gh(N+1.0,-K-1.0).*ϕ
+end
+#quick hyperfine implementation so I can stop thinking about it
+function hqqelem(f,i,jb,j,k,q)
+   kb = q+k
+   out = wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
+   if out == 0.0
+      return out
+   else
+      out *= 0.25*√((2.0*jb+1.0)*(2.0*j+1.0))*(-1)^(jb+jk-kb+i+f+1)
+   end
+end
+function hqqmat(f,i,jb,j)
+   out = zeros(float64,Int(2*jb)+1,Int(2*j)+1)
+   fac = wig6j(f,i,j,2,jb,i)/wig3j(i,2,i,-i,0,i)
+   if fac == 0.0
+      return out
+   else
+
+   end
+end
+
+#Matrix Builder
+function Hspi0N(pr,J,S,N)
+   thet = θ(J,N,S)
+   Nt2 = N*(N+1.0)
+   if N==0.0
+      #ondiags = Hs0K0N(J,N,S,Nt2,thet,[0.0],srprms)
+      Spimat = spzeros(Float64,1,1)#diagm(0=>ondiags)
+   else
+      karray = collect(Float64,-N:N)
+      ondiags = Hs0K0N(pr,J,N,S,thet,karray)
+      of1diag = Hs1K0N(pr,J,N,thet,karray[2:end])
+      of2diag = Hs2K0N(pr,J,N,thet,karray[3:end])
+      Spimat = spdiagm(length(karray),length(karray),0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
+   end
+#   return Symmetric(Spimat)
+   return Spimat
+end
+function Hspi1N(pr,J::Float64,S::Float64,Nl)
+   jϕ = ϕ(J,Nl+1.0,S)
+   karray = collect(Float64,-Nl:Nl)
+   pm1 = Hsm2K1N(pr,Nl,karray[2:end],jϕ)
+   p0 = Hsm1K1N(pr,Nl,karray,jϕ)
+   p1 = Hs0K1N(pr,Nl,karray,jϕ)
+   p2 = Hs1K1N(pr,Nl,karray,jϕ)
+   p3 = Hs2K1N(pr,Nl,karray[1:end-1],jϕ)
+   Spimat = spdiagm(2*Int(Nl)+1,2*Int(Nl)+3, -1=>pm1, 0=>p0, 1=>p1, 2=>p2, 3=>p3)
+   return Spimat
+end
+
+function Htsr0N(pr,j,s,n,mcalc,σ)
+   marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
+   karray = collect(Float64,-n:n)
+   if n==0.0
+      mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
+   else
+      mat = pr[12]*θ(j,n,s)*0.0
+      mat = mat .* karray
+      mat = kron(marray,mat)
+      mat = spdiagm(0=>mat)
+   end
+   return mat
+end
+function Htsr1N(pr,j::Float64,s::Float64,nl,mcalc,σ)
+   karray = collect(Float64,-nl:nl)
+   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   mat = zeros(Float64,0,0)
+   for i in 1:length(marray)
+      p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]
+      p1 = p1 .* sqrt.( (nl+1.0)^2 .+ karray .^2)
+      part = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
+      mat = cat(mat,part,dims=(1,2))
+   end
+   return mat
+end
+
+function Hsr(pr,J,S)
+   ns, nd, ni, jd = srprep(J,S)
+   out = spzeros(Float64,jd,jd)
+   out[1:nd[1],1:nd[1]] = Hrot(pr,ns[1]) + Hspi0N(pr,J,S,ns[1])
+   for i in 2:length(ns)
+      n = ns[i]
+      n1part = Hspi1N(pr,J,S,n-1.0)
+      out[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+      out[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n) + Hspi0N(pr,J,S,n)
+      out[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+   end
+   return out
+end
+function Htsr(pr,J,S,mcalc,σ)
+   md = 2*mcalc + 1
+   ns, nd, ni, jd = srprep(J,S,md)
+   ni = ni
+   ni[1,1] = 1
+   out = spzeros(Float64,md*jd,md*jd)
+   out[1:ni[1,2],1:ni[1,2]] = kron(eye(md),Hrot(pr,ns[1]) + Hspi0N(pr,J,S,ns[1]))
+   out[1:ni[1,2],1:ni[1,2]] += Htor(pr,mcalc,ns[1],σ) + Htsr0N(pr,J,S,ns[1],mcalc,σ)
+   for i in 2:length(ns)
+   n = ns[i]
+   n1part = kron(eye(md),Hspi1N(pr,J,S,n-1.0)) + Htsr1N(pr,J,S,n-1.0,mcalc,σ)
+   @inbounds out[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+   @inbounds out[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = kron(eye(md),
+               Hrot(pr,n) + Hspi0N(pr,J,S,n)) + Htor(pr,mcalc,n,σ) + Htsr0N(pr,J,S,n,mcalc,σ)
+   @inbounds out[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+   end
+   return out
+end

@@ -1,0 +1,64 @@
+Westersim
+
+index =
+
+okay so drafting up the simfact routine
+I want to store the eigenvectors in basically the same pattern as the eigenvalues
+    this will be increasing J,N,tau across the columns and vt on the stacks
+    Oldvectors will be truncated to be 2N+2 long. removing the N'N coupling portions
+    no way this could end badly
+    then they will be normalized
+
+I can take an N block worth of vectors, transpose them, and act them on to the newvector to get all the SFs.
+
+input: oldvectors, newvalues, newvectors, J, sigma
+determine N via greatest vector element
+if N < J
+calculate SFs for No=N, Jo=J-1
+bestSf = iamax(SFmat)
+secondSF = iamax(SFmat[1:end !=bestSF)
+check = abs((bestSF-secondSF)/bestSF)
+if (bestSf < 0.0)||(check > 0.1)
+    calculate SFs for No=N-1, Jo=J-1
+    calculate SFs for No=N-1, Jo=J-2
+
+
+New ideas: July 24th 2020:
+Include |F I>
+Need H_q and H_ss for this to work
+
+
+Self justification:
+|ψ⟩ = a|ϕ⟩ + b|φ⟩
+⟨ψ|ψ⟩ = ⟨ϕ|aa|ϕ⟩ + ⟨φ|ab|ϕ⟩ + ⟨ϕ|ab|φ⟩ + ⟨φ|bb|φ⟩ = 1
+
+invoke orthonormality:
+⟨ψ|ψ⟩ ≈ ⟨ϕ|aa|ϕ⟩ + ⟨φ|bb|φ⟩ ≈ 1
+
+If ϕ is the more contributing state,
+⟨ϕ|aa|ϕ⟩ > ⟨φ|bb|φ⟩
+
+
+
+Okay so now I want to consider general case spin coupling for this program.
+This should be some very rough pseudo-code:
+User inputs parameters, list of spins, and F_max
+From a given F_max, N_max = F_max + sum(spins)
+    add a check for Int vs HalfInt for sum(spins) vs F_max
+TorCalc for K = -Nmax:Nmax
+for 0:Nmax
+    build all pure-rot matrices
+Determine J_min = (Zero or 1/2 (S)) & J_max = N_max - S
+for J_min:(N_max-S)
+    determine allowed N & J sets: N_l = J-S, N_u = J+S
+    build all spin-rot matrices
+for I_1
+    Determine F_1_min = (Zero or 1/2 (J_min & I_1)) & F_1_max = J_max - I_1
+    for F_1_n in F_1_min:F_1_max,
+        J_l = F_1_n - I_1, J_u = F_1_n + I_1
+        build spin-spin-rot matrix
+for I_i in I_2:I_last
+    Determine F_i_min = (Zero or 1/2 (F_(i-1)_min & I_i)) & F_i_max = F_(i-1)_max - I_i
+    for F_i_n in F_i_min:F_i_max,
+        F_(i-1)_l = F_i_n - I_i, F_(i-1)_u = F_i_n + I_i
+        build spin-spin-rot matrix
