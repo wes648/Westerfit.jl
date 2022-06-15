@@ -20,16 +20,23 @@ prs =[A; B; C; δ; F; V3; ϵzz; ϵxx; ϵyy; ϵxzb; η]
 
 using DelimitedFiles
 using Optim
+using Printf
 using LinearAlgebra
 using LinearAlgebra.BLAS
 using LinearAlgebra.LAPACK
-using LineSearches
+#using LineSearches
 using SparseArrays
+include("/home/wes/files/westerfit/src/assign.jl")
 include("/home/wes/files/westerfit/src/common.jl")
+include("/home/wes/files/westerfit/src/filehandling.jl")
 include("/home/wes/files/westerfit/src/hamiltonian.jl")
 include("/home/wes/files/westerfit/src/intensities.jl")
+include("/home/wes/files/westerfit/src/jacobi.jl")
+#using Threads
 include("/home/wes/files/westerfit/src/WIGXJPF.jl")
 using .WIGXJPF
+
+BLAS.set_num_threads(8)
 
 apology = true
 
@@ -52,64 +59,28 @@ global TK = 25.0
 ################################################################################
 
 
-function assign(nmax,j,s,σ,mcalc,mmax,vals,vecs)
-   #determine which indices we want to assign
-   nlist = Δlist(j,s)
-   ndegns = @. 2*nlist + 1
-   mcind = mcalc+1
-   mcd = 2*mcalc+1
-   offset = zeros(Int64,length(nlist))
-   offset[2:end] = (mcd) .* ndegns[1:end-1]
-   goals = zeros(Int,0,1)
-   off = 0
-   for n in nlist
-      start = off + Int((mcalc - mmax)*(2*n+1)) + 1
-      finsh = off + Int((mcalc + mmax + 1)*(2*n+1))
-      part = collect(start:finsh)
-      goals = vcat(goals,part)
-      off += Int((2*mcalc+1)*(2*n+1))
-   end
-   assigned = leadfact(vals,copy(vecs))
-   vals = vals[assigned]
-   vecs = vecs[:,assigned]
-   vals = vals[goals]
-   vecs = vecs[:,goals]
-   QNs = qngen(j,s,mmax,σ)
-   return QNs, vals, vecs
-end
-
-function leadfact(vals,vecs)
-   vecs = abs.(vecs)
-   c = zeros(Int,length(vals))#,2)
-   for i in 1:length(vals)
-      t = argmax(vecs)
-      s = t[1] #state number that this eigenvalue maps to
-      k = t[2] #eigenvalue number from energetic sorting
-      vecs[s,:] = zeros(Float64,size(vecs[1,:])) #prevents state from being double assigned
-      vecs[:,k] = zeros(Float64,size(vecs[:,2]))
-      c[k] = s
-#      c[k,2] = i
-   end
-   perm = sortperm(c)
-   return perm
-end
-
 function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
-   #U = ur(j,s,mcalc)
+   U = ur(j,s,mcalc)
    if σ==0||σ==0.0
       U = ur(j,s,mcalc)*ut(mcalc,j,s)
       H = Matrix(U*Htsr(pr,j,s,mcalc,σ)*U)
    else
-      H = Matrix(Htsr(pr,j,s,mcalc,σ))
+      U = ur(j,s,mcalc)
+      H = Matrix(U*Htsr(pr,j,s,mcalc,σ)*U)
    end
+   H, rvec = jacobisweep(H,floor((j+s)/2 - 1 + mcalc*σ/3 ))
    vals, vecs = LAPACK.syev!('V', 'U', H)
-   qns, vals, vecs = assign(nmax,j,s,σ,mcalc,mmax,vals,vecs)
+   #if (Int(j)==4)&&(Int(σ)==1.0)
+   #   println(vals ./ csl)
+   #   println(vecs)
+   #end
+   qns, vals, vecs = assign(nmax,j,s,σ,mcalc,mmax,vals,vecs,rvec)
    return qns, vals, vecs
 end
 
 function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
    #prm = PAM2RAM(prm)
-   prm = paramprep(prm)
+   #prm = paramprep(prm)
    #prm = paramshift(inprms)
    if isodd(Int64(2*s+1))
       jmin = 0.0
@@ -119,29 +90,43 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
-   outvals = zeros(Float64,Int(jd*(2*mmax+1)),2*mmax+1)
+   outvals = zeros(Float64,Int(jd),2*mmax+1)
    outvecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),2*mmax+1)
-   outqns = zeros(Float64,Int(jd*(2*mmax+1)),6)
-   for i in 1:length(jarray)
+   outqns = zeros(Float64,jd,6,2*mmax+1)
+   Threads.@threads for i in 1:length(jarray)
       j = jarray[i]
       sind, find = jinds(j,s)
       tqns, tvals, tvecs = tsrdiag(prm,j,s,nmax,mcalc,mmax,σ)
-      outvals[sind:find] = tvals
-      outvecs[1:Int((2*s+1)*(2*j+1)*(2*mcalc+1)),sind:find] = tvecs
-      outqns[sind:find,:] = tqns
+      si = 1
+      f0 = Int((2*s+1)*(2*j+1))
+      fi = f0
+      for m in 1:(2*mmax+1)
+         outvals[sind:find,m] = tvals[si:fi]
+         outvecs[1:Int((2*s+1)*(2*j+1)*(2*mcalc+1)),sind:find,m] = tvecs[:,si:fi]
+         outqns[sind:find,:,m] = tqns[si:fi,:]
+         si += f0
+         fi += f0
+      end
    end
+   mperm = sortperm(collect(-mmax:mmax),by=abs)
+   outvals = outvals[:,mperm]
+   outvecs = outvecs[:,:,mperm]
+   outqns = outqns[:,:,mperm]
    return outqns, outvals, outvecs
 end
 
 function westersim(prm,s,nmax,mcalc,mmax)
-   @time amq, ama, amv = tsrcalc(parameters,0.5,nm,mc,0,0)
-   @time atransitions = tracalc(nm,0.5,mc,0,amq,ama,amv)
+   @time amq, ama, amv = tsrcalc(parameters,s,nm,mc,0,0)
+   #EngWriter(ama, amq, 0)
+   @time atransitions = tracalc(nm,s,mc,0,amq,ama,amv)
    println("E states!")
-   @time emq, ema, emv = tsrcalc(parameters,0.5,nm,mc,0,1)
+   @time emq, ema, emv = tsrcalc(parameters,s,nm,mc,0,1)
+   @time etransitions = tracalc(nm,s,mc,1,emq,ema,emv)
+   #(nmax,s,mcalc,σ,qns,vals,vecs)
+   #EngWriter(ema, emq,1)
    qns  = cat(amq,emq, dims=3)
    vals = cat(ama,ema, dims=3)
    vecs = cat(amv,emv, dims=3)
-   @time etransitions = tracalc(nm,0.5,mc,1,emq,ema,emv)
    transitions = vcat(atransitions,etransitions)
    return transitions, qns, vals, vecs
 end
@@ -149,26 +134,6 @@ end
 ################################################################################
 ############                  westerfit                  ############
 ################################################################################
-
-function lineprep(lns)
-   #converts the input file into a more code friendly format
-   #           1  2  3   4   5  6  7  8  9   10 11 12  13   14
-   #input  = [ju nu kau kcu mu σu jl nl kal kcl ml σl freq unc]
-   #           1  2   3   4  5   6
-   #output = [ju σu indu jl σl indl]
-   qunus = lns[:,1:12]
-   freqs = lns[:,13]
-   uncs = lns[:,end]
-   inds = zeros(Int64,size(lns)[1],6)
-   inds[:,1] = Int64.(2 .* qunus[:,1])
-   inds[:,2] = Int64.(qunus[:,6])
-   inds[:,3] = qn2ind.(qunus[:,1],0.5,qunus[:,2],qunus[:,3],qunus[:,4])
-   inds[:,4] = Int64.(2 .* qunus[:,7])
-   inds[:,5] = Int64.(qunus[:,12])
-   inds[:,6] = qn2ind.(qunus[:,7],0.5,qunus[:,8],qunus[:,9],qunus[:,10])
-   #inds = vcat(inds[:,1:2], inds[:,3:4])
-   return inds, freqs, uncs
-end
 
 function jlister(inds)
    #finds all the unique J & σ pairs
@@ -193,7 +158,7 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
    function except for only the J-σ pairs from the input line list rather than
    covering every pairing.
 """
-   rp = paramprep(rp)
+   #rp = paramprep(rp)
    jmax = 0.5*maximum(jlist[:,1])
    #println(jlist)
    σs = σcount(NFOLD)
@@ -201,7 +166,7 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
    evals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
    evecs = zeros(Float64,Int((2*S+1)*(2*jmax+1)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
    eqns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
-   for i in 1:size(jlist)[1]
+   Threads.@threads for i in 1:size(jlist)[1]
       j = 0.5*jlist[i,1]
       σ = jlist[i,2]
       sind, find = jinds(j,S)
@@ -213,6 +178,16 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
    return evals, evecs#, eqns
 end
 #take difference and determine rms
+function cost(vals,inds,ofreqs,weights)
+   cfreqs = zeros(size(ofreqs))
+   for i in 1:size(cfreqs)[1]
+      cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
+   end
+   omc = ofreqs - cfreqs
+   cst = sum((omc ./weights) .^2)
+   rms = sqrt(cst/length(omc))
+   return cst
+end
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zeros(size(ofreqs))
    for i in 1:size(cfreqs)[1]
@@ -240,7 +215,7 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
 """
    #fitprm = params[perm]
    jcbn = zeros(Float64,size(inds)[1],length(params))
-   for a in 1:size(inds)[1]
+   Threads.@threads for a in 1:size(inds)[1]
       ju = 0.5*inds[a,1]
       jl = 0.5*inds[a,4]
       σu = inds[a,2]
@@ -267,11 +242,12 @@ function dHdA(j,s,σ,vec,rp)
    drp[5] = (F^2) / ((F - A)^2)
    #dFρ/dAp
    drp[6] = (F^2) / ((F - A)^2)
-   U = ur(j,s,mcalc)
    if σ==0
+      U = ur(j,s,mcalc)
       U *= ut(mcalc,j,s)
+   else
+      mat = Matrix(Htsr(drp,j,s,mcalc,σ))
    end
-   mat = Matrix(U*Htsr(drp,j,s,mcalc,σ)*U)
    out = transpose(vec)*mat*vec
    return out[1]
 end
@@ -285,11 +261,12 @@ function dHdF(j,s,σ,vec,rp)
    drp[5] = (F^2 - 2.0A*F) / ((F - A)^2)
    #dFρ/dF
    drp[6] = -(A^2) / ((F - A)^2)
-   U = ur(j,s,mcalc)
    if σ==0
+      U = ur(j,s,mcalc)
       U *= ut(mcalc,j,s)
+   else
+      mat = Matrix(Htsr(drp,j,s,mcalc,σ))
    end
-   mat = Matrix(U*Htsr(drp,j,s,mcalc,σ)*U)
    out = transpose(vec)*mat*vec
    return out[1]
 end
@@ -328,12 +305,42 @@ This should be the Levenberg-Marquadt step. This solves (JᵗWJ+λI)Δβ = (Jᵗ
 """
    jtw = transpose(jcbn)*weights
    β = zeros(size(jcbn)[2])
-   A = Hermitian(jtw*jcbn + lbmq_prm*I)
+   jtj = jtw*jcbn
+   A = Hermitian(jtj + lbmq_prm*Diagonal(jtj))
    A = cholesky(A)
-   X = jtw*omc
+   X = -jtw*omc
    β = ldiv!(β, A, X)
+   β = β #./ norm(β.^2)
    return β
 end
+function dogleg(βlm,βsd,t,Δ)
+"""
+This enforces a trust region on our steps
+"""
+   βf = zeros(size(βlm))
+   nβlm = norm(βlm)
+   nβsd = norm(βsd)
+   if nβlm ≤ Δ #lm step inside trust region
+      βf = βlm
+   elseif (nβlm>Δ)&&(nβsd≤Δ) #only SD step inside trust region
+      βlts = βlm - t.*βsd
+      s = (Δ-abs(t)*nβsd)/norm(βlts) #this is an aproximate solution ≤ the actual
+      βf = t*βsd + s.*(βlts)
+   else#if (norm(βlm)>Δ)&&(norm(βsd)>Δ) #both outside trust region
+      βf = (Δ/nβsd) .* βsd
+   end
+   return βf
+end
+function acc_lbmq_step(jcbn, weights, omc, lbmq_prm)
+"""
+This should be the Geodesic Accelerated Levenberg-Marquadt step.
+"""
+   g = transpose(jcbn)*jcb + UniformScaling(lbmq_prm)
+   ∇C = transpose(jcbn)*omc
+   v = -inv(g)*∇C
+   return Δx
+end
+
 function solvcalc(rprms,jlist,linds,ofreqs)
 """
 This is the objective function for interfacing with other packages like Optim.jl
@@ -373,7 +380,7 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
    goal = sum(uncs)/length(uncs)
    weights = diagm(0=>(uncs .^ -1))
    THRESHOLD = 1.0E-06
-   LIMIT = 200
+   LIMIT = 100
    while true
       #println("Building Jacobians")
       jcbn = build_jcbn(inds,vecs,params)
@@ -393,6 +400,8 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
       else #nrms > rms
          #reject step due to RMS increase
          λ = λ*2.0
+         params = newparams
+         rms = nrms
 #      else
 #         λ = λ
       end
@@ -427,7 +436,7 @@ function westerfit_handcoded()
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
    scales = trsscales
-   λ = 1.0
+   λ = 0.1E-50
 #   println("Beginning optimization")
    tsrp, vals = lbmq_opt(jlist,ofreqs,uncs,linds,tsrparams,scales,λ)
    println("New Parameter Vector:")
@@ -497,14 +506,16 @@ end
 
 
 
-c = 29979.2458 #MHz to cm-1 converter
+const csl = 29979.2458 #MHz to cm-1 converter
 F = 292574.52
 V3 = 4195821.0
 A = 82756.97
 B = 10145.212
 C = 9426.952
-δ = 0.45
-#Dab = 20.0
+#δ = 0.45
+
+ρ = 0.285565346
+Dab = -3716.8
 ϵzz = 254.3618
 ϵxx = 385.4886
 ϵyy = -415.9114
@@ -515,44 +526,71 @@ C = 9426.952
 μb = 0.5
 
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
+parameters = [ A;   B;   C;   Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
-parameters = [83316.10066771678, 14497.783454870654, 4733.339691158756,
-      -1.1414038835204492, 292650.6595414094, 4.195803378991427e6,
-      306.43192861068763, 297.11625650644,
-      -22.797297784556505, 0.0, 0.0, 33.90230680364543]
+#parameters = [83316.10066771678, 14497.783454870654, 4733.339691158756,
+#      -1.1414038835204492, 292650.6595414094, 0.0, 4.195803378991427e6,
+#      306.43192861068763, 297.11625650644,
+#      -22.797297784556505, 0.0, 0.0, 33.90230680364543]
 
 trsscales = fill(1.0,12)
 
 """
-testlines = [1.5  1  0  1  0  0  0.5  0  0  0  0  0  19419.0217  0.4;
- 0.5  1  0  1  0  0  0.5  0  0  0  0  0  19450.6917  0.4;
+testlines = [
+ 1.5  1  0  1  0  0  0.5  0  0  0  0  0  19419.0217  0.4; 2
+ 0.5  1  0  1  0  0  0.5  0  0  0  0  0  19450.6917  0.4; 1
  2.5  2  0  2  0  0  0.5  1  0  1  0  0  38819.1124  0.4;
- 2.5  2  0  2  0  0  1.5  1  0  1  0  0  38847.8178  0.4;
- 1.5  2  0  2  0  0  0.5  1  0  1  0  0  38865.0721  0.4;
- 1.5  2  0  2  0  0  1.5  1  0  1  0  0  38894.2759  0.4;
- 2.5  3  0  3  0  0  1.5  2  0  2  0  0  58287.5536  0.4;
- 3.5  3  0  3  0  0  2.5  2  0  2  0  0  58272.0583  0.4;
- 1.5  1  0  1  1  1  0.5  0  0  0  1  1  19104.1433  0.4;
- 0.5  1  0  1  1  1  0.5  0  0  0  1  1  19137.5883  0.4;
- 2.5  2  0  2  1  1  1.5  1  0  1  1  1  38250.8564  0.4;
- 1.5  2  0  2  1  1  0.5  1  0  1  1  1  38263.2012  0.4;
- 1.5  2  0  2  1  1  1.5  1  0  1  1  1  38295.7924  0.4;
+ 2.5  2  0  2  0  0  1.5  1  0  1  0  0  38847.8178  0.4; 7
+ 1.5  2  0  2  0  0  0.5  1  0  1  0  0  38865.0721  0.4; 5
+ 1.5  2  0  2  0  0  1.5  1  0  1  0  0  38894.2759  0.4; 6
+ 2.5  3  0  3  0  0  1.5  2  0  2  0  0  58287.5536  0.4; 9
+ 3.5  3  0  3  0  0  2.5  2  0  2  0  0  58272.0583  0.4; 11
+ 1.5  1  0  1  1  1  0.5  0  0  0  1  1  19104.1433  0.4; 16
+ 0.5  1  0  1  1  1  0.5  0  0  0  1  1  19137.5883  0.4; 15
+ 2.5  2  0  2  1  1  1.5  1  0  1  1  1  38250.8564  0.4; 21
+ 1.5  2  0  2  1  1  0.5  1  0  1  1  1  38263.2012  0.4; 19
+ 1.5  2  0  2  1  1  1.5  1  0  1  1  1  38295.7924  0.4; 20
  2.5  2  0  2  1  1  0.5  1  0  1  1  1  38228.7521  0.4]
 """
 
-INTTHRESHOLD = .000001
+INTTHRESHOLD = .000000
 #=
 parameters:
      1  2  3   4   5  6   7   8  9 10 11 12
 prs =[A; B; C; Dab; Fr; ρ; V3; ao; a; b; d; η]
 
 λs.vectors[abs.(λs.vectors) .< 1E-9] .= 0.0
+vecs[abs.(vecs) .< 1E-9] .= 0.0
 =#
-mc = 10
-nm = 3
+function westerenergies(prm,s,nmax,mcalc,mmax)
+   @time amq, ama, amv = tsrcalc(parameters,s,nmax,mcalc,mmax,0)
+   EngWriter(ama, amq, mmax, 0)
+   println("E states!")
+   @time emq, ema, emv = tsrcalc(parameters,s,nmax,mcalc,mmax,1)
+   EngWriter(ema, emq, mmax, 1)
+   qns  = cat(amq,emq, dims=3)
+   vals = cat(ama,ema, dims=3)
+   vecs = cat(amv,emv, dims=3)
+   return qns, vals, vecs
+end
 
-@time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
-testlines = abs.(pred2lne(transitions))
+mc = 7
+nm = 15
 
-parameters .+= 0.5*(0.5 .- rand(size(parameters)))
-@time westerfit_optim()
+A      =      0.35150076793036794*29979.2458
+B      =      0.15346996670417229*29979.2458
+C      =      0.10623368397991501*29979.2458
+Dab    =     -0.03670915325930996*29979.2458
+V3     =    359.14177475235487691*29979.2458
+ρ      =      0.06376911062071215
+F      =      5.64133778441192124*29979.2458
+parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+
+
+molnam = "belgi"
+@time qns, vals, vecs = westerenergies(parameters,0,nm,mc,1)
+#testlines = (pred2lne(transitions))
+#println(transitions)
+
+#parameters .+= 0.5*(0.5 .- rand(size(parameters)))
+#@time westerfit_handcoded()

@@ -61,7 +61,7 @@ This repulsively slow function calculates all of the transitions from the
    eigenvalues & vectors from tsrdiag. This does include an intensity cutoff but
    the only hard coded selction rule is that |ΔJ| ≤ 1. Every pair that meets that
    term is tested since the meaning of the other quantum numbers is incredibly
-   limited. 
+   limited.
 """
    jmax = nmax - s
    ns = Δlist(jmax,s)
@@ -70,16 +70,21 @@ This repulsively slow function calculates all of the transitions from the
    for i in 2:length(ns)
       karray = vcat(karray,kron(ones(2*mcalc+1),collect(-ns[i]:ns[i])))
    end
-   ojb = 1.5
-   ojk = 0.5
+   if isodd(Int64(2*s+1))
+      ojb = 1.
+      ojk = 0.
+   else
+      ojb = 1.5
+      ojk = 0.5
+   end
    lenb = convert(Int,(2*s+1)*(2*ojb+1)*(2*mcalc+1))
    lenk = convert(Int,(2*s+1)*(2*ojk+1)*(2*mcalc+1))
    μmat = intmat(ojb,ojk,s,mcalc,σ,lenb,lenk)
    for i in 1:length(vals)
    for j in (i+1):length(vals)
       Δj = abs(qns[j,1] - qns[i,1])
-#      Δk = abs(qns[j,3] - qns[i,3])
-      if Δj ≤ 1
+      Δk = abs(qns[j,3] - qns[i,3])
+      if Δj ≤ 2
 #      Δka = abs(qns[j,3] - qns[i,3])
 #      if Δka ≤ 2
          jb = qns[j,1]
@@ -92,16 +97,16 @@ This repulsively slow function calculates all of the transitions from the
          end
          ojb = jb
          ojk = jk
-         if (freq > 0.0)&&(freq < 80.0E+03)#&&(Δk ≤ 1)
+         if (freq > 0.0)&&(freq < 80.0E+03)&&(Δk < 1)&&(qns[j,3]==0.0)
             int = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2# *exp(vals[i]/(TK*2.083661912e+4))
             if int>INTTHRESHOLD#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
-               temp = [freq int vals[i]/c transpose(qns[j,:]) transpose(qns[i,:])]
+               temp = [freq int vals[i]/csl transpose(qns[j,:]) transpose(qns[i,:])]
                trans = vcat(trans,temp)
             end
-         elseif (freq < 0.0)&&(freq > -80.0E+03)#&&(Δk ≤ 1)
+         elseif (freq < 0.0)&&(freq > -80.0E+03)&&(Δk < 1)&&(qns[j,3]==0.0)
             int = (transpose(vecs[1:lenk,i])*μmat*vecs[1:lenb,j])^2# *exp(vals[j]/(TK*2.083661912e+4))
             if (int>INTTHRESHOLD)#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
-               temp = [-freq int vals[j]/c transpose(qns[i,:]) transpose(qns[j,:])]
+               temp = [-freq int vals[j]/csl transpose(qns[i,:]) transpose(qns[j,:])]
                trans = vcat(trans,temp)
             end
          else
