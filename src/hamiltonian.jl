@@ -1,5 +1,5 @@
 
-function θ(j::Float64,n,s::Float64)::Float64
+function θ(j,n,s)
    if s==0.5
       out = (n-j)/(j+0.5)
    #elseif n==0.0
@@ -10,7 +10,7 @@ function θ(j::Float64,n,s::Float64)::Float64
    end
    return out
 end
-function ϕ(j::Float64,n,s::Float64)::Float64
+function ϕ(j,n,s)
    if s==0.5
       out = -1.0/(j+0.5)
    else
@@ -26,6 +26,13 @@ function fh(x,y)
 end
 function gh(x,y)
    out = sqrt((x-y)*(x-y-1.0))
+   return out
+end
+
+function Ediag(pr,J,S,N,K,m,σ)
+   out = Htorm0(pr,N,K,m,σ)
+   out += Hr0K(pr,N,K)
+   out += Hs0K0N(pr,J,N,S,θ(J,N,S),K)
    return out
 end
 
@@ -222,5 +229,47 @@ function Htsr(pr,J,S,mcalc,σ)
                Hrot(pr,n) + Hspi0N(pr,J,S,n)) + Htor(pr,mcalc,n,σ) + Htsr0N(pr,J,S,n,mcalc,σ)
    @inbounds out[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
+   return out
+end
+
+function Htsr0Nv(pr,j,s,n)
+   karray = collect(Float64,-n:n)
+   if n==0.0
+      mat = spzeros(Float64,1,1)
+   else
+      mat = pr[12]*θ(j,n,s)
+      mat = mat .* karray
+      mat = spdiagm(0=>mat)
+   end
+   return mat
+end
+function Htsr1Nv(pr,j,s,nl)
+   karray = collect(Float64,-nl:nl)
+   p1 = ϕ(j,nl+1.0,s)*pr[12]
+   p1 = p1 .* sqrt.( (nl+1.0)^2 .+ karray .^2)
+   mat = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
+   return mat
+end
+
+function Htsrmat2(pr,j,s,mcalc,σ)
+   ns, nd, ni, jd = srprep(j,s)
+   srpart = spzeros(Float64,jd,jd)
+   tspart = spzeros(Float64,jd,jd)
+   srpart[1:nd[1],1:nd[1]] = Hrot(pr,ns[1]) + Hspi0N(pr,j,s,ns[1])
+   tspart[1:nd[1],1:nd[1]] = Htsr0Nv(pr,j,s,ns[1])
+   for i in 2:length(ns)
+      n = ns[i]
+      srn1part = Hspi1N(pr,j,s,n-1.0)
+      srpart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = srn1part
+      srpart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n)+ Hspi0N(pr,j,s,n)
+      srpart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(srn1part)
+      n1part = Htsr1Nv(pr,j,s,n-1.0)
+      tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+      tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
+      tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+   end
+   marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
+   tspart = kron(diagm(0=>marray),tspart)
+   out = kron(eye(2*mcalc+1),srpart) + tspart
    return out
 end

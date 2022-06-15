@@ -84,7 +84,7 @@ This generates a list of all the torsion-rotation quantum numbers across a
    kcarray = k2kc.(narray,karray)
    marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,nd))
    σarray = fill(σ,nd*md)
-   out = hcat(narray,karray,kcarray,marray,σarray)
+   out = hcat(narray,abs.(karray),kcarray,marray,σarray)
 end
 function qngen(j,s,m,σ)
 """
