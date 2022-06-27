@@ -65,8 +65,9 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
       U = ur(j,s,mcalc)*ut(mcalc,j,s)
       H = Matrix(U*Htsr(pr,j,s,mcalc,σ)*U)
    else
-      U = ur(j,s,mcalc)
-      H = Matrix(U*Htsr(pr,j,s,mcalc,σ)*U)
+      #U = ur(j,s,mcalc)
+      #H = Matrix(U*Htsr(pr,j,s,mcalc,σ)*U)
+      H = Matrix(Htsr(pr,j,s,mcalc,σ))
    end
    H, rvec = jacobisweep(H,floor((j+s)/2 - 1 + mcalc*σ/3 ))
    vals, vecs = LAPACK.syev!('V', 'U', H)
@@ -513,8 +514,7 @@ A = 82756.97
 B = 10145.212
 C = 9426.952
 #δ = 0.45
-
-ρ = 0.285565346
+ρ = 0.513448477
 Dab = -3716.8
 ϵzz = 254.3618
 ϵxx = 385.4886
@@ -526,7 +526,7 @@ Dab = -3716.8
 μb = 0.5
 
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
-parameters = [ A;   B;   C;   Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
+parameters = [ A-F*ρ^2;   B;   C;   Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
 #parameters = [83316.10066771678, 14497.783454870654, 4733.339691158756,
 #      -1.1414038835204492, 292650.6595414094, 0.0, 4.195803378991427e6,
@@ -575,8 +575,9 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
 end
 
 mc = 7
-nm = 15
+nm = 4
 
+#=
 A      =      0.35150076793036794*29979.2458
 B      =      0.15346996670417229*29979.2458
 C      =      0.10623368397991501*29979.2458
@@ -585,10 +586,10 @@ V3     =    359.14177475235487691*29979.2458
 ρ      =      0.06376911062071215
 F      =      5.64133778441192124*29979.2458
 parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+=#
 
-
-molnam = "belgi"
-@time qns, vals, vecs = westerenergies(parameters,0,nm,mc,1)
+molnam = "hirota"
+@time qns, vals, vecs = westerenergies(parameters,0.5,nm,mc,0)
 #testlines = (pred2lne(transitions))
 #println(transitions)
 
