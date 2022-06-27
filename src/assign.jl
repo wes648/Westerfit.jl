@@ -43,6 +43,32 @@ function leadfact(vals,vecs)
    perm = sortperm(c)
    return perm
 end
+
+function suboverlap(vals, vecs)
+   tvecs = abs.(vecs) .^2
+   submat = zeros(Float64,(2*mcalc+1),size(tvecs)[2])
+   mcounters = zeros(Int,(2*mcalc+1))
+   minds = zeros(Int,)
+   jd = Int((2*s+1)*(2*j+1))
+   si = 1
+   fi = jd
+   for m in 1:(2*mcalc+1)
+      submat[m,:] = sum(tvecs[si:fi,:], dims=2)
+      mcounters[m] = sum(asgn[si:fi] .> 0)
+      si += jd
+      fi += jd
+   end#for
+   for i in 1:length(vals)
+      t = argmax(submat)
+      s = t[1]#m state dominating this eigenvalue
+      k = t[2]#eigenvalue number from energetic sorting
+      if mcounters[s] < jd
+         submat[:,k] = 0.0 #avoid double assignment
+#         ind = argmax(tvecs[minds[m],k])
+      end#if
+   end#for
+end#func
+
 #function leadfact(vals,vecs,pr,j,s,m,σ)
 #   vecs = abs.(vecs)
 #   c = zeros(Int,length(vals))#,2)
@@ -119,7 +145,7 @@ end#func
 
 function suboverlaplayer(asgn, vals, vecs)
    unassigned = unique([collect(1:length(vals)); asgn])
-   #this uses the filtered eigven vectors from the previous layer
+   #this uses the filtered eigvenvectors from the previous layer
    tvecs = abs.(vecs) .^2
    submat = zeros(Float64,(2*mcalc+1),size(tvecs)[2])
    mcounters = zeros(Int,(2*mcalc+1))
@@ -128,7 +154,7 @@ function suboverlaplayer(asgn, vals, vecs)
    si = 1
    fi = jd
    for m in 1:(2*mcalc+1)
-      submat[m,:] = sum(tvecs[si:fi,:], dims=2)
+      submat[m,:] = sum(tvecs[si:fi,:].^2, dims=2)
       mcounters[m] = sum(asgn[si:fi] .> 0)
       si += jd
       fi += jd
