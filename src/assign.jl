@@ -1,31 +1,28 @@
 
 function assign(nmax,j,s,σ,mcalc,mmax,vals,vecs,rotvs)
    #determine which indices we want to assign
-   nlist = Δlist(j,s)
-   ndegns = @. 2*nlist + 1
-   mcind = mcalc+1
-   mcd = 2*mcalc+1
-   offset = zeros(Int64,length(nlist))
-   offset[2:end] = (mcd) .* ndegns[1:end-1]
-   goals = zeros(Int,0,1)
-   off = 0
-   for n in nlist
-      #this subtraction of σ is to correct an odd misassignment problem in the
-      #E states. I don't honestly trust it very well nor do I see what it is
-      #needed. That said it does do the fix I need right now
-      start = off + Int((mcalc - mmax - σ)*(2*n+1)) + 1
-      finsh = off + Int((mcalc + mmax + 1 - σ)*(2*n+1))
-      part = collect(start:finsh)
-      goals = vcat(goals,part)
-      off += Int((2*mcalc+1)*(2*n+1))
-   end
+   #nlist = Δlist(j,s)
+   #ndegns = @. 2*nlist + 1
+   #mcind = mcalc+1
+   #mcd = 2*mcalc+1
+   #offset = zeros(Int64,length(nlist))
+   #offset[2:end] = (mcd) .* ndegns[1:end-1]
+   #goals = zeros(Int,0,1)
+   #off = 0
+   #for n in nlist
+   #   start = off + Int((mcalc - mmax)*(2*n+1)) + 1
+   #   finsh = off + Int((mcalc + mmax + 1)*(2*n+1))
+   #   part = collect(start:finsh)
+   #   goals = vcat(goals,part)
+   #   off += Int((2*mcalc+1)*(2*n+1))
+   #end
    assigned = leadfact(vals,copy(vecs))
    vals = vals[assigned]
    vecs = rotvs*vecs
    vecs = vecs[:,assigned]
-   vals = vals[goals]
-   vecs = vecs[:,goals]
-   QNs = qngen(j,s,mmax,σ)
+   #vals = vals[goals]
+   #vecs = vecs[:,goals]
+   QNs = qngen(j,s,mcalc,σ)
    return QNs, vals, vecs
 end
 function leadfact(vals,vecs)
@@ -44,8 +41,7 @@ function leadfact(vals,vecs)
    return perm
 end
 
-function suboverlap(vals, vecs)
-   tvecs = abs.(vecs) .^2
+function suboverlap(vals, tvecs)
    submat = zeros(Float64,(2*mcalc+1),size(tvecs)[2])
    mcounters = zeros(Int,(2*mcalc+1))
    minds = zeros(Int,)
@@ -53,7 +49,7 @@ function suboverlap(vals, vecs)
    si = 1
    fi = jd
    for m in 1:(2*mcalc+1)
-      submat[m,:] = sum(tvecs[si:fi,:], dims=2)
+      submat[m,:] = sum(tvecs[si:fi,:] .^2, dims=2)
       mcounters[m] = sum(asgn[si:fi] .> 0)
       si += jd
       fi += jd

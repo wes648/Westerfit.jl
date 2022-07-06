@@ -652,6 +652,9 @@ Now our reference operators
 \begin{equation}
 \langle m\pm n, \sigma | \frac{V_{3n}}{2}(1-\cos (3n\alpha))| m\sigma\rangle = -\frac{V_{3n}}{4}
 \end{equation}
+\begin{equation}
+	\langle m\pm n, \sigma | \sin (3n\alpha)| m\sigma\rangle = \frac{\imath}{2}
+\end{equation}
 
 And now our Hamiltonian and the bands of our purely torsional stage:
 \begin{equation}
@@ -921,24 +924,40 @@ From Kleiner 2010, torsional rotation strengths:
 S(L';L) = \frac{1}{\mu^{2}}\sum_{M} 3\left| \sum_{\gamma} \sum_{K',K,v_{t}''',v_{t}''}  C^{J'\tau v_{t}'\sigma'}_{K',v_{t}'''}C^{J\tau v_{t}\sigma}_{K,v_{t}''} \left\langle K'v_{t}'''\sigma'\left|\mu_{\gamma}\right| K v_{t}''\sigma \right\rangle \left\langle J'K'M\left|\Phi_{Z\gamma}\right| JKM\right\rangle \right|^{2}
 \end{equation}
 
-Sloppy combo:
-\begin{multline}
-S(L';L) = \bigg|\sum_{N'N}(-1)^{N+S+J'+1} \sqrt{(2J'+1)(2J+1)} 
+Now as the best way to actually treat this to reconstruct our dipole projections as a Fourier series about the torsional angle, $\alpha$. This comes from https://doi.org/10.1006/jmsp.1998.7782
+\begin{align}
+	\mu_{z} &= \mu^{(0)}_{z} + \mu^{(3)}_{z}\cos3\alpha + ... \\
+	\mu_{x} &= \mu^{(0)}_{x} + \mu^{(3)}_{x}\cos3\alpha + ... \\
+	\mu_{y} &= \mu^{(3)}_{y}\sin3\alpha + ... \\
+\end{align}
+
+As a result, our spherical dipole tensor, $T(\mu)$ becomes:
+\begin{eqnarray}
+	T^{1}_{+1}(\mu) &= T^{1}_{+1}(\mu^{(0)}) + T^{1}_{+1}(\mu^{(3)}) &= -\frac{1}{\sqrt{2}}\left(\mu^{(0)}_{z} + \mu^{(3)}_{z}\cos3\alpha + \imath\mu^{(3)}_{y}\sin3\alpha\right) \\
+	T^{1}_{0}(\mu) &= T^{1}_{0}(\mu^{(0)}) + T^{1}_{0}(\mu^{(3)}) &= \mu^{(0)}_{z} + \mu^{(3)}_{z}\cos3\alpha \\
+	T^{1}_{-1}(\mu) &= T^{1}_{-1}(\mu^{(0)}) + T^{1}_{-1}(\mu^{(3)}) &= \frac{1}{\sqrt{2}}\left(\mu^{(0)}_{z} + \mu^{(3)}_{z}\cos3\alpha - \imath\mu^{(3)}_{y}\sin3\alpha\right) 
+\end{eqnarray}
+
+The $\mu_{y}^{(3)}$ contribution becomes Real because $\langle m\pm3|\sin3\alpha|m\rangle=\imath/2$ so $\langle m\pm3|\imath\mu_{y}\sin3\alpha|m\rangle=-\mu_{y}/2$.
+This adds off-diagonal in $m$ blocks to the dipole tensor matrix.
+And our function for $S$ becomes:
+\begin{equation}
+S(m'\tau'J';m''\tau''J'') = \left|\sum_{N'N''}(-1)^{N''+S+J'+1} \sqrt{(2J'+1)(2J''+1)} 
 \begin{Bmatrix}
-	N & J & S \\
+	N'' & J'' & S \\
 	J' & N' & 1
 \end{Bmatrix}
-\sqrt{2N+1} \\
-\sum_{K',K,v_{t}''',v_{t}''}
-\sum_{q} C^{J'\tau v_{t}'\sigma'}_{K',v_{t}'''}C^{J\tau v_{t}\sigma}_{K,v_{t}''} (-1)^{N-1-K'}(2N'+1) 
+\bar{S}^{1/2}(m'\tau'N';m''\tau''N'')
+\right|^{2}
+\end{equation}
+\begin{multline}
+\bar{S}^{1/2}(m'\tau'N';m''\tau''N'') = \sqrt{2N''+1}\sum_{K'K''q} a_{\tau'K'}a_{\tau''K''} (-1)^{N''-1-K'}(2N'+1) \\
 \begin{pmatrix}
-	N & 1 & N' \\
-	K & 1 & -K'
+	N'' & 1 & N' \\
+	K'' & q & -K'
 \end{pmatrix}
-T^{1}_{q}(\mu)
-\bigg|^{2}
+\left(T^{1}_{q}(\mu^{(0)})\delta_{m'',m'} + T^{1}_{q}(\mu^{(3)})\delta_{m'\pm1,m'} \right)
 \end{multline}
-Reapplying that simplification,
 
 \section{Parameter Definitions}
 I need to find that spin-rotation paper. And then change the $I$ tensor to 4D. Also what the fuck would $\eta_{\alpha\alpha}$ mean. $\eta_{z\alpha}$ makes plenty of sense though. Hmm they should be the same in RAM as it's the interaction of the $z$ component of the electron spin and the internal rotor angular momentum
