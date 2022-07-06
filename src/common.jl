@@ -37,7 +37,7 @@ This function determines the signed K values that correspond to the A₁ and A�
 end
 function klist(n,m)
 """
-This function determines the signed K values that correspond to the A₁ and A₂
+This function determines the signed Kₐ values that correspond to the A₁ and A₂
    irreducible representations of the Cₛ point group for a given N and m pair.
    The arrays are returned as a tuple of A₁ then A₂. This should only be used
    for the A states of a G₆ molecule.
@@ -52,7 +52,7 @@ This function determines the signed K values that correspond to the A₁ and A�
 end
 function mklist(n,mcalc)
 """
-This function determines the signed K values that correspond to the A₁ and A₂
+This function determines the signed Kₐ values that correspond to the A₁ and A₂
    irreducible representations of the Cₛ point group across an entire -m:m range
    a given N.
    The arrays are returned as a tuple of A₁ then A₂.
@@ -84,7 +84,7 @@ This generates a list of all the torsion-rotation quantum numbers across a
    kcarray = k2kc.(narray,karray)
    marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,nd))
    σarray = fill(σ,nd*md)
-   out = hcat(narray,abs.(karray),kcarray,marray,σarray)
+   out = hcat(narray,karray,kcarray,marray,σarray)
 end
 function qngen(j,s,m,σ)
 """
@@ -96,12 +96,20 @@ This generates a list of all the spin-torsion-rotation quantum numbers across a
    recorded by the user elsewhere
 """
    nlist = Δlist(j,s)
-   out = zeros(0,5)
-   for i in 1:length(nlist)
-      out = vcat(out,qngen(nlist[i],m,σ))
+   jsd = Int((2*j+1)*(2*s+1))
+   md = Int(2*m+1)
+   out = zeros(0,3)
+   for n in nlist
+      nd = Int(2*n+1)
+      part = zeros(nd,3)
+      part[:,1] = fill(n,nd)
+      part[:,2] = collect(Int,-n:n)
+      part[:,3] = k2kc.(part[:,1],part[:,2])
+      out = vcat(out,part)
    end
-   jlist = fill(j,size(out)[1])
-   out = hcat(jlist,out)
+   out = kron(ones(Int,md),out)
+   ms = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,jsd))
+   out = hcat(fill(j,size(out)[1]),out,ms,fill(σ,jsd*md))
    return out
 end
 
@@ -196,6 +204,16 @@ This returns the first and final indices for a certain J value for a given S.
    return snd,fnd
 end
 
+function jinds(j,s,m)
+"""
+This returns the first and final indices for a certain J value for a given S.
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+   snd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+   return snd,fnd
+end
+
 ################################################################################
 #These are the various Wang Matrices
 ################################################################################
@@ -242,11 +260,10 @@ function ut(m,j,s)
 This builds the torsional Wang Transformation matrix for a span of -m:m with
    rotational blocks for every n in Δlist(j,s)
 """
-   nlist = Δlist(j,s)
-   out = zeros(0,0)
-   for i in 1:length(nlist)
-      out = cat(out,ut(m,nlist[i]);dims=(1,2))
-   end
+   jd = Int((2*s+1)*(2*j+1))
+   out = (1/sqrt(2)) .*  [-1*eye(m) zeros(m) rotl90(eye(m)); zeros(1,m) sqrt(2) zeros(1,m);
+   rotl90(eye(m)) zeros(m) eye(m)]
+   out = kron(out,eye(jd))
    return out
 end
 function ur(n,m)
@@ -269,9 +286,13 @@ This builds the rotational Wang Transformation matrix for every n in Δlist(j,s)
 """
    nlist = Δlist(j,s)
    out = zeros(0,0)
-   for i in 1:length(nlist)
-      out = cat(out,ur(nlist[i],m);dims=(1,2))
+   for n in nlist
+      part = (1/sqrt(2)) .* [-eye(n) zeros(n) rotl90(eye(n)); zeros(1,n) sqrt(2) zeros(1,n);
+         rotl90(eye(n)) zeros(n) eye(n)]
+      out = cat(out,part,dims=(1,2))
    end
+   md = 2*m+1
+   out = kron(eye(md),out)
    return out
 end
 

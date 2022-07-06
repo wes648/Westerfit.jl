@@ -38,7 +38,7 @@ end
 
 function Htorm0(pr,N,K,m,σ)
    #<m K|Htor|m K> =
-   out = @. pr[5]*(m)^2  - 2*pr[6]*(m)*K + pr[7]*0.5
+   out = @. pr[5]*m^2 + 2*pr[6]*m*K + pr[7]*0.5
 end
 function Htorm1(pr,N,K,m,σ)
    #<m+1 K|Htor|m K> = -V3/4
@@ -84,12 +84,31 @@ function Htor(pr,mcalc,N,σ)
    return out
    end
 end
+function Htor(pr,mcalc,j,s,σ)
+   tnp = convert(Int,(2*j+1)*(2*s+1))
+   if mcalc==0
+      return spzeros(tnp,tnp)
+   else
+   tmp = convert(Int,2*mcalc+1)
+   ks = zeros(0)
+   for n in Δlist(j,s)
+      ks = vcat(ks,collect(Float64,-n:n))
+   end
+   ks = kron(ones(Float64,2*mcalc+1),ks)
+   ms = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
+   ondiags = Htorm0(pr,j,ks,ms,σ)
+   of1diags = Htorm1(pr,j,ks[tnp+1:end],ms[tnp+1:end],σ)
+   out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
+   return out
+   end
+end
+
 function Htr(pr,N,m,σ)
    nd = 2*N+1
    md = 2*m+1
-   out = zeros(Float64,md*nd,md*nd)
+   out = spzeros(Float64,md*nd,md*nd)
    out = kron(eye(md),Hrot(pr,N))
-   out += Htor(m,N,σ)
+   out += Htor(pr,m,N,σ)
    return out
 end
 function Hs0K0N(pr,J,N,S,thet,K)
@@ -165,12 +184,12 @@ end
 function Hspi1N(pr,J::Float64,S::Float64,Nl)
    jϕ = ϕ(J,Nl+1.0,S)
    karray = collect(Float64,-Nl:Nl)
-   pm1 = Hsm2K1N(pr,Nl,karray[2:end],jϕ)
-   p0 = Hsm1K1N(pr,Nl,karray,jϕ)
-   p1 = Hs0K1N(pr,Nl,karray,jϕ)
-   p2 = Hs1K1N(pr,Nl,karray,jϕ)
-   p3 = Hs2K1N(pr,Nl,karray[1:end-1],jϕ)
-   Spimat = spdiagm(2*Int(Nl)+1,2*Int(Nl)+3, -1=>pm1, 0=>p0, 1=>p1, 2=>p2, 3=>p3)
+   pm2 = Hsm2K1N(pr,Nl,karray[2:end],jϕ)
+   pm1 = Hsm1K1N(pr,Nl,karray,jϕ)
+   p0 = Hs0K1N(pr,Nl,karray,jϕ)
+   p1 = Hs1K1N(pr,Nl,karray,jϕ)
+   p2 = Hs2K1N(pr,Nl,karray[1:end-1],jϕ)
+   Spimat = spdiagm(2*Int(Nl)+1,2*Int(Nl)+3, -1=>pm2, 0=>pm1, 1=>p0, 2=>p1, 3=>p2)
    return Spimat
 end
 
@@ -257,19 +276,20 @@ function Htsrmat2(pr,j,s,mcalc,σ)
    tspart = spzeros(Float64,jd,jd)
    srpart[1:nd[1],1:nd[1]] = Hrot(pr,ns[1]) + Hspi0N(pr,j,s,ns[1])
    tspart[1:nd[1],1:nd[1]] = Htsr0Nv(pr,j,s,ns[1])
+   trpart = Htor(pr,mcalc,j,s,σ)
    for i in 2:length(ns)
       n = ns[i]
       srn1part = Hspi1N(pr,j,s,n-1.0)
-      srpart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = srn1part
-      srpart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n)+ Hspi0N(pr,j,s,n)
-      srpart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(srn1part)
+   @inbounds srpart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = srn1part
+   @inbounds srpart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n)+ Hspi0N(pr,j,s,n)
+   @inbounds srpart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(srn1part)
       n1part = Htsr1Nv(pr,j,s,n-1.0)
-      tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
-      tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
-      tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+   @inbounds tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+   @inbounds tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
+   @inbounds tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
    marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
    tspart = kron(diagm(0=>marray),tspart)
-   out = kron(eye(2*mcalc+1),srpart) + tspart
+   out = kron(eye(2*mcalc+1),srpart) + tspart + trpart
    return out
 end

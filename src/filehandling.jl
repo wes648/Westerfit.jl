@@ -22,22 +22,22 @@ end
 
 #####OUTPUTS
 function EngWriter(energies,qunus,mmax,sigma)
-   qunus[:,1,:] .*= 2
+   qunus[:,1] .*= 2
    qunus = convert.(Int,qunus)
    c = 29979.2458
    len = size(energies)[1]
    offsets = len .* collect(0:(2*mmax))
-   out = fill("0",(2*mmax+1)*len)
+   out = fill("0",len)
    for i in 1:len
-   for m in 1:(2*mmax+1)
-      energy = energies[i,m]/c
+   #for m in 1:(2*mmax+1)
+      energy = energies[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
       part = lpad(@sprintf("%0.10f", energy), 16)
-      part = string(part,",", lpad(@sprintf("%0.1f", qunus[i,1,m]/2), 7))
-      out[i+offsets[m]] = string(part,",", lpad(qunus[i,2,m],4),",",lpad(qunus[i,3,m],4),",",
-       lpad(qunus[i,4,m],4),",", lpad(qunus[i,5,m],4),",", lpad(qunus[i,6,m],4))
+      part = string(part,",", lpad(@sprintf("%0.1f", qunus[i,1]/2), 7))
+      out[i] = string(part,",", lpad(qunus[i,2],4),",",lpad(qunus[i,3],4),",",
+       lpad(qunus[i,4],4),",", lpad(qunus[i,5],4),",", lpad(qunus[i,6],4))
 #      lpad(qunus[i,5,1],4), lpad(sigma,4))
-   end
+   #end
    end
    if sigma==0
       io = open("Astates_$molnam.eng", "w") do io

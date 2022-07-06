@@ -3,30 +3,30 @@
 ################################################################################
 
 
-function Tμ(q)
+function T(μ,q)
 """
 This sloppy function calls the elements of the Cₛ dipole spherical tensor from
    global μa and μb. This will need to be reworked.
 """
    q = Int(q)
    if q==-1
-      return μb/√(2)
+      return (μ[2]-μ[3])/√(2)
    elseif q==0
-      return μa
+      return μ[1]
    elseif q==1
-      return -μb/√(2)
+      return -(μ[2]+μ[3])/√(2)
    else
       return 0.0
    end
 end
 
-function intelem(jb,nb,kb,s,j,n,k)
+function intelem(jb,nb,kb,s,j,n,k,μ)
 """
 This implements the dipole moment operator in spherical tensor notation. It is
    an implementation of equation 24-25 of http://dx.doi.org/10.1063/1.1545441
 """
    q = kb-k
-   out = WIGXJPF.wig6j(n,j,s,jb,nb,1)*WIGXJPF.wig3j(n,1,nb,k,q,-kb)*Tμ(q)
+   out = WIGXJPF.wig6j(n,j,s,jb,nb,1)*WIGXJPF.wig3j(n,1,nb,k,q,-kb)*T(μ,q)
    if out == 0.0
       return out
    else
@@ -35,24 +35,53 @@ This implements the dipole moment operator in spherical tensor notation. It is
       return out
    end
 end
-function intmat(jb,jk,s,mcalc,σ,lenb,lenk)
+function intmat(jb,jk,s,mcalc,σ)
 """
 This builds the matrix of dipole elements and wang transforms it for the A states
 """
-   mat = zeros(Float64,lenk,lenb)
+   jdb = Int((2*jb+1)*(2*s+1))
+   jdk = Int((2*jk+1)*(2*s+1))
+   mat = spzeros(Float64,jdk,jdb)
+   omat = spzeros(Float64,jdk,jdb)
    qnb = qngen(jb,s,mcalc,σ)
    qnk = qngen(jk,s,mcalc,σ)
-   for y in 1:lenb
-   for x in 1:lenk
-      @inbounds mat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnb[x,3])
+   for y in 1:jdb
+   for x in 1:jdk
+      @inbounds mat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnb[x,3],μ[:,1])
+      @inbounds omat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnb[x,3],μ[:,2])
    end
    end
-   if σ==0
+   omat = kron(spdiagm(1=>ones(Float64,Int(2*mcalc)),-1=>ones(Float64,Int(2*mcalc))),omat)
+   mat = kron(eye(Int(2*mcalc+1)),mat) + omat
+   if σ==0||σ==0.0
       Uk = ur(jk,s,mcalc)*ut(mcalc,jk,s)
       Ub = ur(jb,s,mcalc)*ut(mcalc,jb,s)
       mat = Uk*mat*Ub
+   else
+      Uk = ur(jk,s,mcalc)
+      Ub = ur(jb,s,mcalc)
+      mat = Uk*mat*Ub
    end
    return mat
+end
+
+function intcalc(nmax,s,mcalc,σ,qns,vecs)
+   len = size(qns)[1]
+   ints = spzeros(Float64,len,len,2)
+   for i in 1:len
+   jk = qns[i,1]
+   lenk = convert(Int,(2*s+1)*(2*jk+1)*(2*mcalc+1))
+   for j in i:len
+      #fill in int mat
+      μmat = intmat(jb,jk,s,mcalc,σ)
+      jb = qns[j,1]
+      lenb = convert(Int,(2*s+1)*(2*jb+1)*(2*mcalc+1))
+      ints[i,j,1] = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2
+   end#for j
+   end#for i
+   ints[ints .< INTTHRESHOLD] .= 0.0
+   ints = dropzeros(ints)
+   return ints
 end
 
 function tracalc(nmax,s,mcalc,σ,qns,vals,vecs)
@@ -79,7 +108,7 @@ This repulsively slow function calculates all of the transitions from the
    end
    lenb = convert(Int,(2*s+1)*(2*ojb+1)*(2*mcalc+1))
    lenk = convert(Int,(2*s+1)*(2*ojk+1)*(2*mcalc+1))
-   μmat = intmat(ojb,ojk,s,mcalc,σ,lenb,lenk)
+   μmat = intmat(ojb,ojk,s,mcalc,σ)
    for i in 1:length(vals)
    for j in (i+1):length(vals)
       Δj = abs(qns[j,1] - qns[i,1])
@@ -93,17 +122,17 @@ This repulsively slow function calculates all of the transitions from the
          lenk = convert(Int,(2*s+1)*(2*jk+1)*(2*mcalc+1))
          freq = vals[j] - vals[i]
          if (jb!=ojb)||(jk!=ojk)
-            μmat = intmat(jb,jk,s,mcalc,σ,lenb,lenk)
+            μmat = intmat(jb,jk,s,mcalc,σ)
          end
          ojb = jb
          ojk = jk
-         if (freq > 0.0)&&(freq < 80.0E+03)&&(Δk < 1)&&(qns[j,3]==0.0)
+         if (freq > 0.0)&&(freq < 80.0E+03)#&&(Δk < 1)&&(qns[j,3]==0.0)
             int = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2# *exp(vals[i]/(TK*2.083661912e+4))
             if int>INTTHRESHOLD#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
                temp = [freq int vals[i]/csl transpose(qns[j,:]) transpose(qns[i,:])]
                trans = vcat(trans,temp)
             end
-         elseif (freq < 0.0)&&(freq > -80.0E+03)&&(Δk < 1)&&(qns[j,3]==0.0)
+         elseif (freq < 0.0)&&(freq > -80.0E+03)#&&(Δk < 1)&&(qns[j,3]==0.0)
             int = (transpose(vecs[1:lenk,i])*μmat*vecs[1:lenb,j])^2# *exp(vals[j]/(TK*2.083661912e+4))
             if (int>INTTHRESHOLD)#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
                temp = [-freq int vals[j]/csl transpose(qns[i,:]) transpose(qns[j,:])]
