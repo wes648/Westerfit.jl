@@ -404,3 +404,18 @@ prs =[A; B; C; Dab; Fr; Fρ; V3; ao; a; b; d; η]
    output[13] = params[12]
    return output
 end
+
+function greaterof(x::Number,y::Number)
+   if x ≥ y
+      return x
+   else
+      return y
+   end
+end
+function lesserof(x::Number,y::Number)
+   if x ≥ y
+      return y
+   else
+      return x
+   end
+end
