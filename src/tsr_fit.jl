@@ -19,7 +19,7 @@ prs =[A; B; C; δ; F; V3; ϵzz; ϵxx; ϵyy; ϵxzb; η]
 """
 
 using DelimitedFiles
-using Optim
+#using Optim
 using Printf
 using LinearAlgebra
 using LinearAlgebra.BLAS
@@ -32,6 +32,7 @@ include("/home/wes/files/westerfit/src/filehandling.jl")
 include("/home/wes/files/westerfit/src/hamiltonian.jl")
 include("/home/wes/files/westerfit/src/intensities.jl")
 include("/home/wes/files/westerfit/src/jacobi.jl")
+include("/home/wes/files/westerfit/src/optimizer.jl")
 #using Threads
 include("/home/wes/files/westerfit/src/WIGXJPF.jl")
 using .WIGXJPF
@@ -209,6 +210,7 @@ function rmscalc(vals,inds,ofreqs)
    #println(cfreqs)
    omc = ofreqs - cfreqs
    rms = √(sum(omc .^ 2)/length(omc))
+   #rms = norm(omc)/length(omc)
    return rms, omc
 end
 #construct jacobian
@@ -236,7 +238,7 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
       vecu = vecs[1:Int((2*S+1)*(2*ju+1)*(2*mcalc+1)),inds[a,3],σu+1]
       vecl = vecs[1:Int((2*S+1)*(2*jl+1)*(2*mcalc+1)),inds[a,6],σl+1]
       for b in 1:length(params)
-         jcbn[a,b] = anaderiv(ju,S,σu,vecu,params,b) - anaderiv(jl,S,σl,vecl,params,b)
+         jcbn[a,b] = anaderiv(jl,S,σl,vecl,params,b) - anaderiv(ju,S,σu,vecu,params,b)
       end
    end
    return jcbn
@@ -254,8 +256,8 @@ This should be the Levenberg-Marquadt step. This solves (JᵗWJ+λI)Δβ = (Jᵗ
    jtj = jtw*jcbn
    A = Hermitian(jtj + λ*Diagonal(jtj))
    A = factorize(Symmetric(A))
-   X = -jtw*omc
-   β = ldiv!(β, A, X)
+   X = jtw*omc
+   β = ldiv!(β, A, -X)
    return β,X
 end
 
@@ -282,7 +284,7 @@ This should be the Levenberg-Marquadt step. This solves (JᵗWJ+λI)Δβ = (Jᵗ
 end
 function lbmq_gain(β,λ,g,rms,nrms)
    out = 0.5*transpose(β)*(λ*β-g)
-   out /= (rms-nrms)
+   out = (rms-nrms)/out
    return out
 end
 
@@ -304,16 +306,6 @@ This enforces a trust region on our steps
    end
    return βf
 end
-function acc_lbmq_step(jcbn, weights, omc, lbmq_prm)
-"""
-This should be the Geodesic Accelerated Levenberg-Marquadt step.
-"""
-   g = transpose(jcbn)*jcb + UniformScaling(lbmq_prm)
-   ∇C = transpose(jcbn)*omc
-   v = -inv(g)*∇C
-   return Δx
-end
-
 function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
    vals,vecs = limeigcalc(nlist, inds, params)
    rms, omc = rmscalc(vals, inds, ofreqs)
@@ -328,9 +320,9 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
    converged = false
    THRESHOLD = 1.0E-8
    RHOTHRES = -1.0E-6
-   LIMIT = 100
+   LIMIT = 20
    λ0 = λ
-   Δₖ = 10.0
+   Δₖ = 1.0
    Δ0ₖ = Δₖ
    λ0 = λ
    while (converged==false)
@@ -342,9 +334,9 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
       if true
          adjst,g = lbmq_step(jcbn,weights,omc,λ,perm) #.* lgscls
          normadjst = abs(norm(adjst))
-         if normadjst > Δₖ
-            adjst = adjst .* (Δₖ/normadjst)
-         end
+         #if normadjst > Δₖ
+         #   adjst = adjst .* (Δₖ/normadjst)
+         #end
       else
          println("dogleg")
          βlm, βsd, t, g = lbmq_step2(jcbn,weights,omc,λ,perm)
@@ -356,7 +348,7 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
       #recalculate RMS
       vals,nvecs = limeigcalc(nlist, inds, newparams)
       nrms, nomc = rmscalc(vals, inds, ofreqs)
-      ρlm = lbmq_gain(adjst,λ,-g,rms,nrms)
+      ρlm = lbmq_gain(adjst,λ,g,rms,nrms)
       println(ρlm)
       #println(adjst[1],"   ", adjst[end])
       check = abs(nrms-rms)/rms
@@ -368,7 +360,7 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
          omc = nomc
          vecs = nvecs
          Δₖ *= 1.5
-         λ = λ/100.0 #max(1/3,1-(2*ρlm-1)^3)
+         λ = λ/3.0 #max(1/3,1-(2*ρlm-1)^3)
          #νlm = 2.0
       #elseif (ρlm > RHOTHRES)&&(ρlm < 0.0)
       #   Δₖ = Δ0ₖ
@@ -394,6 +386,7 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
          break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
+         println(omc)
          break
       else
          #write update to file
@@ -403,58 +396,6 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
    return params, vals
 end
 
-function lbmq_opt2(nlist,ofreqs,uncs,inds,params,scales,λ)
-   converged = false
-   counter = 0
-   ϵ2 = 1.0E-24
-   THRESHOLD = 1.0E-8
-   LIMIT = 100
-   Δₖ = 10.0
-   νlm = 2.0
-   nparams = copy(params)
-   weights = diagm(0=>(uncs .^ -1))
-   perm,n = findnz(sparse(scales))
-   vals,vecs = limeigcalc(nlist, inds, params)
-   #rms, omc = rmscalc(vals, inds, ofreqs)
-   #jcbn = build_jcbn(inds,vecs,params)
-   #hlm,g = lbmq_step(jcbn,weights,omc,λ,perm)
-   println(typeof((converged==false)&&(counter<LIMIT)))
-   while (converged==false)*(counter<LIMIT)
-   rms, omc = rmscalc(vals, inds, ofreqs)
-   jcbn = build_jcbn(inds,vecs,params)
-   hlm,g = lbmq_step(jcbn,weights,omc,λ,perm)
-   if norm(hlm) ≤ ϵ2*(norm(omc))
-      println("Gradient converged!")
-      counter += 1
-      converged = true
-   else
-      nparams[perm] = params[perm] .+ hlm
-      nvals,nvecs = limeigcalc(nlist, inds, nparams)
-      nrms, nomc = rmscalc(nvals, inds, ofreqs)
-      ρlm = lbmq_gain(hlm,λ,-g,rms,nrms)
-      if ρlm > 0.0
-         counter += 1
-         params = nparams
-         vecs = nvecs
-         rms = nrms
-         λ = λ*max(1/3,1-(2*ρlm-1)^3)
-         νlm = 2.0
-         srms = (@sprintf("%0.4f", rms))
-         slλ = (@sprintf("%0.4f", log10(λ)))
-         #sΔ = (@sprintf("%0.6f", Δₖ))
-         scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ")#, Δₖ = $sΔ")
-      else
-         λ *= νlm
-         νlm *= 2.0
-         srms = (@sprintf("%0.4f", rms))
-         scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms")
-      end#if
-   end#if
-   #end#inner while
-   end#outer while
-end#function
 function westerfit_handcoded()
 #   tsrparams = PAM2RAM(parameters)
    tsrparams = parameters
@@ -472,9 +413,9 @@ function westerfit_handcoded()
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
    scales = trsscales
-   λ = 0.1E-3
+   λ = 0.1E+3
 #   println("Beginning optimization")
-   tsrp, vals = lbmq_opt(jlist,ofreqs,uncs,linds,tsrparams,scales,λ)
+   tsrp, vals = lbmq_opttr(jlist,ofreqs,uncs,linds,tsrparams,scales,λ)
    println("New Parameter Vector:")
    println(tsrp)
    println(tsrp - oparameters)
@@ -512,7 +453,7 @@ Dab = -3716.8
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
 #parameters = [ A+F*ρ^2;   B;   C;   Dab;   F; -ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
 parameters = [  A;   B;   C; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz; 0.0; ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 1.0]
+trsscales = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 0.0]
 #trsscales = ones(Float64,size(parameters))
 
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
@@ -583,6 +524,7 @@ println(parameters)
 oparameters = copy(parameters)
 
 pert = 0.01*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
+#pert = trsscales
 parameters .+= pert
 #orgparams = parameters
 westerfit_handcoded()
