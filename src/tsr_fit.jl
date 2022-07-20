@@ -386,7 +386,7 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
          break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
-         println(omc)
+         #println(omc)
          break
       else
          #write update to file
