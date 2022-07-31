@@ -77,7 +77,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    converged = false
    THRESHOLD = 1.0E-8
    RHOTHRES = -1.0E-6
-   ϵ0 = 0.1E-2
+   ϵ0 = 0.1E-8
    ϵ1 = 0.1E-12
    LIMIT = 50
    λlm = 0.0
