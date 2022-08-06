@@ -5,6 +5,10 @@ https://github.com/albi3ro/M4/blob/master/Numerics_Prog/Jacobi-Transformation.ip
 Thanks Christina Lee!
 """
 
+#module jacobi
+#
+#export jacobisweep
+
 using LinearAlgebra
 
 # First, Lets make our nice, helpful functions
@@ -111,3 +115,5 @@ function jacobisweep(A,iters)
     end
     return Matrix(A),Vout
 end
+
+#end

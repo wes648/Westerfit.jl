@@ -20,11 +20,11 @@ function ϕ(j,n,s)
    end
    return out
 end
-function fh(x,y)
+function fh(x,y)::Float64
    out = sqrt(x*(x+1.0) - y*(y+1.0))
    return out
 end
-function gh(x,y)
+function gh(x,y)::Float64
    out = sqrt((x-y)*(x-y-1.0))
    return out
 end
@@ -46,6 +46,7 @@ function Htorm1(pr,N,K,m,σ)
 end
 function Hr0K(pr,N,K)
    #<N K |Hrot| N K>
+   #   out = @. (0.5*(pr[2] + pr[3])+ pr[13]*N*(N+1.0))*N*(N+1.0) + (pr[1] - 0.5*(pr[2] + pr[3]))*K^2
    out = @. (0.5*(pr[2] + pr[3])+ pr[13]*N*(N+1.0))*N*(N+1.0) + (pr[1] - 0.5*(pr[2] + pr[3]))*K^2
 end
 function Hr1K(pr,N,K)
@@ -57,8 +58,8 @@ function Hr2K(pr,N,K)
    out = @. 0.25*(pr[2] - pr[3])*sqrt((N*(N+1.0) - K*(K - 1.0))*(N*(N+1.0) - (K - 1.0)*(K - 2.0)))
 end
 function Hrot(pr,N)
-   if Float64(N)==0.0
-      return [0.0]
+   if N == zero(N)
+      return spzeros(Float64,1,1)
    else
       karray = collect(Float64,-N:N)
       nd = length(karray)
@@ -66,13 +67,13 @@ function Hrot(pr,N)
       of1diag = Hr1K(pr,N,karray[2:end])
       of2diag = Hr2K(pr,N,karray[3:end])
       Rotmat = spdiagm(nd,nd,0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
-#      Rotmat = Symmetric(Rotmat)
       return Rotmat
    end
 end
+
 function Htor(pr,mcalc,N,σ)
    tnp = convert(Int,2*N+1)
-   if mcalc==0
+   if mcalc == zero(mcalc)
       return spzeros(tnp,tnp)
    else
    tmp = convert(Int,2*mcalc+1)
@@ -86,7 +87,7 @@ function Htor(pr,mcalc,N,σ)
 end
 function Htor(pr,mcalc,j,s,σ)
    tnp = convert(Int,(2*j+1)*(2*s+1))
-   if mcalc==0
+   if mcalc == zero(mcalc)
       return spzeros(tnp,tnp)
    else
    tmp = convert(Int,2*mcalc+1)
@@ -148,7 +149,7 @@ end
 function hqqelem(f,i,jb,j,k,q)
    kb = q+k
    out = wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
-   if out == 0.0
+   if out == zero(out)
       return out
    else
       out *= 0.25*√((2.0*jb+1.0)*(2.0*j+1.0))*(-1)^(jb+jk-kb+i+f+1)
@@ -156,10 +157,11 @@ function hqqelem(f,i,jb,j,k,q)
 end
 function hqqmat(f,i,jb,j)
    out = zeros(float64,Int(2*jb)+1,Int(2*j)+1)
-   fac = wig6j(f,i,j,2,jb,i)/wig3j(i,2,i,-i,0,i)
-   if fac == 0.0
+   fac = wig6j(f,i,j,2,jb,i)
+   if (fac == zero(out))||(i==zero(i))
       return out
    else
+      fac /= wig3j(i,2,i,-i,0,i)
 
    end
 end
@@ -168,7 +170,7 @@ end
 function Hspi0N(pr,J,S,N)
    thet = θ(J,N,S)
    Nt2 = N*(N+1.0)
-   if N==0.0
+   if N == zero(N)
       #ondiags = Hs0K0N(J,N,S,Nt2,thet,[0.0],srprms)
       Spimat = spzeros(Float64,1,1)#diagm(0=>ondiags)
    else
@@ -196,7 +198,7 @@ end
 function Htsr0N(pr,j,s,n,mcalc,σ)
    marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
    karray = collect(Float64,-n:n)
-   if n==0.0
+   if n == zero(n)
       mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
    else
       mat = pr[12]*θ(j,n,s)*0.0
@@ -253,7 +255,7 @@ end
 
 function Htsr0Nv(pr,j,s,n)
    karray = collect(Float64,-n:n)
-   if n==0.0
+   if n == zero(n)
       mat = spzeros(Float64,1,1)
    else
       mat = pr[12]*θ(j,n,s)

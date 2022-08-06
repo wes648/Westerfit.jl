@@ -32,6 +32,7 @@ include("/home/wes/files/westerfit/src/filehandling.jl")
 include("/home/wes/files/westerfit/src/hamiltonian.jl")
 include("/home/wes/files/westerfit/src/intensities.jl")
 include("/home/wes/files/westerfit/src/jacobi.jl")
+#using .jacobi
 include("/home/wes/files/westerfit/src/optimizer.jl")
 #using Threads
 include("/home/wes/files/westerfit/src/WIGXJPF.jl")
@@ -52,7 +53,7 @@ if apology==true
    println("Sorry about the name...")
 end
 
-global NFOLD=3
+global NFOLD=0
 global TK = 25.0
 
 ################################################################################
@@ -71,7 +72,7 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    end
    H, rvec = jacobisweep(H,floor((j+s)/4 + mcalc/3))
    vals, vecs = LAPACK.syev!('V', 'U', H)
-   qns, vals, vecs = assign(nmax,j,s,σ,mcalc,mmax,vals,vecs,rvec)
+   qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
 end
 
@@ -119,18 +120,15 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
 end
 
 function westersim(prm,s,nmax,mcalc,mmax)
-   @time amq, ama, amv = tsrcalc(parameters,s,nm,mc,0,0)
-   #EngWriter(ama, amq, 0)
-   @time atransitions = tracalc(nm,s,mc,0,amq,ama,amv)
-   println("E states!")
-   @time emq, ema, emv = tsrcalc(parameters,s,nm,mc,0,1)
-   @time etransitions = tracalc(nm,s,mc,1,emq,ema,emv)
-   #(nmax,s,mcalc,σ,qns,vals,vecs)
-   #EngWriter(ema, emq,1)
-   qns  = cat(amq,emq, dims=3)
-   vals = cat(ama,ema, dims=3)
-   vecs = cat(amv,emv, dims=3)
-   transitions = vcat(atransitions,etransitions)
+   @time qns, vals, vecs = tsrcalc(parameters,s,nm,mc,0,0)
+   @time transitions = tracalc(nm,s,mc,0,qns,vals,vecs)
+   #println("E states!")
+   #@time emq, ema, emv = tsrcalc(parameters,s,nm,mc,0,1)
+   #@time etransitions = tracalc(nm,s,mc,1,emq,ema,emv)
+   #qns  = cat(amq,emq, dims=3)
+   #vals = cat(ama,ema, dims=3)
+   #vecs = cat(amv,emv, dims=3)
+   #transitions = vcat(atransitions,etransitions)
    return transitions, qns, vals, vecs
 end
 
@@ -416,8 +414,8 @@ function westerfit_handcoded()
    λ = 0.1E+3
 #   println("Beginning optimization")
    tsrp, vals = lbmq_opttr(jlist,ofreqs,uncs,linds,tsrparams,scales,λ)
-   println("New Parameter Vector:")
-   println(tsrp)
+   #println("New Parameter Vector:")
+   #println(tsrp)
    println(tsrp - oparameters)
    #println("New Energy levels")
    #for n in 1:Nmax
@@ -439,11 +437,11 @@ B = 10145.212
 C = 9426.952
 #δ = 0.45
 ρ = 0.0513448477
-Dab = -3716.8
+Dab = 0.0#-3716.8
 ϵzz = 254.3618
 ϵxx = 385.4886
 ϵyy = -415.9114
-ϵxz = 345.6789
+ϵxz = 0.0#345.6789
 ΔN = 0.01188
 η = 0.0
 μa = 1.0
@@ -452,8 +450,8 @@ Dab = -3716.8
 
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
 #parameters = [ A+F*ρ^2;   B;   C;   Dab;   F; -ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
-parameters = [  A;   B;   C; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz; 0.0; ΔN]
-trsscales = [ 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 0.0]
+parameters = [  A;   B;   C; 0.0; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; 0.0;  ΔN]
+trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 0.0; 1.0]
 #trsscales = ones(Float64,size(parameters))
 
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
@@ -481,7 +479,7 @@ testlines = [
  2.5  2  0  2  1  1  0.5  1  0  1  1  1  38228.7521  0.4]
 """
 
-INTTHRESHOLD = .000000
+INTTHRESHOLD = .000001
 #=
 parameters:
      1  2  3   4   5  6   7   8  9 10 11 12
