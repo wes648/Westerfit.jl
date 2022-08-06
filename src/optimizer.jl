@@ -42,8 +42,8 @@ function lbmq_acc!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs,λ)
    X = jtw*K
    β2 = zeros(Float64,size(β))
    β2 = ldiv!(β2, A, -X)
-   if (2*norm(β2)/norm(β))>0.75
-      β2 *= 0.5*0.75*norm(β)/norm(β2)
+   if (2*norm(β2)/norm(β))>0.5
+      β2 *= 0.5*0.5*norm(β)/norm(β2)
       #β2 .*= 0.0
    end
    β += 0.5*β2
@@ -71,18 +71,20 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    rms, omc = rmscalc(vals, inds, ofreqs)
    perm,n = findnz(sparse(scales))
    println("Initial RMS = $rms")
-   goal = sum(uncs)/length(uncs)
+   goal = sum(uncs)/length(uncs)*0.001
    newparams = copy(params)
    W = diagm(0=>(uncs .^ -1))
    converged = false
    THRESHOLD = 1.0E-8
    RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-8
-   ϵ1 = 0.1E-12
-   LIMIT = 50
-   λlm = 0.0
-   Δlm = 1.0
+   ϵ1 = 0.1E-24
+   LIMIT = 500
+   λlm = 1.0E+03
+   Δlm = 1.0E-1
+   Δlm *= length(perm)
    counter = 0
+   stoit = 5
    rms, omc = rmscalc(vals,inds,ofreqs)
    nparams = copy(params)
    uncs = zeros(Float64,size(perm))
@@ -94,16 +96,19 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    D = zeros(Float64,size(H))
    J = build_jcbn!(J,inds,vecs,params,perm)
    H, D = build_hess!(H,D,J,β)
+   uncs = paramunc!(uncs,H)
    converged=false
    while converged==false
       β,g = lbmq_step!(β,J,D,W,omc,λlm)
       if false
          β = lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
       end
-      if norm(D*β)>Δlm
+      β0 = β
+#      if (norm((H^(-1/2))*β)>Δlm)&&(λ!=0.0)
+      if (norm(β ./ params[perm])>Δlm)&&(λ!=0.0)
          β *= Δlm/norm(D*β)
       end
-      nparams[perm] = params[perm] + β
+      nparams[perm] = params[perm] + β #+ (inv(H)^2)*β
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)
       check = abs(nrms-rms)/rms
@@ -114,16 +119,21 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          vecs = nvecs
          J = build_jcbn!(J,inds,vecs,params,perm)
          H, D = build_hess!(H,D,J,β)
-         λlm *= 1.0/3.0
+         uncs = paramunc!(uncs,H)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
          slλ = (@sprintf("%0.4f", log10(λlm)))
          sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δₖ = $sΔ")
+         #println(H^(-1/2))
+         #println(β)
+         #println(params[perm])
+         λlm /= 3.0
+         stoit = 0
       else
          λlm *= 2.0
-         λlm = max(λlm,1.0E-13)
+         λlm = max(λlm,1.0E-24)
       end
       if rms < ϵ0
          converged = true
@@ -132,14 +142,24 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       if ρlm ≥ 0.75
          Δlm *= 2.0
       else
-         Δlm *= 0.99
+         Δlm *= 0.90
       end
-      if (check < THRESHOLD)||(rms ≤ goal)#&&(counter > 1)
+      if (rms ≤ goal)#&&(counter > 1)
          println("A miracle has come to pass. The fit has converged")
          break
-      elseif (norm(β))<ϵ1
+      elseif (check < THRESHOLD)
+         println("The RMS has stopped decreasing. Hopefully it is low")
+         break
+      elseif (norm(β))<ϵ1*(norm(params[perm])+ϵ1)
+         #if stoit ≤ 5
+         #   println("Stocast!")
+         #   λlm = 0.0
+         #   params[perm] += (0.5 .- rand(length(perm))) .* uncs .* 4.0E+2
+         #   stoit += 1
+         #else
          println("It would appear gradient has converged")
          break
+         #end
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
          #println(omc)
@@ -148,5 +168,6 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #write update to file
       end #check if
    end#while
+   println(uncs)
    return params, vals
 end

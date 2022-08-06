@@ -1,27 +1,17 @@
 
-function assign(nmax,j,s,σ,mcalc,mmax,vals,vecs,rotvs)
-   #determine which indices we want to assign
-   #nlist = Δlist(j,s)
-   #ndegns = @. 2*nlist + 1
-   #mcind = mcalc+1
-   #mcd = 2*mcalc+1
-   #offset = zeros(Int64,length(nlist))
-   #offset[2:end] = (mcd) .* ndegns[1:end-1]
-   #goals = zeros(Int,0,1)
-   #off = 0
-   #for n in nlist
-   #   start = off + Int((mcalc - mmax)*(2*n+1)) + 1
-   #   finsh = off + Int((mcalc + mmax + 1)*(2*n+1))
-   #   part = collect(start:finsh)
-   #   goals = vcat(goals,part)
-   #   off += Int((2*mcalc+1)*(2*n+1))
-   #end
+function assign(j,s,σ,mcalc,vals,vecs,rotvs)
    assigned = leadfact(vals,copy(vecs))
    vals = vals[assigned]
    vecs = rotvs*vecs
    vecs = vecs[:,assigned]
-   #vals = vals[goals]
-   #vecs = vecs[:,goals]
+   if true
+      nlist = Int.(Δlist(j,s))
+      for n in nlist
+         for k in -n:n
+            vals = eksort(j,s,n,mcalc,k,vals)
+         end
+      end
+   end
    QNs = qngen(j,s,mcalc,σ)
    return QNs, vals, vecs
 end
@@ -40,6 +30,31 @@ function leadfact(vals,vecs)
    perm = sortperm(c)
    return perm
 end
+###### Diabatic Sorter
+kshift(n,k) = (2*n+1)-2*(n+k)-1
+function klist(n,mcalc,k)
+   list = collect(Int,0:2*mcalc)
+   list .*= 2*n+1
+   list .+= n-k+1
+   list[(end-mcalc):end] .+= kshift(n,-k)
+   return list
+end
+function klist(j,s,n,mcalc,k)
+   list = collect(Int,0:2*mcalc)
+   list .*= Int((2*j+1)*(2*s+1))
+   list .+= n-k+1
+   list[(end-mcalc):end] .+= kshift(n,-k)
+   return list
+end
+function eksort(j,s,n,mcalc,k,vals)
+   ks = klist(j,s,n,mcalc,k)
+   kperm = ks[sortperm(vals[ks])]
+   vals[ks] = vals[kperm]
+   return vals
+end
+#Should add a correction for how K=0 doesn't obey this pattern
+######
+
 
 function suboverlap(vals, tvecs)
    submat = zeros(Float64,(2*mcalc+1),size(tvecs)[2])
@@ -64,6 +79,7 @@ function suboverlap(vals, tvecs)
       end#if
    end#for
 end#func
+
 
 #function leadfact(vals,vecs,pr,j,s,m,σ)
 #   vecs = abs.(vecs)
