@@ -70,7 +70,7 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    else
       H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    end
-   H, rvec = jacobisweep(H,floor((j+s)/4 + mcalc/3))
+   H, rvec = jacobisweep(H,floor((j+s)/80))
    vals, vecs = LAPACK.syev!('V', 'U', H)
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
@@ -450,7 +450,7 @@ Dab = 0.0#-3716.8
 
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
 #parameters = [ A+F*ρ^2;   B;   C;   Dab;   F; -ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
-parameters = [  A;   B;   C; 0.0; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; 0.0;  ΔN]
+parameters = [  A;   B;   C; Dab; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz;  ΔN]
 trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 0.0; 1.0]
 #trsscales = ones(Float64,size(parameters))
 
@@ -479,7 +479,7 @@ testlines = [
  2.5  2  0  2  1  1  0.5  1  0  1  1  1  38228.7521  0.4]
 """
 
-INTTHRESHOLD = .000001
+INTTHRESHOLD = .00000
 #=
 parameters:
      1  2  3   4   5  6   7   8  9 10 11 12
@@ -501,7 +501,7 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
 end
 
 mc = 0
-nm = 3
+nm = 30
 
 #=
 A      =      0.35150076793036794*29979.2458
