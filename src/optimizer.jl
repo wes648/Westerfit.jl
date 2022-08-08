@@ -17,9 +17,10 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
    end
    return jcbn
 end
-function build_hess!(hssn,dk,jcbn,β)
+
+function build_hess!(hssn,dk,jcbn)
    hssn = transpose(jcbn)*jcbn
-   for i in size(hssn)[1]
+   for i in 1:size(hssn)[1]
       dk[i,i] = norm(hssn[:,i])
    end
    return hssn, dk
@@ -80,8 +81,8 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    ϵ0 = 0.1E-8
    ϵ1 = 0.1E-24
    LIMIT = 500
-   λlm = 1.0E+03
-   Δlm = 1.0E-1
+   λlm = 0.0E+03
+   Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
    stoit = 5
@@ -95,7 +96,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    H = zeros(Float64,length(perm),length(perm))
    D = zeros(Float64,size(H))
    J = build_jcbn!(J,inds,vecs,params,perm)
-   H, D = build_hess!(H,D,J,β)
+   H, D = build_hess!(H,D,J)
    uncs = paramunc!(uncs,H)
    converged=false
    while converged==false
@@ -104,8 +105,8 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          β = lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
       end
       β0 = β
-#      if (norm((H^(-1/2))*β)>Δlm)&&(λ!=0.0)
-      if (norm(β ./ params[perm])>Δlm)&&(λ!=0.0)
+      if (norm((H^(-1/2))*β)>Δlm)&&(λ!=0.0)
+#      if (norm(β ./ params[perm])>Δlm)&&(λ!=0.0)
          β *= Δlm/norm(D*β)
       end
       nparams[perm] = params[perm] + β #+ (inv(H)^2)*β
@@ -118,7 +119,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          params = nparams
          vecs = nvecs
          J = build_jcbn!(J,inds,vecs,params,perm)
-         H, D = build_hess!(H,D,J,β)
+         H, D = build_hess!(H,D,J)
          uncs = paramunc!(uncs,H)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
