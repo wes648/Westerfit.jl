@@ -38,6 +38,10 @@ include("/home/wes/files/westerfit/src/optimizer.jl")
 include("/home/wes/files/westerfit/src/WIGXJPF.jl")
 using .WIGXJPF
 
+#using WignerSymbols
+#wig3j(j1,j2,j3,m1,m2,m3) = Float64(wigner3j(j1,j2,j3,m1,m2,m3))
+#wig6j(j1,j2,j3,j4,j5,j6) = Float64(wigner6j(j1,j2,j3,j4,j5,j6))
+
 BLAS.set_num_threads(8)
 
 apology = true
@@ -120,8 +124,8 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
 end
 
 function westersim(prm,s,nmax,mcalc,mmax)
-   @time qns, vals, vecs = tsrcalc(parameters,s,nm,mc,0,0)
-   @time transitions = tracalc(nm,s,mc,0,qns,vals,vecs)
+   @time qns, vals, vecs = tsrcalc(parameters,s,nmax,mcalc,mmax,0)
+   @time transitions = tracalc(nmax,s,mcalc,0,qns,vals,vecs)
    #println("E states!")
    #@time emq, ema, emv = tsrcalc(parameters,s,nm,mc,0,1)
    #@time etransitions = tracalc(nm,s,mc,1,emq,ema,emv)
@@ -437,11 +441,11 @@ B = 10145.212
 C = 9426.952
 #δ = 0.45
 ρ = 0.0513448477
-Dab = 0.0#-3716.8
+Dab = -3716.8
 ϵzz = 254.3618
 ϵxx = 385.4886
 ϵyy = -415.9114
-ϵxz = 0.0#345.6789
+ϵxz = 345.6789
 ΔN = 0.01188
 η = 0.0
 μa = 1.0
@@ -450,8 +454,6 @@ Dab = 0.0#-3716.8
 
 #parameters = [ A;   B;   C;   δ;   F;   V3; ϵzz; ϵxx; ϵyy; ϵxz;  η]
 #parameters = [ A+F*ρ^2;   B;   C;   Dab;   F; -ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;  η; ΔN]
-parameters = [  A;   B;   C; Dab; 0.0; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz;  ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 0.0; 1.0]
 #trsscales = ones(Float64,size(parameters))
 
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
@@ -501,7 +503,7 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
 end
 
 mc = 0
-nm = 30
+nm = 10
 
 #=
 A      =      0.35150076793036794*29979.2458
@@ -514,16 +516,21 @@ F      =      5.64133778441192124*29979.2458
 parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 =#
 
+parameters = [  A;   B;   C; Dab; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
+trsscales = [ 1.0; 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 1.0]
+
+
 molnam = "hirota"
 @time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
 testlines = (pred2lne(transitions))
 #println(transitions)
+println(size(testlines))
 println(parameters)
 oparameters = copy(parameters)
 
 pert = 0.01*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
+println(pert)
 #pert = trsscales
 parameters .+= pert
 #orgparams = parameters
-westerfit_handcoded()
-println(pert)
+@time westerfit_handcoded()

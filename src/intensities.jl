@@ -26,11 +26,11 @@ This implements the dipole moment operator in spherical tensor notation. It is
    an implementation of equation 24-25 of http://dx.doi.org/10.1063/1.1545441
 """
    q = kb-k
-   out = WIGXJPF.wig6j(n,j,s,jb,nb,1)*WIGXJPF.wig3j(n,1,nb,k,q,-kb)*T(μ,q)
+   out = wig6j(n,j,s,jb,nb,1)*(-1≤q≤1)*T(μ,q)
    if out == 0.0
       return out
    else
-      out = √((2*jb+1)*(2*j+1))*(-1)^(n+s+jb+1)
+      out = √((2*jb+1)*(2*j+1))*wig3j(n,1,nb,k,q,-kb)*(-1)^(n+s+jb+1)
       out *= √((2*nb+1)*(2*n+1))*(-1)^(n-kb-1)
       return out
    end
@@ -47,8 +47,8 @@ This builds the matrix of dipole elements and wang transforms it for the A state
    qnk = qngen(jk,s,mcalc,σ)
    for y in 1:jdb
    for x in 1:jdk
-      @inbounds mat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnb[x,3],μ[:,1])
-      @inbounds omat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnb[x,3],μ[:,2])
+      @inbounds  mat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnk[x,3],μ[:,1])
+      @inbounds omat[x,y] = intelem(jb,qnb[y,2],qnb[y,3],s,jk,qnk[x,2],qnk[x,3],μ[:,2])
    end
    end
    omat = kron(spdiagm(1=>ones(Float64,Int(2*mcalc)),-1=>ones(Float64,Int(2*mcalc))),omat)
@@ -93,12 +93,7 @@ This repulsively slow function calculates all of the transitions from the
    limited.
 """
    jmax = nmax - s
-   ns = Δlist(jmax,s)
    trans = zeros(Float64,0,15)
-   karray = kron(ones(2*mcalc+1),collect(-ns[1]:ns[1]))
-   for i in 2:length(ns)
-      karray = vcat(karray,kron(ones(2*mcalc+1),collect(-ns[i]:ns[i])))
-   end
    if isodd(Int64(2*s+1))
       ojb = 1.
       ojk = 0.
@@ -160,4 +155,75 @@ Converts the transitions output from westersim into the line format for
    out[:,13] = sim[:,1]
    out[:,14] = fill(0.08,size(sim)[1])
    return out
+end
+
+function tracalc2(nmax,s,mcalc,σ,qns,vals,vecs)
+   frqs = spzeros(Float64,length(vals),length(vals))
+   ints = spzeros(Float64,length(vals),length(vals))
+   MINFREQ = 26500.0
+   MAXFREQ = 40000.0
+   frqs, ints = intstrcalc!(frqs,ints,mcalc,s,σ,vals,vecs,qns,MAXFREQ,MINFREQ)
+   #thermo effects
+   #final strength filter
+   ints[abs.(ints[:,:]) .< INTTHRESHOLD] .= 0.0
+   ints = dropzeros(ints)
+   #rearrange
+   hind,vind,vs = findnz(ints[:,:])
+   out = zeros(Float64,length(hind),16)
+   Threads.@threads for i in 1:length(hind)
+      #so uhhh I'm not actually sure which is upper state & which is the lower
+      h = hind[i]
+      v = vind[i]
+      out[i,1] = frqs[h,v] #freq
+      out[i,2] = ints[h,v] #int
+      out[i,3] = vals[h]
+      out[i,4] = vals[v]
+      out[i,5:end] = [transpose(qns[h,:]) transpose(qns[v,:])]
+   end
+   return out
+end
+
+function intstrcalc!(frqs,ints,mcalc,s,σ,vals,vecs,qns,MAXFREQ,MINFREQ)
+   smd = Int((2*s+1)*(2*mcalc+1))
+   tind = traindgen(vals)
+   Threads.@threads for i in 1:size(tind)[1]
+      kind = tind[i,1]
+      bind = tind[i,2]
+      jb = qns[bind,1]
+      jk = qns[kind,1]
+      if abs(jb-jk) ≤ 1
+         lenb = convert(Int, smd*(2*jb+1))
+         lenk = convert(Int, smd*(2*jk+1))
+         freq = vals[bind] - vals[kind]
+         μmat = intmat(jb,jk,s,mcalc,σ)
+         if MAXFREQ ≥ freq ≥ MINFREQ
+            frqs[kind,bind] = freq
+            ints[kind,bind] = (transpose(vecs[1:lenk,bind])*μmat*vecs[1:lenb,kind])^2
+         elseif -MINFREQ ≥ freq ≥ -MAXFREQ
+            frqs[bind,kind] = -1.0*freq
+            ints[bind,kind] = (transpose(vecs[1:lenk,bind])*μmat*vecs[1:lenb,kind])^2
+         else
+            #nothing
+         end
+      end #if
+   end #for
+   return frqs, ints
+end
+
+function lnstrcalc!(trans,smd,σ,vals,qns)
+
+   return trans
+end
+
+
+function traindgen(vals)
+   lv = length(vals)
+   cv = 1
+   inds = zeros(Int,0,2)
+   for i in 1:lv
+      inds = vcat(inds,hcat(collect(1:cv-1), fill(cv,cv-1)))
+      cv += 1
+   end
+   perm = sortperm(inds[:,1])
+   return inds[perm,:]
 end
