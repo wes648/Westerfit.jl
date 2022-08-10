@@ -14,10 +14,12 @@ function __init__()
           Cvoid,
           (Cint, Cint),
           max_two_j, 9)
-    ccall((:wig_temp_init, "/home/wes/rot/bin/libwigxjpf_shared.so"),
+    for i in 1:Threads.nthreads()
+    ccall((:wig_thread_temp_init, "/home/wes/rot/bin/libwigxjpf_shared.so"),
           Cvoid,
           (Cint,),
           max_two_j)
+    end
 end
 
 doubled(i::Integer) = 2i

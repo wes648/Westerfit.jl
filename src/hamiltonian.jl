@@ -148,7 +148,7 @@ end
 #quick hyperfine implementation so I can stop thinking about it
 function hqqelem(f,i,jb,j,k,q)
    kb = q+k
-   out = wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
+   out = WIGXJPF.wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
    if out == zero(out)
       return out
    else
@@ -157,11 +157,11 @@ function hqqelem(f,i,jb,j,k,q)
 end
 function hqqmat(f,i,jb,j)
    out = zeros(float64,Int(2*jb)+1,Int(2*j)+1)
-   fac = wig6j(f,i,j,2,jb,i)
+   fac = WIGXJPF.wig6j(f,i,j,2,jb,i)
    if (fac == zero(out))||(i==zero(i))
       return out
    else
-      fac /= wig3j(i,2,i,-i,0,i)
+      fac /= WIGXJPF.wig3j(i,2,i,-i,0,i)
 
    end
 end

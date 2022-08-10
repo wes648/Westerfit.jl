@@ -18,8 +18,8 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
    return jcbn
 end
 
-function build_hess!(hssn,dk,jcbn)
-   hssn = transpose(jcbn)*jcbn
+function build_hess!(hssn,dk,jcbn,weights)
+   hssn = transpose(jcbn)*weights*jcbn
    for i in 1:size(hssn)[1]
       dk[i,i] = norm(hssn[:,i])
    end
@@ -37,8 +37,12 @@ end
 function lbmq_acc!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs,λ)
    jtw = transpose(jcbn)*weights
    jtj = jtw*jcbn
-   A = jtj + λ*Diagonal(jtj)#transpose(dk)*dk
-   A = factorize(Symmetric(A))
+   A = Hermitian(jtj + λ*Diagonal(jtj))#transpose(dk)*dk
+   while isposdef(A)==false #this could be tidier
+      λ = max(2.0*λ,1.0E-24)
+      A .= Hermitian(jtj + λ*Diagonal(jtj))
+   end
+   A = cholesky!(Hermitian(A))
    K = approx2dirdrv!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs)
    X = jtw*K
    β2 = zeros(Float64,size(β))
@@ -53,12 +57,17 @@ end
 function lbmq_step!(β,jcbn,dk, weights, omc, λ)
    jtw = transpose(jcbn)*weights
    jtj = jtw*jcbn
-   A = jtj + λ*Diagonal(jtj)#transpose(dk)*dk
-   B = factorize(Symmetric(A))
+   A = Hermitian(jtj + λ*Diagonal(jtj))#transpose(dk)*dk
+   while isposdef(A)==false #this could be tidier
+      λ = max(2.0*λ,1.0E-24)
+      A .= Hermitian(jtj + λ*Diagonal(jtj))
+   end
+   A = cholesky!(A)
    X = jtw*omc
-   β = ldiv!(β, B, -X)
-   return β,X
+   β = ldiv!(β, A, -X)
+   return β,X,λ
 end
+
 
 function paramunc!(uncs,H)
    uncs = diag(inv(H))
@@ -81,27 +90,27 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    ϵ0 = 0.1E-8
    ϵ1 = 0.1E-24
    LIMIT = 500
-   λlm = 0.0E+03
-   Δlm = 1.0E+2
+   λlm = 1.0E+03
+   Δlm = 1.0E+1
    Δlm *= length(perm)
    counter = 0
    stoit = 5
    rms, omc = rmscalc(vals,inds,ofreqs)
    nparams = copy(params)
    uncs = zeros(Float64,size(perm))
-   β = zeros(Float64,size(perm))
-   J = zeros(Float64,size(inds)[1],length(perm))
-   K = zeros(Float64,size(omc))
-   A = zeros(Float64,size(J))
-   H = zeros(Float64,length(perm),length(perm))
-   D = zeros(Float64,size(H))
+   β = zeros(Float64,size(perm)) #step
+   J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
+   K = zeros(Float64,size(omc)) #acceleration correction
+   #A = zeros(Float64,size(J)) #
+   H = zeros(Float64,length(perm),length(perm)) #Hessian
+   D = zeros(Float64,size(H)) #Elliptical Trust Region
    J = build_jcbn!(J,inds,vecs,params,perm)
-   H, D = build_hess!(H,D,J)
+   H, D = build_hess!(H,D,J,W)
    uncs = paramunc!(uncs,H)
    converged=false
    while converged==false
-      β,g = lbmq_step!(β,J,D,W,omc,λlm)
-      if false
+      β,g,λlm = lbmq_step!(β,J,D,W,omc,λlm)
+      if true
          β = lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
       end
       β0 = β
@@ -119,14 +128,14 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          params = nparams
          vecs = nvecs
          J = build_jcbn!(J,inds,vecs,params,perm)
-         H, D = build_hess!(H,D,J)
-         uncs = paramunc!(uncs,H)
+         H, D = build_hess!(H,D,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
          slλ = (@sprintf("%0.4f", log10(λlm)))
          sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δₖ = $sΔ")
+         #println(β)
          #println(H^(-1/2))
          #println(β)
          #println(params[perm])
@@ -158,7 +167,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #   params[perm] += (0.5 .- rand(length(perm))) .* uncs .* 4.0E+2
          #   stoit += 1
          #else
-         println("It would appear gradient has converged")
+         println("It would appear step size has converged")
          break
          #end
       elseif counter ≥ LIMIT
@@ -169,6 +178,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #write update to file
       end #check if
    end#while
+   uncs = paramunc!(uncs,H)
    println(uncs)
    return params, vals
 end
