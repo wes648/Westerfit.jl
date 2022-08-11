@@ -399,6 +399,9 @@ function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
 end
 
 function westerfit_handcoded()
+   global mmax=0
+   global mcalc=0
+   global S=0.5
 #   tsrparams = PAM2RAM(parameters)
    tsrparams = parameters
    #println(tsrparams)
@@ -406,12 +409,9 @@ function westerfit_handcoded()
 #   lines = readdlm("$molnam.lne", ',', Float64)
    lines = testlines
    #determine the states
-   linds, ofreqs, uncs = lineprep(lines)
+   linds, ofreqs, uncs = lineprep(lines,S,mcalc)
    #println(linds)
    jlist = jlister(linds)
-   global mmax=0
-   global mcalc=0
-   global S=0.5
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
    scales = trsscales
@@ -517,7 +517,7 @@ parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.
 =#
 
 parameters = [  A;   B;   C; Dab; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 1.0]
+trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 1.0]
 
 
 molnam = "hirota"

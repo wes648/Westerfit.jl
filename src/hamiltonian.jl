@@ -146,23 +146,32 @@ function Hs2K1N(pr,N::Float64,K::Array{Float64,1},ϕ)#::Array{Float64,1}
    out = @. -0.25*pr[10]*fh(N+1.0,K+1.0)*gh(N+1.0,-K-1.0).*ϕ
 end
 #quick hyperfine implementation so I can stop thinking about it
-function hqqelem(f,i,jb,j,k,q)
+function hqqelem(χ,f,i,jb,j,k,q)
    kb = q+k
-   out = WIGXJPF.wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
+   out = wig3j(jb,2,jk,-kb,q,k)*Tχ(q)
    if out == zero(out)
       return out
    else
-      out *= 0.25*√((2.0*jb+1.0)*(2.0*j+1.0))*(-1)^(jb+jk-kb+i+f+1)
+      out *= 0.25*χ[abs(q)]*√((2.0*jb+1.0)*(2.0*j+1.0))*(-1)^(jb+jk-kb+i+f+1)
    end
 end
-function hqqmat(f,i,jb,j)
-   out = zeros(float64,Int(2*jb)+1,Int(2*j)+1)
-   fac = WIGXJPF.wig6j(f,i,j,2,jb,i)
-   if (fac == zero(out))||(i==zero(i))
+function hqqmat(pr,f,i,jb,j)
+   χ = pr[13:15]
+   out = spzeros(float64,Int(2*jb)+1,Int(2*j)+1)
+   fac = wig6j(f,i,j,2,jb,i)
+   if (fac == zero(fac))||(i==zero(i))
       return out
    else
-      fac /= WIGXJPF.wig3j(i,2,i,-i,0,i)
-
+      fac /= wig3j(i,2,i,-i,0,i)
+      Δ = Int(jb-j)
+      karray = collect(Float64,-j:j)
+      pm2 = hqqelem(χ,f,i,jb,j,karray[2:end],-2)
+      pm1 = hqqelem(χ,f,i,jb,j,karray,-1)
+      p0  = hqqelem(χ,f,i,jb,j,karray,0)
+      p1  = hqqelem(χ,f,i,jb,j,karray,1)
+      p2  = hqqelem(χ,f,i,jb,j,karray[1:end-1],2)
+      out .= spdiagm(-2+Δ=>pm2,-1+Δ=>pm1,0+Δ=>p1,0+Δ=>p1,2+Δ=>p2,)
+      return out
    end
 end
 

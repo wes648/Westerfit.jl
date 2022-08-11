@@ -1,5 +1,5 @@
 
-function build_jcbn!(jcbn,inds,vecs,params,perm)
+function build_jcbn!(jcbn,grad,inds,vecs,params,perm,omc)
 """
 This builds the Jacobian based on the Hellmann–Feynman theorem.
 """
@@ -15,12 +15,13 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
          jcbn[a,i] = anaderiv(jl,S,σl,vecl,params,b) - anaderiv(ju,S,σu,vecu,params,b)
       end
    end
-   return jcbn
+   grad = transpose(jcbn)*omc
+   return jcbn, grad
 end
 
 function build_hess!(hssn,dk,jcbn,weights)
    hssn = transpose(jcbn)*weights*jcbn
-   for i in 1:size(hssn)[1]
+   Threads.@threads for i in 1:size(hssn)[1]
       dk[i,i] = norm(hssn[:,i])
    end
    return hssn, dk
@@ -54,18 +55,17 @@ function lbmq_acc!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs,λ)
    β += 0.5*β2
    return β
 end
-function lbmq_step!(β,jcbn,dk, weights, omc, λ)
-   jtw = transpose(jcbn)*weights
-   jtj = jtw*jcbn
-   A = Hermitian(jtj + λ*Diagonal(jtj))#transpose(dk)*dk
+function lbmq_step!(β,H,grad, λ)
+#   jtw = transpose(jcbn)*weights
+#   jtj = jtw*jcbn
+   A = Hermitian(H + λ*Diagonal(H))#transpose(dk)*dk
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
-      A .= Hermitian(jtj + λ*Diagonal(jtj))
+      A .= Hermitian(H + λ*Diagonal(H))
    end
    A = cholesky!(A)
-   X = jtw*omc
-   β = ldiv!(β, A, -X)
-   return β,X,λ
+   β = ldiv!(β, A, -grad)
+   return β,λ
 end
 
 
@@ -100,17 +100,18 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    uncs = zeros(Float64,size(perm))
    β = zeros(Float64,size(perm)) #step
    J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
+   g = zeros(Float64,size(omc)) #gradient
    K = zeros(Float64,size(omc)) #acceleration correction
    #A = zeros(Float64,size(J)) #
    H = zeros(Float64,length(perm),length(perm)) #Hessian
    D = zeros(Float64,size(H)) #Elliptical Trust Region
-   J = build_jcbn!(J,inds,vecs,params,perm)
+   J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc)
    H, D = build_hess!(H,D,J,W)
    uncs = paramunc!(uncs,H)
    converged=false
    while converged==false
-      β,g,λlm = lbmq_step!(β,J,D,W,omc,λlm)
-      if true
+      β,λlm = lbmq_step!(β,H,g,λlm)
+      if false
          β = lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
       end
       β0 = β
@@ -127,7 +128,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          omc = nomc
          params = nparams
          vecs = nvecs
-         J = build_jcbn!(J,inds,vecs,params,perm)
+         J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc)
          H, D = build_hess!(H,D,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
@@ -140,6 +141,9 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #println(β)
          #println(params[perm])
          λlm /= 3.0
+         if λlm ≤ 1.0E-24
+            λlm = 0.0
+         end
          stoit = 0
       else
          λlm *= 2.0
@@ -152,7 +156,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       if ρlm ≥ 0.75
          Δlm *= 2.0
       else
-         Δlm *= 0.90
+         Δlm = max(0.90*Δlm,0.0001)
       end
       if (rms ≤ goal)#&&(counter > 1)
          println("A miracle has come to pass. The fit has converged")
