@@ -147,6 +147,19 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    ind = convert(Int,ind)
    return ind
 end
+function qn2ind(mcalc,m,j,s,n,ka,kc)
+"""
+This determines the specific index of a J, S, N, Ka, Kc state in the large array.
+   Ka is assumed to not be signed for better compatibility with literature.
+"""
+   ka = abs(ka)
+   jp = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)
+   np = sum(2 .* collect(Int,(j-s):(n-1)) .+ 1)
+   kp = n + ka*(-1)^(n-ka-kc) + 1
+   ind = (2*mcalc+1)*jp + (mcalc+m+1)*np + kp
+   ind = convert(Int,ind)
+   return ind
+end
 
 function σcount(nfold)
 """
