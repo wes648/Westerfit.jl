@@ -84,6 +84,16 @@ function intcalc(nmax,s,mcalc,σ,qns,vecs)
    return ints
 end
 
+function partitioncalc(T,s,qns,vals,σ)
+   qs = zeros(Float64,size(vals))
+   qs .= (2.0*s+1.0).*(2.0 .* qns[:,2] .+ 1.0) .* (2.0*σ .+ 1.0)
+   qs .*= exp.(-1.0 .* vals ./ KB*T)
+   return qs,sum(qs)
+end
+function thermfact(i,j,qs,vals,Q)
+   out =abs(qs[i] - qs[j])*abs(vals[j] - vals[i])/Q
+end
+
 function tracalc(nmax,s,mcalc,σ,qns,vals,vecs)
 """
 This repulsively slow function calculates all of the transitions from the
@@ -101,6 +111,7 @@ This repulsively slow function calculates all of the transitions from the
       ojb = 1.5
       ojk = 0.5
    end
+   qs, Q = partitioncalc(12.0,s,qns,vals,σ)
    lenb = convert(Int,(2*s+1)*(2*ojb+1)*(2*mcalc+1))
    lenk = convert(Int,(2*s+1)*(2*ojk+1)*(2*mcalc+1))
    μmat = intmat(ojb,ojk,s,mcalc,σ)
@@ -123,12 +134,15 @@ This repulsively slow function calculates all of the transitions from the
          ojk = jk
          if (freq > 0.0)&&(freq < 80.0E+03)#&&(Δk < 1)&&(qns[j,3]==0.0)
             int = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2# *exp(vals[i]/(TK*2.083661912e+4))
+            int *= thermfact(i,j,qs,vals,Q)
             if int>INTTHRESHOLD#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
                temp = [freq int vals[i]/csl transpose(qns[j,:]) transpose(qns[i,:])]
                trans = vcat(trans,temp)
             end
          elseif (freq < 0.0)&&(freq > -80.0E+03)#&&(Δk < 1)&&(qns[j,3]==0.0)
-            int = (transpose(vecs[1:lenk,i])*μmat*vecs[1:lenb,j])^2# *exp(vals[j]/(TK*2.083661912e+4))
+            #int = (transpose(vecs[1:lenk,i])*μmat*vecs[1:lenb,j])^2# *exp(vals[j]/(TK*2.083661912e+4))
+            int = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2
+            int *= thermfact(i,j,qs,vals,Q)
             if (int>INTTHRESHOLD)#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
                temp = [-freq int vals[j]/csl transpose(qns[i,:]) transpose(qns[j,:])]
                trans = vcat(trans,temp)

@@ -1,5 +1,5 @@
 
-function build_jcbn!(jcbn,grad,inds,vecs,params,perm,omc)
+function build_jcbn!(jcbn,grad,inds,vecs,params,perm,omc,weights)
 """
 This builds the Jacobian based on the Hellmann–Feynman theorem.
 """
@@ -15,7 +15,7 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
          jcbn[a,i] = anaderiv(jl,S,σl,vecl,params,b) - anaderiv(ju,S,σu,vecu,params,b)
       end
    end
-   grad = transpose(jcbn)*omc
+   grad = transpose(jcbn)*weights*omc
    return jcbn, grad
 end
 
@@ -64,8 +64,31 @@ function lbmq_step!(β,H,grad, λ)
       A .= Hermitian(H + λ*Diagonal(H))
    end
    A = cholesky!(A)
-   β = ldiv!(β, A, -grad)
+   β .= ldiv!(β, A, -grad)
    return β,λ
+end
+
+function lbmq_turducken!(β,H,jcbn,weights,omc,λ,nlist,inds,nparams,perm,ofreqs)
+   jtw = transpose(jcbn)*weights
+   A = Hermitian(H + λ*Diagonal(H))#transpose(dk)*dk
+   while isposdef(A)==false #this could be tidier
+      λ = max(2.0*λ,1.0E-24)
+      A .= Hermitian(H + λ*Diagonal(H))
+   end
+   A = cholesky!(A)
+   β .= ldiv!(β, A, -jtw*omc)
+   nparams[perm] .+= β
+   vals, nvecs = limeigcalc(nlist, inds, nparams)
+   nrms, nomc = rmscalc(vals,inds,ofreqs)
+   β .= ldiv!(β, A, -jtw*nomc)
+   nparams[perm] .+= β
+   vals, nvecs = limeigcalc(nlist, inds, nparams)
+   nrms, nomc = rmscalc(vals,inds,ofreqs)
+   β .= ldiv!(β, A, -jtw*nomc)
+   nparams[perm] .+= β
+   vals, nvecs = limeigcalc(nlist, inds, nparams)
+   nrms, nomc = rmscalc(vals,inds,ofreqs)
+   return β,λ,nomc,nrms,vals,nvecs
 end
 
 
@@ -73,15 +96,13 @@ function paramunc!(uncs,H)
    uncs = diag(inv(H))
    return uncs
 end
-function ellipictr()
-end
 
 function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    vals,vecs = limeigcalc(nlist, inds, params)
    rms, omc = rmscalc(vals, inds, ofreqs)
    perm,n = findnz(sparse(scales))
    println("Initial RMS = $rms")
-   goal = sum(uncs)/length(uncs)*0.001
+   goal = sum(uncs)/length(uncs)*0.00000
    newparams = copy(params)
    W = diagm(0=>(uncs .^ -1))
    converged = false
@@ -90,8 +111,8 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    ϵ0 = 0.1E-8
    ϵ1 = 0.1E-24
    LIMIT = 500
-   λlm = 1.0E+03
-   Δlm = 1.0E+1
+   λlm = 0.0E+03
+   Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
    stoit = 5
@@ -105,37 +126,36 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    #A = zeros(Float64,size(J)) #
    H = zeros(Float64,length(perm),length(perm)) #Hessian
    D = zeros(Float64,size(H)) #Elliptical Trust Region
-   J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc)
+   J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc,W)
    H, D = build_hess!(H,D,J,W)
    uncs = paramunc!(uncs,H)
    converged=false
    while converged==false
-      β,λlm = lbmq_step!(β,H,g,λlm)
-      if false
-         β = lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
+   """β,λlm = lbmq_step!(β,H,g,λlm)
+      if true
+         β .= lbmq_acc!(K,β,J,W,nlist,inds,params,perm,omc,ofreqs,λlm)
       end
-      β0 = β
-      if (norm((H^(-1/2))*β)>Δlm)&&(λ!=0.0)
-#      if (norm(β ./ params[perm])>Δlm)&&(λ!=0.0)
-         β *= Δlm/norm(D*β)
-      end
-      nparams[perm] = params[perm] + β #+ (inv(H)^2)*β
+      #if (norm((H^(-1/2))*β)>Δlm)&&(λ!=0.0)
+      #   β *= Δlm/norm(D*β)
+      #end
+      nparams[perm] .= params[perm] + β #+ (inv(H)^2)*β
       vals, nvecs = limeigcalc(nlist, inds, nparams)
-      nrms, nomc = rmscalc(vals,inds,ofreqs)
+      nrms, nomc = rmscalc(vals,inds,ofreqs)"""
+      β,λlm,nomc,nrms,vals,nvecs = lbmq_turducken!(β,H,J,W,omc,λlm,nlist,inds,nparams,perm,ofreqs)
       check = abs(nrms-rms)/rms
       if nrms < rms
          rms = nrms
-         omc = nomc
-         params = nparams
-         vecs = nvecs
-         J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc)
+         omc .= nomc
+         params .= nparams
+         vecs .= nvecs
+         J, g = build_jcbn!(J,g,inds,vecs,params,perm,omc,W)
          H, D = build_hess!(H,D,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
-         slλ = (@sprintf("%0.4f", log10(λlm)))
-         sΔ = (@sprintf("%0.6f", Δlm))
+         #slλ = (@sprintf("%0.4f", log10(λlm)))
+         #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δₖ = $sΔ")
+         println("After $scounter interations, RMS = $srms")#, log₁₀(λ) = $slλ, Δₖ = $sΔ")
          #println(β)
          #println(H^(-1/2))
          #println(β)
@@ -156,7 +176,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       if ρlm ≥ 0.75
          Δlm *= 2.0
       else
-         Δlm = max(0.90*Δlm,0.0001)
+         #Δlm = max(0.90*Δlm,0.0001)
       end
       if (rms ≤ goal)#&&(counter > 1)
          println("A miracle has come to pass. The fit has converged")
@@ -184,5 +204,6 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    end#while
    uncs = paramunc!(uncs,H)
    println(uncs)
+   println(H)
    return params, vals
 end
