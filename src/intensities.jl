@@ -86,12 +86,12 @@ end
 
 function partitioncalc(T,s,qns,vals,σ)
    qs = zeros(Float64,size(vals))
-   qs .= (2.0*s+1.0).*(2.0 .* qns[:,2] .+ 1.0) .* (2.0*σ .+ 1.0)
-   qs .*= exp.(-1.0 .* vals ./ KB*T)
+   qs = (2.0*s+1.0).*(2.0 .* qns[:,2] .+ 1.0) .* (σ .+ 1.0)
+   qs .*= exp.(-1.0 .* vals ./ (KB*T))
    return qs,sum(qs)
 end
 function thermfact(i,j,qs,vals,Q)
-   out =abs(qs[i] - qs[j])*abs(vals[j] - vals[i])/Q
+   out = abs(qs[i] - qs[j])*abs(vals[j] - vals[i])/Q
 end
 
 function tracalc(nmax,s,mcalc,σ,qns,vals,vecs)

@@ -57,15 +57,9 @@ if apology==true
    println("Sorry about the name...")
 end
 
-global NFOLD=0
-global TK = 25.0
-global KB = 2.083661912E+4 #MHz/K
-
 ################################################################################
 ############                       westersim                        ############
 ################################################################################
-
-
 function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    U = ur(j,s,mcalc)
    if σ==0||σ==0.0
@@ -75,8 +69,8 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    else
       H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    end
-   H, rvec = jacobisweep(H,floor((j+s)/80))
-   vals, vecs = LAPACK.syev!('V', 'U', H)
+   H, rvec = jacobisweep2(H,Int(floor((size(H)[1])/240)))
+      vals, vecs = LAPACK.syev!('V', 'U', H)
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
 end
@@ -94,9 +88,6 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
-#   outvals = zeros(Float64,Int(jd),2*mmax+1)
-#   outvecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),2*mmax+1)
-#   outqns = zeros(Float64,jd,6,2*mmax+1)
    outvals = zeros(Float64,Int(jd*(2*mmax+1)))
    outvecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)))
    outqns = zeros(Float64,Int(jd*(2*mmax+1)),6)
@@ -109,31 +100,26 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
       outvals[sind:find] = tvals[si:fi]
       outvecs[1:Int((2*s+1)*(2*j+1)*(2*mcalc+1)),sind:find] = tvecs[:,si:fi]
       outqns[sind:find,:] = tqns[si:fi,:]
-      #for m in 1:(2*mmax+1)
-      #   outvals[sind:find,m] = tvals[si:fi]
-      #   outvecs[1:Int((2*s+1)*(2*j+1)*(2*mcalc+1)),sind:find,m] = tvecs[:,si:fi]
-      #   outqns[sind:find,:,m] = tqns[si:fi,:]
-      #   si += f0
-      #   fi += f0
-      #end
    end
-   #mperm = sortperm(collect(-mmax:mmax),by=abs)
-   #outvals = outvals[:,mperm]
-   #outvecs = outvecs[:,:,mperm]
-   #outqns = outqns[:,:,mperm]
    return outqns, outvals, outvecs
 end
 
 function westersim(prm,s,nmax,mcalc,mmax)
-   @time qns, vals, vecs = tsrcalc(parameters,s,nmax,mcalc,mmax,0)
-   @time transitions = tracalc(nmax,s,mcalc,0,qns,vals,vecs)
-   #println("E states!")
-   #@time emq, ema, emv = tsrcalc(parameters,s,nm,mc,0,1)
-   #@time etransitions = tracalc(nm,s,mc,1,emq,ema,emv)
-   #qns  = cat(amq,emq, dims=3)
-   #vals = cat(ama,ema, dims=3)
-   #vecs = cat(amv,emv, dims=3)
-   #transitions = vcat(atransitions,etransitions)
+   σs = σcount(NFOLD)
+   jmin =  0.5*iseven(Int64(2*s+1))
+   jmax = nmax - s
+   jarray = collect(Float64,jmin:jmax)
+   jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
+   vals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
+   vecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
+   qns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
+   @time qns[:,:,1], vals[:,1], vecs[:,:,1] = tsrcalc(parameters,s,nmax,mcalc,mmax,0)
+   @time transitions = tracalc(nmax,s,mcalc,0,qns[:,:,1],vals[:,1],vecs[:,:,1])
+   for σ in 1:(σs-1)
+      @time qns[:,:,σ+1], vals[:,σ+1], vecs[:,:,σ+1] = tsrcalc(parameters,s,nmax,mcalc,mmax,σ)
+      @time temptrns = tracalc(nmax,s,mcalc,σ,qns[:,:,σ+1],vals[:,σ+1],vecs[:,:,σ+1])
+      transitions = vcat(transitions,temptrns)
+   end
    return transitions, qns, vals, vecs
 end
 
@@ -195,101 +181,8 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
    return evals, evecs#, eqns
 end
 #take difference and determine rms
-function cost(vals,inds,ofreqs,weights)
-   cfreqs = zeros(size(ofreqs))
-   for i in 1:size(cfreqs)[1]
-      cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
-   end
-   omc = ofreqs - cfreqs
-   cst = sum((omc ./weights) .^2)
-   rms = sqrt(cst/length(omc))
-   return cst
-end
-function rmscalc(vals,inds,ofreqs)
-   cfreqs = zeros(size(ofreqs))
-   for i in 1:size(cfreqs)[1]
-      cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
-   end
-   #println(cfreqs)
-   omc = ofreqs - cfreqs
-   rms = √(sum(omc .^ 2)/length(omc))
-   #rms = norm(omc)/length(omc)
-   return rms, omc
-end
-#construct jacobian
-function anaderiv(j,s,σ,vec,rp,rpid)
-   rp = zeros(Float64, length(rp))
-   rp[rpid] = 1.0
-   U = ur(j,s,mcalc)
-   if σ==0||σ==0.0
-      U *= ut(mcalc,j,s)
-   end
-   mat = Matrix(U*Htsr(rp,j,s,mcalc,σ)*U)
-   out = transpose(vec)*mat*vec
-   return out
-end
-function build_jcbn(inds,vecs,params)
-"""
-This builds the Jacobian based on the Hellmann–Feynman theorem.
-"""
-   jcbn = zeros(Float64,size(inds)[1],length(params))
-   Threads.@threads for a in 1:size(inds)[1]
-      ju = 0.5*inds[a,1]
-      jl = 0.5*inds[a,4]
-      σu = inds[a,2]
-      σl = inds[a,5]
-      vecu = vecs[1:Int((2*S+1)*(2*ju+1)*(2*mcalc+1)),inds[a,3],σu+1]
-      vecl = vecs[1:Int((2*S+1)*(2*jl+1)*(2*mcalc+1)),inds[a,6],σl+1]
-      for b in 1:length(params)
-         jcbn[a,b] = anaderiv(jl,S,σl,vecl,params,b) - anaderiv(ju,S,σu,vecu,params,b)
-      end
-   end
-   return jcbn
-end
 
-function lbmq_step(jcbn, weights, omc, λ, perm)
-"""
-This should be the Levenberg-Marquadt step. This solves (JᵗWJ+λI)Δβ = (JᵗW)Δy
-   for Δβ. Where J is the Jacobian, W is the weights, λ is the
-   Levenberg-Marquadt parameter, and Δy is the omcs. This returns the step, Δβ.
-"""
-   jcbn = jcbn[:,perm]
-   jtw = transpose(jcbn)*weights
-   β = zeros(size(perm))
-   jtj = jtw*jcbn
-   A = Hermitian(jtj + λ*Diagonal(jtj))
-   A = factorize(Symmetric(A))
-   X = jtw*omc
-   β = ldiv!(β, A, -X)
-   return β,X
-end
 
-function lbmq_step2(jcbn, weights, omc, λ, perm)
-"""
-This should be the Levenberg-Marquadt step. This solves (JᵗWJ+λI)Δβ = (JᵗW)Δy
-   for Δβ. Where J is the Jacobian, W is the weights, λ is the
-   Levenberg-Marquadt parameter, and Δy is the omcs. This returns the LVMQ step
-   (βlm), ST step (βsd), and the parameter t.
-   .
-"""
-   jcbn = jcbn[:,perm]
-   jtw = transpose(jcbn)*weights
-   βlm = zeros(size(perm))
-   jtj = jtw*jcbn
-   #A = Hermitian(jtj + λ*Diagonal(jtj))
-   A = Hermitian(jtj + λ*I)
-   A = factorize(Symmetric(A))
-   X = -jtw*omc
-   βlm = ldiv!(βlm, A, X)
-   βsd = -transpose(jcbn)*omc
-   t = norm(βsd)^2/(norm(jcbn*βsd)^2)
-   return βlm, βsd, t, X
-end
-function lbmq_gain(β,λ,g,rms,nrms)
-   out = 0.5*transpose(β)*(λ*β-g)
-   out = (rms-nrms)/out
-   return out
-end
 
 function dogleg(βlm,βsd,t,Δ)
 """
@@ -309,95 +202,6 @@ This enforces a trust region on our steps
    end
    return βf
 end
-function lbmq_opt(nlist,ofreqs,uncs,inds,params,scales,λ)
-   vals,vecs = limeigcalc(nlist, inds, params)
-   rms, omc = rmscalc(vals, inds, ofreqs)
-   #println(omc)
-   perm,n = findnz(sparse(scales))
-   println("Initial RMS = $rms")
-   counter = 0
-   goal = sum(uncs)/length(uncs)
-   newparams = copy(params)
-   weights = diagm(0=>(uncs .^ -1))
-   #weights = diagm(0=>ones(size(uncs)))
-   converged = false
-   THRESHOLD = 1.0E-8
-   RHOTHRES = -1.0E-6
-   LIMIT = 20
-   λ0 = λ
-   Δₖ = 1.0
-   Δ0ₖ = Δₖ
-   λ0 = λ
-   while (converged==false)
-      #println("Building Jacobians")
-      jcbn = build_jcbn(inds,vecs,params)
-      lgscls = 10 .^ (floor.(log10.(abs.(params[perm] ./maximum(params[perm])))))
-      #lgscls = ones(size(lgscls))
-      #println("Performing Levenberg-Marquadt Step")
-      if true
-         adjst,g = lbmq_step(jcbn,weights,omc,λ,perm) #.* lgscls
-         normadjst = abs(norm(adjst))
-         #if normadjst > Δₖ
-         #   adjst = adjst .* (Δₖ/normadjst)
-         #end
-      else
-         println("dogleg")
-         βlm, βsd, t, g = lbmq_step2(jcbn,weights,omc,λ,perm)
-         adjst = dogleg(βlm,βsd,t,Δₖ)
-      end
-      adjst .*= scales[perm]
-      #back up parameters
-      newparams[perm] = params[perm] .+ adjst
-      #recalculate RMS
-      vals,nvecs = limeigcalc(nlist, inds, newparams)
-      nrms, nomc = rmscalc(vals, inds, ofreqs)
-      ρlm = lbmq_gain(adjst,λ,g,rms,nrms)
-      println(ρlm)
-      #println(adjst[1],"   ", adjst[end])
-      check = abs(nrms-rms)/rms
-      counter += 1
-      if ρlm > 0.0#-1.0E-6 #nrms ≤ rms
-         #accept step and decrease λ
-         params = newparams
-         rms = nrms
-         omc = nomc
-         vecs = nvecs
-         Δₖ *= 1.5
-         λ = λ/3.0 #max(1/3,1-(2*ρlm-1)^3)
-         #νlm = 2.0
-      #elseif (ρlm > RHOTHRES)&&(ρlm < 0.0)
-      #   Δₖ = Δ0ₖ
-      #   λ = λ0
-      #   counter -= 4
-      else #nrms > rms
-         #reject step due to RMS increase
-         λ = λ*2.0
-         #λ = min(λ,1.0E+12)
-         Δₖ *= 0.9
-         #Δₖ = max(Δₖ,0.00001)
-         #params[perm] = params[perm] .+ adjst
-         #rms = nrms
-      end #ρlm if
-      srms = (@sprintf("%0.4f", rms))
-      slλ = (@sprintf("%0.4f", log10(λ)))
-      sΔ = (@sprintf("%0.6f", Δₖ))
-      scounter = lpad(counter,3)
-      println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δₖ = $sΔ")
-      #println(check)
-      if (check < THRESHOLD)#||(rms ≤ goal)#&&(counter > 1)
-         println("A miracle has come to pass. The fit has converged")
-         break
-      elseif counter ≥ LIMIT
-         println("Alas, the iteration count has exceeded the limit")
-         #println(omc)
-         break
-      else
-         #write update to file
-      end #check if
-   end#converged while
-   #println(omc)
-   return params, vals
-end
 
 function westerfit_handcoded()
    global mmax=0
@@ -410,13 +214,12 @@ function westerfit_handcoded()
 #   lines = readdlm("$molnam.lne", ',', Float64)
    lines = testlines
    #determine the states
-   linds, ofreqs, uncs = lineprep(lines,S,mcalc)
-   #println(linds)
+   linds, ofreqs, uncs = lineprep(lines,S,mmax)
    jlist = jlister(linds)
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
    scales = trsscales
-   λ = 0.1E+3
+   λ = 1.0E+4
 #   println("Beginning optimization")
    tsrp, vals = lbmq_opttr(jlist,ofreqs,uncs,linds,tsrparams,scales,λ)
    #println("New Parameter Vector:")
@@ -503,8 +306,12 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
    return qns, vals, vecs
 end
 
+
+global NFOLD=0
+global TK = 25.0
+const KB = 2.083661912E+4 #MHz/K
 mc = 0
-nm = 10
+nm = 3
 
 #=
 A      =      0.35150076793036794*29979.2458
@@ -517,16 +324,13 @@ F      =      5.64133778441192124*29979.2458
 parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 =#
 
-parameters = [  A;   B;   C; Dab; 0.0; 0.0; 0.0; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 1.0; 1.0; 1.0; 1.0; 0.0; 1.0]
+parameters = [  A;   B;   C; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
+trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 
 
 molnam = "hirota"
 @time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
 testlines = (pred2lne(transitions))
-#println(transitions)
-println(size(testlines))
-println(parameters)
 oparameters = copy(parameters)
 
 pert = 0.01*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
