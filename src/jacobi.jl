@@ -60,6 +60,9 @@ function Rotate(A::Array,p::Int,q::Int; computeV=false, V::Array=Matrix{Float64}
     c=1/sqrt(t^2+1)
     s=t*c
     τ=s/(1+c)
+#    if (c-1)==zero(c)
+#        println("FUCK")
+#    end
     l=size(A)[1]
     Ap=copy(A[:,p])
     Aq=copy(A[:,q])
@@ -115,5 +118,14 @@ function jacobisweep(A,iters)
     end
     return Matrix(A),Vout
 end
-
+function jacobisweep2(A,iters)
+    n=size(A)[1]
+    V = Matrix(Float64.(I(n)))
+    Vout = Matrix(Float64.(I(n)))
+    for i in 1:iters
+        A,V = Sweep(A;compV=true,V)
+#        Vout = transpose(V)*Vout
+    end
+    return Matrix(A),V
+end
 #end
