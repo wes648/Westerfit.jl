@@ -69,7 +69,7 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    else
       H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    end
-   H, rvec = jacobisweep2(H,Int(floor((size(H)[1])/240)))
+   H, rvec = jacobisweep2(H,Int(floor((j+s+mcalc)/8)))
       vals, vecs = LAPACK.syev!('V', 'U', H)
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
@@ -307,7 +307,7 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
 end
 
 
-global NFOLD=0
+global NFOLD=3
 global TK = 25.0
 const KB = 2.083661912E+4 #MHz/K
 mc = 0
@@ -325,7 +325,7 @@ parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.
 =#
 
 parameters = [  A;   B;   C; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0]
 
 
 molnam = "hirota"
