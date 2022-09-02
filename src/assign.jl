@@ -4,7 +4,7 @@ function assign(j,s,σ,mcalc,vals,vecs,rotvs)
    vals = vals[assigned]
    vecs = rotvs*vecs
    vecs = vecs[:,assigned]
-   if true
+   if false
       nlist = Int.(Δlist(j,s))
       for n in nlist
          for k in -n:n

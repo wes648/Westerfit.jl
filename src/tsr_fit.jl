@@ -42,7 +42,7 @@ using .WIGXJPF
 #wig3j(j1,j2,j3,m1,m2,m3) = Float64(wigner3j(j1,j2,j3,m1,m2,m3))
 #wig6j(j1,j2,j3,j4,j5,j6) = Float64(wigner6j(j1,j2,j3,j4,j5,j6))
 
-BLAS.set_num_threads(8)
+BLAS.set_num_threads(12)
 
 apology = true
 
@@ -62,15 +62,15 @@ end
 ################################################################################
 function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
    U = ur(j,s,mcalc)
-   if σ==0||σ==0.0
+   if σ==zero(σ)
       U = ur(j,s,mcalc)*ut(mcalc,j,s)
       H = Matrix(U*Htsrmat2(pr,j,s,mcalc,σ)*U)
       #H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    else
       H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    end
-   H, rvec = jacobisweep2(H,Int(floor((j+s+mcalc)/8)))
-      vals, vecs = LAPACK.syev!('V', 'U', H)
+   H, rvec = jacobisweep2(H,Int(floor((j+s+6*mcalc)/8)))
+   vals, vecs = LAPACK.syev!('V', 'U', H)
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
 end
@@ -79,12 +79,7 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
    #prm = PAM2RAM(prm)
    #prm = paramprep(prm)
    #prm = paramshift(inprms)
-   #this function needs to be reworked suched that the torsional states are all on the same array column
-   if isodd(Int64(2*s+1))
-      jmin = 0.0
-   else
-      jmin = 0.5
-   end
+   jmin =  0.5*iseven(Int64(2*s+1))
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
@@ -167,7 +162,7 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
    evals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
    evecs = zeros(Float64,Int((2*S+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
    eqns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
-   for i in 1:size(jlist)[1]
+   Threads.@threads for i in 1:size(jlist)[1]
       j = 0.5*jlist[i,1]
       σ = jlist[i,2]
       sind, find = jinds(j,S,mmax)
@@ -205,7 +200,7 @@ end
 
 function westerfit_handcoded()
    global mmax=0
-   global mcalc=0
+   global mcalc=1
    global S=0.5
 #   tsrparams = PAM2RAM(parameters)
    tsrparams = parameters
@@ -215,6 +210,7 @@ function westerfit_handcoded()
    lines = testlines
    #determine the states
    linds, ofreqs, uncs = lineprep(lines,S,mmax)
+   println(linds)
    jlist = jlister(linds)
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
@@ -261,10 +257,6 @@ Dab = -3716.8
 #trsscales = ones(Float64,size(parameters))
 
 #trsscales =  [0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01; 0.01]
-#parameters = [83316.10066771678, 14497.783454870654, 4733.339691158756,
-#      -1.1414038835204492, 292650.6595414094, 0.0, 4.195803378991427e6,
-#      306.43192861068763, 297.11625650644,
-#      -22.797297784556505, 0.0, 0.0, 33.90230680364543]
 #trsscales = fill(0.1,13)
 
 """
@@ -310,7 +302,7 @@ end
 global NFOLD=3
 global TK = 25.0
 const KB = 2.083661912E+4 #MHz/K
-mc = 0
+mc = 1
 nm = 3
 
 #=
@@ -331,9 +323,10 @@ trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0]
 molnam = "hirota"
 @time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
 testlines = (pred2lne(transitions))
+println(size(testlines))
 oparameters = copy(parameters)
 
-pert = 0.01*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
+pert = 0.001*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
 println(pert)
 #pert = trsscales
 parameters .+= pert
