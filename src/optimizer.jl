@@ -1,3 +1,4 @@
+
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zeros(size(ofreqs))
    for i in 1:size(cfreqs)[1]
@@ -14,7 +15,7 @@ function anaderiv(j,s,σ,vec,rp,rpid)
    rp = zeros(Float64, length(rp))
    rp[rpid] = 1.0
    U = ur(j,s,mcalc)
-   if σ==0||σ==0.0
+   if σ==zero(σ)
       U *= ut(mcalc,j,s)
    end
    mat = Matrix(U*Htsr(rp,j,s,mcalc,σ)*U)
@@ -49,9 +50,9 @@ end
 function build_hess!(hssn,dk,jtw,jcbn,weights)
    jtw = transpose(jcbn)*weights
    hssn = jtw*jcbn
-   Threads.@threads for i in 1:size(hssn)[1]
-      dk[i,i] = norm(hssn[:,i])
-   end
+   #Threads.@threads for i in 1:size(hssn)[1]
+   #   dk[i,i] = norm(hssn[:,i])
+   #end
    return hssn, dk, jtw
 end
 
@@ -96,16 +97,17 @@ function lbmq_step!(β,H,grad, λ)
    return β,λ
 end
 
-function lbmq_turducken!(β,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
+#function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
+function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
       A .= Hermitian(H + λ*Diagonal(H))
    end
    A = cholesky!(A)
-   βf = zeros(size(β))
+   β = zeros(Float64,size(perm))
    β .= ldiv!(β, A, -jtw*omc)
-   βf .+= β
+   βf = copy(β)
    nparams[perm] .+= β
    vals, nvecs = limeigcalc(nlist, inds, nparams)
    nrms, nomc = rmscalc(vals,inds,ofreqs)
@@ -130,6 +132,7 @@ end
 
 function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    vals,vecs = limeigcalc(nlist, inds, params)
+   oparams = params
    rms, omc = rmscalc(vals, inds, ofreqs)
    perm,n = findnz(sparse(scales))
    println(perm)
@@ -137,7 +140,6 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
    converged = false
-   THRESHOLD = 1.0E-8
    #RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-8
    ϵ1 = 0.1E-12
@@ -151,7 +153,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    #println(omc)
    nparams = copy(params)
    uncs = zeros(Float64,size(perm))
-   β = zeros(Float64,size(perm)) #step
+   βf = zeros(Float64,size(perm)) #step
    J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
    jtw = zeros(Float64,size(omc)) #jtwient
    K = zeros(Float64,size(omc)) #acceleration correction
@@ -173,17 +175,17 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       nparams[perm] .= params[perm] + β #+ (inv(H)^2)*β
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
-      oparams = copy(params)
-      β,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(β,D,H,jtw,omc,λlm,nlist,inds,nparams,perm,ofreqs)
+      #oparams = copy(params)
+      βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs)
       check = abs(nrms-rms)/rms
       if nrms < rms
-         println(β)
+         println(βf)
          rms = nrms
          omc .= nomc
-         params .= nparams
+         params = copy(nparams)
 #         println(params)
-         vecs .= nvecs
-         J = build_jcbn!(J,inds,vecs,params,perm)
+         #vecs .= nvecs
+         J = build_jcbn!(J,inds,nvecs,params,perm)
          H, D, jtw = build_hess!(H,D,jtw,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
@@ -191,19 +193,17 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ")#, Δₖ = $sΔ")
-         #println(β)
-         #println(H^(-1/2))
-         #println(β)
+         println(H^(-1/2))
          #println(params[perm])
+         #λlm = 0.0
          λlm /= 3.0
          if λlm ≤ 1.0E-24
             λlm = 0.0
          end
          stoit = 0
       else
-         params .= oparams
-         λlm *= 2.0
-         λlm = max(λlm,1.0E-24)
+         #params .= oparams
+         λlm = max(2.0*λlm,1.0E-24)
       end
       #if rms < ϵ0
       #   converged = true
@@ -217,10 +217,10 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       if (rms ≤ goal)#&&(counter > 1)
          println("A miracle has come to pass. The fit has converged")
          break
-      elseif (check < THRESHOLD)
+      elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
          break
-      elseif (norm(β))<ϵ1*(norm(params[perm])+ϵ1)
+      elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
          break
