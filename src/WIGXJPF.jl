@@ -3,9 +3,7 @@ module WIGXJPF
 
 """
 This is a modified version of https://github.com/jagot/WIGXJPF.jl which has
-   now been replaced by https://github.com/Jutho/WignerSymbols.jl eventually
-   I would like to replace this implementation of WIGXJPF.jl with the
-   WignerSymbols.jl
+   now been replaced by https://github.com/Jutho/WignerSymbols.jl
 """
 
 function __init__()
@@ -14,13 +12,13 @@ function __init__()
           Cvoid,
           (Cint, Cint),
           max_two_j, 9)
-#    for i in 1:Threads.nthreads()
+    for i in 1:Threads.nthreads()
 #    Threads.@threadcall((:wig_thread_temp_init, "/home/wes/rot/bin/libwigxjpf_shared.so"),
     ccall((:wig_thread_temp_init, "/home/wes/rot/bin/libwigxjpf_shared.so"),
           Cvoid,
           (Cint,),
           max_two_j)
-#    end
+    end
 end
 
 doubled(i::Integer) = 2i

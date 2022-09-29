@@ -20,6 +20,7 @@ function ϕ(j,n,s)
    end
    return out
 end
+
 function fh(x,y)::Float64
    out = sqrt(x*(x+1.0) - y*(y+1.0))
    return out
@@ -30,32 +31,32 @@ function gh(x,y)::Float64
 end
 
 function Ediag(pr,J,S,N,K,m,σ)
-   out = Htorm0(pr,N,K,m,σ)
+   out = Htor0m(pr,N,K,m,σ)
    out += Hr0K(pr,N,K)
    out += Hs0K0N(pr,J,N,S,θ(J,N,S),K)
    return out
 end
 
-function Htorm0(pr,N,K,m,σ)
+function Htor0m(pr,N,K,m,σ)
    #<m K|Htor|m K> =
    out = @. pr[5]*m^2 + 2*pr[6]*m*K + pr[7]*0.5
 end
-function Htorm1(pr,N,K,m,σ)
+function Htor1m(pr,N,K,m,σ)
    #<m+1 K|Htor|m K> = -V3/4
    out = @. -pr[7]*0.25 + 0.0*m*K
 end
 function Hr0K(pr,N,K)
    #<N K |Hrot| N K>
    #   out = @. (0.5*(pr[2] + pr[3])+ pr[13]*N*(N+1.0))*N*(N+1.0) + (pr[1] - 0.5*(pr[2] + pr[3]))*K^2
-   out = @. (0.5*(pr[2] + pr[3])+ pr[13]*N*(N+1.0))*N*(N+1.0) + (pr[1] - 0.5*(pr[2] + pr[3]))*K^2
+   out = @. (pr[2]+ pr[13]*N*(N+1.0))*N*(N+1.0) + pr[1]*K^2
 end
 function Hr1K(pr,N,K)
-   #<N K+1 | H |N K>
+   #<N K+1 |Hrot|N K>
    out = @. pr[4]*sqrt(N*(N+1.0)-K*(K-1.0))*(K-0.5)
 end
 function Hr2K(pr,N,K)
    #<N K+2 |Hrot| N K>
-   out = @. 0.25*(pr[2] - pr[3])*sqrt((N*(N+1.0) - K*(K - 1.0))*(N*(N+1.0) - (K - 1.0)*(K - 2.0)))
+   out = @. pr[3]*sqrt((N*(N+1.0) - K*(K - 1.0))*(N*(N+1.0) - (K - 1.0)*(K - 2.0)))
 end
 function Hrot(pr,N)
    if N == zero(N)
@@ -66,8 +67,8 @@ function Hrot(pr,N)
       ondiags = Hr0K(pr,N,karray)
       of1diag = Hr1K(pr,N,karray[2:end])
       of2diag = Hr2K(pr,N,karray[3:end])
-      Rotmat = spdiagm(nd,nd,0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
-      return Rotmat
+      out = spdiagm(nd,nd,0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
+      return out
    end
 end
 
@@ -77,10 +78,10 @@ function Htor(pr,mcalc,N,σ)
       return spzeros(tnp,tnp)
    else
    tmp = convert(Int,2*mcalc+1)
-   ks = kron(ones(Float64,2*mcalc+1),collect(Float64,-N:N))
-   ms = kron(NFOLD .* collect(-mcalc:mcalc) .+ σ, ones(Float64,tnp))
-   ondiags = Htorm0(pr,N,ks,ms,σ)
-   of1diags = Htorm1(pr,N,ks[tnp+1:end],ms[tnp+1:end],σ)
+   ks = kron(ones(Float64,tmp),collect(Float64,-N:N))
+   ms = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
+   ondiags = Htor0m(pr,N,ks,ms,σ)
+   of1diags = Htor1m(pr,N,ks[tnp+1:end],ms[tnp+1:end],σ)
    out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
    return out
    end
@@ -95,10 +96,10 @@ function Htor(pr,mcalc,j,s,σ)
    for n in Δlist(j,s)
       ks = vcat(ks,collect(Float64,-n:n))
    end
-   ks = kron(ones(Float64,2*mcalc+1),ks)
+   ks = kron(ones(Float64,tmp),ks)
    ms = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
-   ondiags = Htorm0(pr,j,ks,ms,σ)
-   of1diags = Htorm1(pr,j,ks[tnp+1:end],ms[tnp+1:end],σ)
+   ondiags = Htor0m(pr,j,ks,ms,σ)
+   of1diags = Htor1m(pr,j,ks[tnp+1:end],ms[tnp+1:end],σ)
    out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
    return out
    end
@@ -108,7 +109,7 @@ function Htr(pr,N,m,σ)
    nd = 2*N+1
    md = 2*m+1
    out = spzeros(Float64,md*nd,md*nd)
-   out = kron(eye(md),Hrot(pr,N))
+   out .= kron(eye(md),Hrot(pr,N))
    out += Htor(pr,m,N,σ)
    return out
 end
@@ -177,20 +178,19 @@ end
 
 #Matrix Builder
 function Hspi0N(pr,J,S,N)
-   thet = θ(J,N,S)
-   Nt2 = N*(N+1.0)
    if N == zero(N)
       #ondiags = Hs0K0N(J,N,S,Nt2,thet,[0.0],srprms)
-      Spimat = spzeros(Float64,1,1)#diagm(0=>ondiags)
+      out = spzeros(Float64,1,1)#diagm(0=>ondiags)
    else
+      thet = θ(J,N,S)
+      Nt2 = N*(N+1.0)
       karray = collect(Float64,-N:N)
       ondiags = Hs0K0N(pr,J,N,S,thet,karray)
       of1diag = Hs1K0N(pr,J,N,thet,karray[2:end])
       of2diag = Hs2K0N(pr,J,N,thet,karray[3:end])
-      Spimat = spdiagm(length(karray),length(karray),0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
+      out = spdiagm(length(karray),length(karray),0=>ondiags,1=>of1diag,2=>of2diag,-1=>of1diag,-2=>of2diag)
    end
-#   return Symmetric(Spimat)
-   return Spimat
+   return out
 end
 function Hspi1N(pr,J::Float64,S::Float64,Nl)
    jϕ = ϕ(J,Nl+1.0,S)
@@ -220,9 +220,9 @@ end
 function Htsr1N(pr,j::Float64,s::Float64,nl,mcalc,σ)
    karray = collect(Float64,-nl:nl)
    marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
-   mat = zeros(Float64,0,0)
+   mat = spzeros(Float64,0,0)
    for i in 1:length(marray)
-      p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]
+      p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]*0.0
       p1 = p1 .* sqrt.( (nl+1.0)^2 .+ karray .^2)
       part = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
       mat = cat(mat,part,dims=(1,2))
@@ -243,11 +243,11 @@ function Hsr(pr,J,S)
    end
    return out
 end
-function Htsr(pr,J,S,mcalc,σ)
+function Htsr(pr,J,S,mcalc,σ)#OLD
    md = 2*mcalc + 1
    ns, nd, ni, jd = srprep(J,S,md)
-   ni = ni
-   ni[1,1] = 1
+#   ni = ni
+   ni[1,1] = 1 #investigate why this is needed should be definitional to srprep but isn't???
    out = spzeros(Float64,md*jd,md*jd)
    out[1:ni[1,2],1:ni[1,2]] = kron(eye(md),Hrot(pr,ns[1]) + Hspi0N(pr,J,S,ns[1]))
    out[1:ni[1,2],1:ni[1,2]] += Htor(pr,mcalc,ns[1],σ) + Htsr0N(pr,J,S,ns[1],mcalc,σ)

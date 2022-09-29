@@ -399,3 +399,10 @@ This version of westerfit uses the Optim package currently with the Accelerated
 #   end
    #write output file
 end
+
+function xtxsolve(A)
+   x = zeros(size(A))
+   a,b = eigen(A)
+   x = √(diagm(a))*transpose(b)
+   return x
+end

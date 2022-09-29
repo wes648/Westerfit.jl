@@ -1,9 +1,8 @@
 
 function assign(j,s,σ,mcalc,vals,vecs,rotvs)
-   assigned = leadfact(vals,copy(vecs))
-   vals = vals[assigned]
-   vecs = rotvs*vecs
-   vecs = vecs[:,assigned]
+   assigner = leadfact(vals,copy(vecs))
+   vals = vals[assigner]
+   vecs = rotvs*vecs[:,assigner]
    if false
       nlist = Int.(Δlist(j,s))
       for n in nlist
@@ -22,7 +21,7 @@ function leadfact(vals,vecs)
       t = argmax(vecs)
       s = t[1] #state number that this eigenvalue maps to
       k = t[2] #eigenvalue number from energetic sorting
-      vecs[s,k] = 0.0
+      #vecs[s,k] = 0.0
       vecs[s,:] = zeros(Float64,size(vecs[1,:])) #prevents state from being double assigned
       vecs[:,k] = zeros(Float64,size(vecs[:,1]))# 3, 4, 1, 2, 5
       c[k] = s
@@ -30,8 +29,9 @@ function leadfact(vals,vecs)
    perm = sortperm(c)
    return perm
 end
-###### Diabatic Sorter
+###### Adiabatic Sorter
 kshift(n,k) = (2*n+1)-2*(n+k)-1
+
 function klist(n,mcalc,k)
    list = collect(Int,0:2*mcalc)
    list .*= 2*n+1

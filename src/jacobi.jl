@@ -44,7 +44,7 @@ function makeA(n)
         A[ii,1:ii]=transpose(A[1:ii,ii])
     end
     V=Matrix{Float64}(I,n,n) #initializing the orthogonal transformation
-    return A,copy(A),V
+    return A#,copy(A),V
 end
 
 #Now on to the Rotations!
