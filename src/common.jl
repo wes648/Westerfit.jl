@@ -171,7 +171,7 @@ Determines the number of σ values that will result in unique values a provided
    σ=0 and E states of σ=1. It will also return 2 for nfold = 2 since we have A
    and B states.
 """
-   out = floor(Int,nfold/2)+1
+   out = 1#floor(Int,nfold/2)+1
 end
 
 function srprep(J,S)

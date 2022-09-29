@@ -22,6 +22,9 @@ end
 
 #####OUTPUTS
 function EngWriter(energies,qunus,mmax,sigma)
+"""
+Outputs energy levels with state assignments to a csv-like file
+"""
    qunus[:,1] .*= 2
    qunus = convert.(Int,qunus)
    c = 29979.2458
@@ -83,7 +86,7 @@ function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of
       part = string(part, lpad(0,7))
       #QNFMT
       part = string(part, lpad(1415,4))
-      #J N Ka Kc sigma vt is the order in the array
+      #J N Ka Kc σ vt is the order in the array
       #N Ka Kc v J is the order for SPCAT
       #qunus for upper
       part = string(part, lpad(qunus[i,2],2),lpad(qunus[i,3],2),
@@ -102,7 +105,7 @@ function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of
    println("Transitions written to $molnam.cat!")
 end
 
-function TraWriter(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
+function TraWriter(molnam,freqs, qunus) 
    c = 29979.2458
    p = sortperm(freqs[:,1])
    freqs = freqs[p,:]

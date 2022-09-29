@@ -1,5 +1,5 @@
 ################################################################################
-############                  tracalc                   ############
+############                        tracalc                         ############
 ################################################################################
 
 
@@ -26,9 +26,9 @@ This implements the dipole moment operator in spherical tensor notation. It is
    an implementation of equation 24-25 of http://dx.doi.org/10.1063/1.1545441
 """
    q = kb-k
-   out = wig6j(n,j,s,jb,nb,1)*(-1≤q≤1)*T(μ,q)
-   if out == 0.0
-      return out
+   out = wig6j(n,j,s,jb,nb,1)*T(μ,q)
+   if out == zero(out)
+      return 0.0
    else
       out = √((2*jb+1)*(2*j+1))*wig3j(n,1,nb,k,q,-kb)*(-1)^(n+s+jb+1)
       out *= √((2*nb+1)*(2*n+1))*(-1)^(n-kb-1)
@@ -53,7 +53,7 @@ This builds the matrix of dipole elements and wang transforms it for the A state
    end
    omat = kron(spdiagm(1=>ones(Float64,Int(2*mcalc)),-1=>ones(Float64,Int(2*mcalc))),omat)
    mat = kron(eye(Int(2*mcalc+1)),mat) + omat
-   if σ==0||σ==0.0
+   if σ==zero(σ)
       Uk = ur(jk,s,mcalc)*ut(mcalc,jk,s)
       Ub = ur(jb,s,mcalc)*ut(mcalc,jb,s)
       mat = Uk*mat*Ub
@@ -118,7 +118,7 @@ This repulsively slow function calculates all of the transitions from the
    for i in 1:length(vals)
    for j in (i+1):length(vals)
       Δj = abs(qns[j,1] - qns[i,1])
-      Δk = abs(qns[j,3] - qns[i,3])
+#      Δk = abs(qns[j,3] - qns[i,3])
       if Δj ≤ 2
 #      Δka = abs(qns[j,3] - qns[i,3])
 #      if Δka ≤ 2
@@ -143,7 +143,7 @@ This repulsively slow function calculates all of the transitions from the
             #int = (transpose(vecs[1:lenk,i])*μmat*vecs[1:lenb,j])^2# *exp(vals[j]/(TK*2.083661912e+4))
             int = (transpose(vecs[1:lenk,j])*μmat*vecs[1:lenb,i])^2
             int *= thermfact(i,j,qs,vals,Q)
-            if (int>INTTHRESHOLD)#&&(abs(qns[j,3])==0.0)&&(abs(qns[i,3])==0.0)
+            if (int>INTTHRESHOLD)#&&(abs(qns[transj,3])==0.0)&&(abs(qns[i,3])==0.0)
                temp = [-freq int vals[j]/csl transpose(qns[i,:]) transpose(qns[j,:])]
                trans = vcat(trans,temp)
             end
@@ -154,8 +154,8 @@ This repulsively slow function calculates all of the transitions from the
       else
          break
       end#Δj if
-   end#i for
    end#j for
+   end#i for
    return trans
 end
 

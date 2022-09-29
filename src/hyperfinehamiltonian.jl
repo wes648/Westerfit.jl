@@ -160,21 +160,24 @@ function Hhyp!(pr,mat,J,S)
    if S ≥ 1
    ns, nd, ni, jd = srprep(J,S)
    mat[1:nd[1],1:nd[1]] .+= Hhyp0J(pr,J,S,ns[1])
-   for i in 2:length(ns)
+   n1part = Hhyp1J(pr,J,S,ns[1])
+   mat[ni[1,1]:ni[1,2], ni[2,1]:ni[2,2]] .+= n1part
+   mat[ni[2,1]:ni[i,2], ni[2,1]:ni[2,2]] .+= Hhyp0J(pr,J,S,ns[2])
+   mat[ni[2,1]:ni[i,2], ni[1,1]:ni[1,2]] .+= transpose(n1part)
+   for i in 3:length(ns)
       n = ns[i]
       n1part = Hhyp1J(pr,J,S,n-1.0)
       mat[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]]  .+= n1part
       mat[    ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]]  .+= Hhyp0J(pr,J,S,n)
       mat[    ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] .+= transpose(n1part)
-      if i ≥ 3
-         println(i)
-         n2part = Hhyp2J(pr,J,S,n-2.0)
-         mat[ni[i-2,1]:ni[i-2,2],   ni[i,1]:ni[i,2]] .+= n2part
-         mat[   ni[i,1]:ni[i,2],ni[i-2,1]:ni[i-2,2]] .+= transpose(n2part)
-      end
-   end
-   end
+      n2part = Hhyp2J(pr,J,S,n-2.0)
+      mat[ni[i-2,1]:ni[i-2,2],   ni[i,1]:ni[i,2]] .+= n2part
+      mat[   ni[i,1]:ni[i,2],ni[i-2,1]:ni[i-2,2]] .+= transpose(n2part)
+   end#for
    return mat
+   else
+   return mat
+   end#if
 end
 
 #test section

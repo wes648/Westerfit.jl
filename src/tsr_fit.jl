@@ -24,8 +24,9 @@ using Printf
 using LinearAlgebra
 using LinearAlgebra.BLAS
 using LinearAlgebra.LAPACK
-#using LineSearches
+using WignerSymbols
 using SparseArrays
+using Base.Threads
 include("/home/wes/files/westerfit/src/assign.jl")
 include("/home/wes/files/westerfit/src/common.jl")
 include("/home/wes/files/westerfit/src/filehandling.jl")
@@ -34,7 +35,6 @@ include("/home/wes/files/westerfit/src/intensities.jl")
 include("/home/wes/files/westerfit/src/jacobi.jl")
 #using .jacobi
 include("/home/wes/files/westerfit/src/optimizer.jl")
-#using Threads
 include("/home/wes/files/westerfit/src/WIGXJPF.jl")
 using .WIGXJPF
 
@@ -42,7 +42,7 @@ using .WIGXJPF
 #wig3j(j1,j2,j3,m1,m2,m3) = Float64(wigner3j(j1,j2,j3,m1,m2,m3))
 #wig6j(j1,j2,j3,j4,j5,j6) = Float64(wigner6j(j1,j2,j3,j4,j5,j6))
 
-BLAS.set_num_threads(12)
+BLAS.set_num_threads(Threads.nthreads())
 
 apology = true
 
@@ -61,33 +61,39 @@ end
 ############                       westersim                        ############
 ################################################################################
 function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
+"""
+Builds, diagonalizes, and assigns the Hamiltonian for a given J, S, σ, & mcalc
+"""
    U = ur(j,s,mcalc)
    if σ==zero(σ)
-      U = ur(j,s,mcalc)*ut(mcalc,j,s)
+      U *= ut(mcalc,j,s)
       H = Matrix(U*Htsrmat2(pr,j,s,mcalc,σ)*U)
       #H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
    else
-      H = Matrix(Htsrmat2(pr,j,s,mcalc,σ))
+      H = Matrix(U*Htsrmat2(pr,j,s,mcalc,σ)*U)
    end
-   H, rvec = jacobisweep2(H,Int(floor((j+s+6*mcalc)/8)))
+   H, rvec = jacobisweep2(H,Int(floor((j-s+6*mcalc)/8)))
    vals, vecs = LAPACK.syev!('V', 'U', H)
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
 end
 
 function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
+"""
+Calculates all the energy levels, eigenvectors, & quantum numbers for all J values
+   for a given σ
+"""
    #prm = PAM2RAM(prm)
    #prm = paramprep(prm)
    #prm = paramshift(inprms)
    jmin =  0.5*iseven(Int64(2*s+1))
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
-   jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
+   jd = Int((2*s+1)*sum(2.0 .* jarray .+ 1.0)) #This looks WAY too big -W 9/20/22
    outvals = zeros(Float64,Int(jd*(2*mmax+1)))
    outvecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)))
    outqns = zeros(Float64,Int(jd*(2*mmax+1)),6)
-   Threads.@threads for i in 1:length(jarray)
-      j = jarray[i]
+   @threads for j in jarray
       sind, find = jinds(j,s,mmax)
       tqns, tvals, tvecs = tsrdiag(prm,j,s,nmax,mcalc,mmax,σ)
       si = findfirst(isequal(-mmax*NFOLD+σ),tqns[:,5])
@@ -100,11 +106,15 @@ function tsrcalc(prm,s,nmax,mcalc,mmax,σ)
 end
 
 function westersim(prm,s,nmax,mcalc,mmax)
+"""
+This is the full simulator function
+"""
    σs = σcount(NFOLD)
    jmin =  0.5*iseven(Int64(2*s+1))
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
+   #these should just be passed into tsrcalc
    vals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
    vecs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
    qns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
@@ -119,14 +129,8 @@ function westersim(prm,s,nmax,mcalc,mmax)
 end
 
 ################################################################################
-############                  westerfit                  ############
+############                       westerfit                        ############
 ################################################################################
-function xtxsolve(A)
-   x = zeros(size(A))
-   a,b = eigen(A)
-   x = √(diagm(a))*transpose(b)
-   return x
-end
 
 function jlister(inds)
    #finds all the unique J & σ pairs
@@ -153,16 +157,11 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
 """
    #rp = paramprep(rp)
    jmax = 0.5*maximum(jlist[:,1])
-   #println(jlist)
    σs = σcount(NFOLD)
    jd = (2*S+1)*sum(2 .* collect((0.5*isodd(2*S)):jmax) .+ 1)
-   #evals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
-   #evecs = zeros(Float64,Int((2*S+1)*(2*jmax+1)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
-   #eqns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
    evals = zeros(Float64,Int(jd*(2*mmax+1)),σs)
    evecs = zeros(Float64,Int((2*S+1)*(2*jmax+2)*(2*mcalc+1)),Int(jd*(2*mmax+1)),σs)
-   eqns = zeros(Float64,Int(jd*(2*mmax+1)),6,σs)
-   Threads.@threads for i in 1:size(jlist)[1]
+   @threads for i in 1:size(jlist)[1]
       j = 0.5*jlist[i,1]
       σ = jlist[i,2]
       sind, find = jinds(j,S,mmax)
@@ -171,13 +170,9 @@ This is the 'limited eigen calculator'. It operates similarly to the tsrdiag
       fi = findlast(isequal(mmax*NFOLD+σ),tqns[:,5])
       evals[sind:find,σ+1] = tvals[si:fi]
       evecs[1:Int((2*S+1)*(2*j+1)*(2*mcalc+1)),sind:find,σ+1] = tvecs[:,si:fi]
-      eqns[sind:find,:,σ+1] = tqns[si:fi,:]
    end
-   return evals, evecs#, eqns
+   return evals, evecs
 end
-#take difference and determine rms
-
-
 
 function dogleg(βlm,βsd,t,Δ)
 """
@@ -199,6 +194,9 @@ This enforces a trust region on our steps
 end
 
 function westerfit_handcoded()
+"""
+   The fitter! doesn't work for NFOLD>1
+"""
    global mmax=0
    global mcalc=1
    global S=0.5
@@ -210,7 +208,7 @@ function westerfit_handcoded()
    lines = testlines
    #determine the states
    linds, ofreqs, uncs = lineprep(lines,S,mmax)
-   println(linds)
+   #println(linds)
    jlist = jlister(linds)
    global nmax= S + 0.5*maximum(jlist[:,1])
    #opt
@@ -316,19 +314,17 @@ F      =      5.64133778441192124*29979.2458
 parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 =#
 
-parameters = [  A;   B;   C; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales = [ 1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0]
+parameters = [  A; 0.5*(B+C); 0.25*(B-C); Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
+trsscales =  [1.0;       1.0;        1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 
 
 molnam = "hirota"
 @time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
 testlines = (pred2lne(transitions))
-println(size(testlines))
+#println(size(testlines))
 oparameters = copy(parameters)
 
 pert = 0.001*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
 println(pert)
-#pert = trsscales
 parameters .+= pert
-#orgparams = parameters
 @time westerfit_handcoded()

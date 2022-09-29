@@ -54,7 +54,7 @@ if apology==true
 	println("Sorry about the name...")
 end
 
-global NFOLD=3
+#global NFOLD=3
 global TK = 25.0
 
 ################################################################################

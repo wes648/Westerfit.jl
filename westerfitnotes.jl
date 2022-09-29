@@ -1,22 +1,3 @@
-# westerfit
-A new program for the simulating and fitting of molecular rotational spectra for molecules with one internal rotor and one spin source.
-
-Description of current status:
-
-The full second order Hamiltonian is coded in.
-
-The new version uses a single diagonalization stage in the free rotor quantum number for better treatment of the group theory, especially in the A-states.
-
-The simulator works nearly in full. Transitions between different symmetry states for non-3 fold rotors should be implemented. And a faster transition calculator would be good.
-
-WIGXJPF.jl needs to be parallelized. The README for it's C implementation says it needs to be initialized on each thread but I haven't figured out how to translate that into Julia's ccall structure. Running julia -t8 wigtest.jl is a quick test for seeing if WIGXJPF can be called in parallel.
-
-The fitter is in progress. The handcoded optimizer works well for NFOLD=0, alright for NFOLD=1, and incorrectly (converging to false wells) NFOLD≥2.
-
-Usage of the current state of the  program will require adjusting the paths. It is centered in tsr_fit.jl which currently generates a simulated spectrum and then perturbs the parameters and tries to fit it. That file also contains a "dehyperfined" version of the Hirota data set.
-
-Description of functions by file (unpolished descriptions from Sophie):
-
 tsrdiag -- torsion spin rotation diagonalizer
 initializes wang transformation
 checks whether sigma is zero
@@ -29,7 +10,7 @@ H, in either case, builds the matrix and then performs the Wang transformation. 
 
 ln 72
 jacobisweep fxn does a fixed number of iterations of the jacobi diagonalization approach -- takes two args (matrix and interation count). returns jacobi pre-conditioned (part of the diagonalization) (H) and rvec (rotational vectors, product of all rotational matrices)
-LAPACK.syev! diagonalizes the pre-conditioned matrix -- faster than jacobi but scrambles the eigenvectors.
+LAPACK.syev! diagonalizes the pre-conditioned matrix -- faster than jacobi but scrambles the eigenvectors. 
 assign goes throug the vectors Lapack made and finds the dominant element in each column, arranges them into an identity-like matrix. then combines with the rvecs to get the true eigenvectors. it also generates the quantum numbers. returns qn, eigenvalues, eigenvectors
 
 tsrdiag is the central fxn of westerfit and westersim -- they have different fxns wrapped around it, but this is where the eigenvalues and vectors come from
@@ -38,7 +19,7 @@ TSRCALC -- torsion spin rotation (energy level) calculator
 first thing it does it determine the minimum possible J value -- if S is half integer, it's 1/2, and if S is a whole number, it's 0
 jmax is found from nmax - s (will be fixed)
 jarray -- builds an array of all the j values
-jd -- calculates the j degeneracies.
+jd -- calculates the j degeneracies. 
 outvals, outvecs, outqns -- creates empty arrays for the eigenvalues, eigenvectors, and quantum numbers. may be lies.
 
 @threads is the parallelized calling of tsrdiag -- goes through every value in jarray
@@ -81,10 +62,10 @@ FILE: FILEHANDLING
 LINEPREP -- converts the input line list into a code firendly format, already documented
 EngWriter -- energy writer, produces two files of all the different energy levels, one for A states one for E states. convrets the energies into wavenumbers and then builds and prints strings to the file, comma delimited, looks fixed width
 
-TraWriteSPCAT -- transition writer spcat, write an spcat version of the file so that it can interact with pickett stuff (such as using AABS), already well documented
+TraWriteSPCAT -- transition writer spcat, write an spcat version of the file so that it can interact with pickett stuff (such as using ABES), already well documented
 TraWriter -- produces a comma delimited value structure, makes the outputs look prettier
 
-File: JACOBI, well-documented by Christina Lee already, could be adapted to sparse arrays to increase speed
+File: JACOBI, well-documented by Christina already, should be adapted to sparse arrays to increase speed
 
 File: ASSIGN
 
@@ -95,7 +76,7 @@ ASSIGN -- assigns the quantum numbers of the eigenvalues
 	if statement for diabatic sorter (not used rn)
 	QNs -- qngen runs
 	returns QNs, vals, vecs, all in proper orders
-
+	
 
 LEADFACT -- leading factor, done on a copy of vecs to prevent it from becoming zeroes. finds the permutation to change the order post-syev into the correct order.
 	turns the vectors into absolute values (only looking at magnitude).
@@ -111,16 +92,20 @@ Adiabatic sorter -- use the same state labeling even when the energies flip plac
 
 finds every state of the same symmetry, abs(k), abs(m) and then energetically sort them with their labels attached
 
-other stuff that is not in use
+other shit that is not in use
 
 File: Common. already well-documented and mostly understandable anyway.
+
+on 2n+1 for degeneracy -- "it's not accurate, but it stems from a place of accuracy"
+
+"if this reads as a little bit deranged, it's because it is" ~on paramprep
 
 File: OPTIMIZER
 
 RMSCALC -- RMS calculator. takes the calculated values and the indicies of the transitions and the observed frequencies (ofreqs)
 	cfreqs -- calculated frequencies generation from energies
 	omc is the difference between calculated and actual
-	rms is an rms
+	rms is an rms duh
 
 ANADERIV -- analytical derivative
 	takes the derivative with respect to a given paramaeter by setting the others to zero and that one to one
@@ -131,7 +116,7 @@ ANADERIV -- analytical derivative
 LBMQ_GAIN -- not currently being used, method of assessing whether to expand or shrink a trust region
 
 build_jcbn! -- jcbn gets passed in, rewritten, then sent out
-	iterates over every index and finds their matched vectors
+	iterates over every index and finds their matched vectors 
 	iterates over the permutation (list of floated parameters) -- don't make a derivative for a parameter we're not floating
 
 build_hess! -- makes the hessian. also makes the transpose of the jacobian times the weights
@@ -146,7 +131,7 @@ lbmq_step! -- simplest implementation of LBMQ
 	returns beta (step -- array of values by which parameters will be shifted) and lambda (LBMQ parameter)
 
 lbmq_turducken! -- three LBMQ steps, all a little bit different, also because memes
-	first repeat lbmq
+	first repeat lmbq_step
 	want to keep track of individual steps and also total sum of step -- hence why betafull exists
 	shift the floated parameters
 	recalculate vals and vectors
@@ -154,7 +139,7 @@ lbmq_turducken! -- three LBMQ steps, all a little bit different, also because me
 	use new OMC to calculate a new step
 	repeat w/o calculating the jacobian (duck)
 	do it again w/o calculating the jacobian again (chicken)
-three steps off of one calculation of the jacobian so it all runs faster (fixes some of the overstepping issues common to lbmq)
+three steps off of one calculation of the jacobian so it all runs faster (fixes some of the overperturbation issues common to lbmq)
 
 paramunc! -- calculates parameter uncertainty (diagnonal elements of inverse of Hessian)
 
@@ -167,7 +152,7 @@ lbmq_opttr -- LMBQ optimizer trust region (previously discussed as being poorly 
 	W -- finds the weights by uilding a diagonal matrix based on inverse uncertainty values
 	epsilons -- convergence thresholds, one for change in RMS and the other for change in step
 	LIMIT is max number of iterations
-	lambdalm is LBMQ parameter (later will called from user input)
+	lambdalm is LMBQ parameter (later will called from user input)
 	deltalm is trust region, which gets changed by parameters floated
 	counter and stoit -- not being used, but the idea is to stop it from converging on high RMS by doing a stochastic corrections
 	make a whole bunch of empty matrices
@@ -177,8 +162,8 @@ lbmq_opttr -- LMBQ optimizer trust region (previously discussed as being poorly 
 	do the turducken step
 	do a check -- find rms shift percentage, if new rms is lower, print step size, redefine new values to main name, rebuild the jacobian and Hessian, increase counter, shrink LMBQ parameter by a factor of three (if it gets too small,  ake it zero)
 	if the new rms is higher, up the LMBQ parameter and repeat
-
-	if RMS is less than goal, print CFOUR joke and end program
+	
+	if RMS is less than goal, print CFOUR joke and end program #memes
 	if RMS has stopped decreasing but is still higher than goal, say such has happened and end program
 	if the step size if effectively zero, say such, and end program
 	if the counter is over the limit, say so, and break
@@ -219,7 +204,7 @@ Htr -- torsion rotation hamiltonian
 	rewrites the matrix as kronicker matrix of sparse identity matrix and rotational hamiltonian matrix -- gives your diagonal line of rotational hamiltonian matrix
 	add the torsional matrix to it
 
-Hsthings -- spin rotation elements following Raynes. does not currently include the brown and sears centrifugal distortion terms (although it can at a time)
+Hsthings -- spin rotation elements following Rayne's. does not currently include the brown and sears centrifugal distortion terms (although it can at a time)
 
 hqelem and hqmat are not being used because the WIGXJPF isn't parallelized
 
@@ -238,6 +223,7 @@ Hsr -- spin rotation Hamiltonian
         Htsr -- old, not in use. [originally put the torsion on N with the m-levels inside of that, then add sr later. When adding hyperfine or a second spin, realized it made more sense to build the F blocks, have multiple F blocks for each N value (here J value)]
 
 Htsr0Nv and 1Nv are the variants that are currently in use
+"I'm suddenly feeling very bad for you"
 
 Htsrmat2 follows new tsr structure
         has srpart and tspart, which cover the same Ns and are built in the same style similarly to sr Hamiltonian
