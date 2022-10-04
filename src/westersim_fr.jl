@@ -62,8 +62,8 @@ global TK = 25.0
 ################################################################################
 
 function Δlist(J,S)
-	max = Int64(J+S)
-	min = Int64(abs(J-S))
+	max = Int(J+S)
+	min = Int(abs(J-S))
 	return collect(min:max)
 end
 function paramshift(input)
@@ -147,12 +147,12 @@ function Δtest(a,b,c)
 end
 #These are the various Wang
 function un(m)
-	if iseven(Int64(m))
-		n = Int64(m/2)
+	if iseven(Int(m))
+		n = Int(m/2)
 		out = (1/sqrt(2)) .* [-eye(n) rotl90(eye(n)); rotl90(eye(n)) eye(n)]
 		return out
-	elseif isodd(Int64(m))
-		n = Int64((m-1)/2)
+	elseif isodd(Int(m))
+		n = Int((m-1)/2)
 		out = (1/sqrt(2)) .* [-eye(n) zeros(n) rotl90(eye(n)); zeros(1,n) sqrt(2) zeros(1,n);
 		 rotl90(eye(n)) zeros(n) eye(n)]
 		return out
@@ -455,7 +455,7 @@ function assign(nmax,j,s,σ,mcalc,mmax,vals,vecs)
 	ndegns = @. 2*nlist + 1
 	mcind = mcalc+1
 	mcd = 2*mcalc+1
-	offset = zeros(Int64,length(nlist))
+	offset = zeros(Int,length(nlist))
 	offset[2:end] = (mcd) .* ndegns[1:end-1]
 	goals = zeros(Int,0,1)
 	off = 0
@@ -520,7 +520,7 @@ function tsrdiag(pr,j,s,nmax,mcalc,mmax,σ)
 end
 function tsrcalc(s,nmax,mcalc,mmax,σ)
 	prm = paramshift(inprms)
-	if isodd(Int64(2*s+1))
+	if isodd(Int(2*s+1))
 		jmin = 0.0
 	else
 		jmin = 0.5
@@ -697,12 +697,12 @@ function lineprep(lns)
 	qunus = lns[:,1:12]
 	freqs = lns[:,13]
 	uncs = lns[:,end]
-	inds = zeros(Int64,size(lns)[1],4)
-	inds[:,1] = Int64.(2 .* qunus[:,1])
-	inds[:,2] = Int64.(2 .* qunus[:,6])
+	inds = zeros(Int,size(lns)[1],4)
+	inds[:,1] = Int.(2 .* qunus[:,1])
+	inds[:,2] = Int.(2 .* qunus[:,6])
 	inds[:,3] = qn2ind.(qunus[:,1],0.5,qunus[:,2],qunus[:,3],qunus[:,4])
-	inds[:,4] = Int64.(2 .* qunus[:,7])
-	inds[:,5] = Int64.(2 .* qunus[:,12])
+	inds[:,4] = Int.(2 .* qunus[:,7])
+	inds[:,5] = Int.(2 .* qunus[:,12])
 	inds[:,6] = qn2ind.(qunus[:,7],0.5,qunus[:,8],qunus[:,9],qunus[:,10])
 	#inds = vcat(inds[:,1:2], inds[:,3:4])
 	return inds, freqs, uncs

@@ -8,12 +8,12 @@ function lineprep(lns,s,mcalc)
    qunus = lns[:,1:12]
    freqs = lns[:,13]
    uncs = lns[:,end]
-   inds = zeros(Int64,size(lns)[1],6)
-   inds[:,1] = Int64.(2 .* qunus[:,1])
-   inds[:,2] = Int64.(qunus[:,6])
+   inds = zeros(Int,size(lns)[1],6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] = Int.(qunus[:,6])
    inds[:,3] = qn2ind.(mcalc,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
-   inds[:,4] = Int64.(2 .* qunus[:,7])
-   inds[:,5] = Int64.(qunus[:,12])
+   inds[:,4] = Int.(2 .* qunus[:,7])
+   inds[:,5] = Int.(qunus[:,12])
    inds[:,6] = qn2ind.(mcalc,qunus[:,11],qunus[:,7],s,qunus[:,8],qunus[:,9],qunus[:,10])
    #inds = vcat(inds[:,1:2], inds[:,3:4])
    return inds, freqs, uncs

@@ -205,7 +205,7 @@ function Hspi1N(pr,J::Float64,S::Float64,Nl)
 end
 
 function Htsr0N(pr,j,s,n,mcalc,σ)
-   marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
    karray = collect(Float64,-n:n)
    if n == zero(n)
       mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
@@ -299,7 +299,7 @@ function Htsrmat2(pr,j,s,mcalc,σ)
    @inbounds tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
    @inbounds tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
-   marray = NFOLD.* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
    tspart = kron(diagm(0=>marray),tspart)
    out = kron(eye(2*mcalc+1),srpart) + tspart + trpart
    return out

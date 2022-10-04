@@ -104,7 +104,7 @@ This repulsively slow function calculates all of the transitions from the
 """
    jmax = nmax - s
    trans = zeros(Float64,0,15)
-   if isodd(Int64(2*s+1))
+   if isodd(Int(2*s+1))
       ojb = 1.
       ojk = 0.
    else

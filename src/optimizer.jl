@@ -32,6 +32,7 @@ function build_jcbn!(jcbn,inds,vecs,params,perm)
 """
 This builds the Jacobian based on the Hellmann–Feynman theorem.
 """
+   jcbn = zero(jcbn)
    @threads for a in 1:size(inds)[1]
       ju = 0.5*inds[a,1]
       jl = 0.5*inds[a,4]
@@ -61,6 +62,7 @@ function build_hess(jtw,jcbn,weights)
    #Threads.@threads for i in 1:size(hssn)[1]
    #   dk[i,i] = norm(hssn[:,i])
    #end
+   #println(hssn)
    return hssn, jtw
 end
 
@@ -106,31 +108,58 @@ function lbmq_step!(β,H,grad, λ)
    return β,λ
 end
 
+function wellcon_model(t,p)
+   @. p[1]*exp(p[2]*t)
+end
+
+function wellcon_acc()
+#well conditioned accelerator. If λ is very small and previous 4 iterations
+# have same sign, does an exponential fit and extrapolates to the end of the fit
+   xs = collect(1:count)
+   p0 = zeros(2)
+   γ = zeros(length(perm))
+   @threads for i in 1:length(perm)
+      y = βset[i,:]
+      if allequal(sign.(y))
+         p0[1] = y[1]
+         fit = curve_fit(wellcon_model,xs,y,p0)
+         a = fit.param[1]
+         k = fit.param[2]
+         γ[i] = -a/(exp(k)-1.0) - sum(y)
+      else
+         γ[i] = 0.0
+      end
+   end
+   return γ
+end
+
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
    A = Hermitian(H + λ*Diagonal(H))
+   tdncount = 3
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
       A .= Hermitian(H + λ*Diagonal(H))
    end
    A = cholesky!(A)
-   β = zeros(Float64,size(perm))
-   β .= ldiv!(β, A, jtw*omc)
-   βf = copy(β)
-   nparams[perm] .+= β
+   β = zeros(Float64,length(perm),tdncount)
+   β[:,1] .= ldiv!(β[:,1], A, jtw*omc)
+   for i in 2:tdncount
+      nparams[perm] .+= β[:,1]
+      vals, nvecs = limeigcalc(nlist, inds, nparams)
+      nrms, omc = rmscalc(vals,inds,ofreqs)
+      β[:,i] .= ldiv!(β[:,i], A, jtw*omc)
+   end
+   #δβ = aitkenδ(β)
+   βf = sum(β,dims=2) #.+ δβ
+   nparams[perm] .+= β[:,end] #.+ δβ
    vals, nvecs = limeigcalc(nlist, inds, nparams)
-   nrms, nomc = rmscalc(vals,inds,ofreqs)
-   β .= ldiv!(β, A, jtw*nomc)
-   βf .+= β
-   nparams[perm] .+= β
-   vals, nvecs = limeigcalc(nlist, inds, nparams)
-   nrms, nomc = rmscalc(vals,inds,ofreqs)
-   β .= ldiv!(β, A, jtw*nomc)
-   βf .+= β
-   nparams[perm] .+= β
-   vals, nvecs = limeigcalc(nlist, inds, nparams)
-   nrms, nomc = rmscalc(vals,inds,ofreqs)
-   return βf,λ,nomc,nrms,vals,nvecs, nparams
+   nrms, omc = rmscalc(vals,inds,ofreqs)
+   return βf,λ,omc,nrms,vals,nvecs, nparams
+end
+
+function aitkenδ(γ)
+   @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
 
 function paramunc!(uncs,H)
@@ -163,7 +192,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
    jtw = zero(omc) #jtwient
    K = zero(omc) #acceleration correction
-   H = zeros(Float64,length(perm),length(perm)) #Hessian
+   #H = zeros(Float64,length(perm),length(perm)) #Hessian
    #D = zero(H) #Elliptical Trust Region
    J = build_jcbn!(J,inds,vecs,params,perm)
    H, jtw = build_hess(jtw,J,W)
