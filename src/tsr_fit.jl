@@ -24,6 +24,7 @@ using Printf
 using LinearAlgebra
 using LinearAlgebra.BLAS
 using LinearAlgebra.LAPACK
+#using LsqFit
 using WignerSymbols
 using SparseArrays
 using Base.Threads
@@ -72,8 +73,13 @@ Builds, diagonalizes, and assigns the Hamiltonian for a given J, S, σ, & mcalc
    else
       H = Matrix(U*Htsrmat2(pr,j,s,mcalc,σ)*U)
    end
-   H, rvec = jacobisweep2(H,Int(floor((j-s+6*mcalc)/8)))
-   vals, vecs = LAPACK.syev!('V', 'U', H)
+   if j≥1.0
+      H, rvec = jacobisweep2(H,Int(floor((j+s+6*mcalc)/8)))
+      vals, vecs = LAPACK.syev!('V', 'U', H)
+   else
+      vals, vecs = LAPACK.syev!('V', 'U', H)
+      rvec = I(length(vals))
+   end
    qns, vals, vecs = assign(j,s,σ,mcalc,vals,vecs,rvec)
    return qns, vals, vecs
 end
@@ -86,7 +92,7 @@ Calculates all the energy levels, eigenvectors, & quantum numbers for all J valu
    #prm = PAM2RAM(prm)
    #prm = paramprep(prm)
    #prm = paramshift(inprms)
-   jmin =  0.5*iseven(Int64(2*s+1))
+   jmin =  0.5*iseven(Int(2*s+1))
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2.0 .* jarray .+ 1.0)) #This looks WAY too big -W 9/20/22
@@ -109,8 +115,9 @@ function westersim(prm,s,nmax,mcalc,mmax)
 """
 This is the full simulator function
 """
+   #mcalc, mmax = msetter(NFOLD,mcalc,mmax)
    σs = σcount(NFOLD)
-   jmin =  0.5*iseven(Int64(2*s+1))
+   jmin =  0.5*iseven(Int(2*s+1))
    jmax = nmax - s
    jarray = collect(Float64,jmin:jmax)
    jd = Int((2*s+1)*sum(2 .* jarray .+ 1))
@@ -197,8 +204,9 @@ function westerfit_handcoded()
 """
    The fitter! doesn't work for NFOLD>1
 """
+   #mc, mmax = msetter(NFOLD,mcalc,0)
    global mmax=0
-   global mcalc=1
+   global mcalc=mc
    global S=0.5
 #   tsrparams = PAM2RAM(parameters)
    tsrparams = parameters
@@ -300,7 +308,7 @@ end
 global NFOLD=3
 global TK = 25.0
 const KB = 2.083661912E+4 #MHz/K
-mc = 1
+mc = 3
 nm = 3
 
 #=
@@ -314,8 +322,12 @@ F      =      5.64133778441192124*29979.2458
 parameters = [ A+F*ρ^2;   B;   C; 0*Dab;   F; ρ*F;  V3; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
 =#
 
-parameters = [  A; 0.5*(B+C); 0.25*(B-C); Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales =  [1.0;       1.0;        1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0]
+BJ = 0.5*(B+C)
+BK = A - 0.5*(B+C)
+Bp =  0.5*(B-C)
+
+parameters = [ BK;  BJ;  Bp; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
+trsscales =  [1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0]
 
 
 molnam = "hirota"

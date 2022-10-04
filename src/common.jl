@@ -9,8 +9,8 @@ This generates a list of all J₃ values that satisfy the Triangle Conditions wi
    inputs J₁ and J₂. This is typically used to determine N values for a given
    J and S.
 """
-   max = Int64(J+S)
-   min = Int64(abs(J-S))
+   max = Int(J+S)
+   min = Int(abs(J-S))
    return collect(min:max)
 end
 
@@ -171,7 +171,27 @@ Determines the number of σ values that will result in unique values a provided
    σ=0 and E states of σ=1. It will also return 2 for nfold = 2 since we have A
    and B states.
 """
-   out = 1#floor(Int,nfold/2)+1
+   out = floor(Int,nfold/2)+1
+end
+
+function msetter(nfold,mcalc,mmax)
+"""
+Sets mcalc & mmax to zero if NFOLD=0 to fully disable torsional behavior.
+   If NFOLD>0, makes sure that mcalc is not less than NFOLD. This is due to the
+   odd behavior of westerfit which will fail if the torsional basis is not
+   sufficiently large. While technically a bug, there are no current plans to
+   change this behavior.
+"""
+   if nfold==zero(nfold)
+      mcalc = zero(mcalc)
+      mmax = zero(mmax)
+   else
+      if mcalc < nfold
+         println("mcalc was too low for NFOLD value. Setting mcalc=NFOLD")
+         mcalc = nfold
+      end
+   end
+   return mcalc, mmax
 end
 
 function srprep(J,S)
@@ -248,12 +268,12 @@ This generates a standard Wang Transformation Matrix for a matrix of size m. As
    rotor's B states, input m = 4. Even m values will exclude the untransformed
    0 state that centers the typical form of these matrices.
 """
-   if iseven(Int64(m))
-      n = Int64(m/2)
+   if iseven(Int(m))
+      n = Int(m/2)
       out = (1/sqrt(2)) .* [-eye(n) rotl90(eye(n)); rotl90(eye(n)) eye(n)]
       return out
-   elseif isodd(Int64(m))
-      n = Int64((m-1)/2)
+   elseif isodd(Int(m))
+      n = Int((m-1)/2)
       out = (1/sqrt(2)) .* [-eye(n) zeros(n) rotl90(eye(n)); zeros(1,n) sqrt(2) zeros(1,n);
        rotl90(eye(n)) zeros(n) eye(n)]
       return out
