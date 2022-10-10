@@ -134,12 +134,16 @@ function wellcon_acc()
 end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
-function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
+function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms)
    A = Hermitian(H + λ*Diagonal(H))
-   tdncount = 3
+   if rms > 2000.
+      tdncount = 1
+   else
+      tdncount = 3
+   end
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
-      A .= Hermitian(H + λ*Diagonal(H))
+      A = Hermitian(H + λ*Diagonal(H))
    end
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
@@ -162,8 +166,8 @@ function aitkenδ(γ)
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
 
-function paramunc!(uncs,H)
-   uncs = diag(inv(H))
+function paramunc!(uncs,H,perm,omc)
+   uncs = sqrt.(diag(inv(H))) .* (sum(omc .^2))/(length(omc)-length(perm))
    return uncs
 end
 
@@ -196,7 +200,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
    #D = zero(H) #Elliptical Trust Region
    J = build_jcbn!(J,inds,vecs,params,perm)
    H, jtw = build_hess(jtw,J,W)
-   uncs = paramunc!(uncs,H)
+   uncs = paramunc!(uncs,H,perm,omc)
    converged=false
    while converged==false
       #=
@@ -211,7 +215,7 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
-      βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs)
+      βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs,rms)
       check = abs(nrms-rms)/rms
       if nrms < rms
          println(βf)
@@ -254,10 +258,14 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          break
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
+         uncs = paramunc!(uncs,H,perm,omc)
+         println(uncs)
          break
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
+         uncs = paramunc!(uncs,H,perm,omc)
+         println(uncs)
          break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
@@ -267,7 +275,5 @@ function lbmq_opttr(nlist,ofreqs,uncs,inds,params,scales,λ)
          #write update to file
       end #check if
    end#while
-   uncs = paramunc!(uncs,H)
-   println(uncs)
    return params, vals
 end
