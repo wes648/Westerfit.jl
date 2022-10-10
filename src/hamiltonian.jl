@@ -211,7 +211,7 @@ function Htsr0N(pr,j,s,n,mcalc,σ)
       mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
    else
       mat = pr[12]*θ(j,n,s)*0.0
-      mat = mat .* karray
+      mat .*= karray
       mat = kron(marray,mat)
       mat = spdiagm(0=>mat)
    end
@@ -223,7 +223,7 @@ function Htsr1N(pr,j::Float64,s::Float64,nl,mcalc,σ)
    mat = spzeros(Float64,0,0)
    for i in 1:length(marray)
       p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]*0.0
-      p1 = p1 .* sqrt.( (nl+1.0)^2 .+ karray .^2)
+      p1 .*= sqrt.( (nl+1.0)^2 .+ karray .^2)
       part = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
       mat = cat(mat,part,dims=(1,2))
    end
@@ -268,7 +268,7 @@ function Htsr0Nv(pr,j,s,n)
       mat = spzeros(Float64,1,1)
    else
       mat = pr[12]*θ(j,n,s)
-      mat = mat .* karray
+      mat *= karray
       mat = spdiagm(0=>mat)
    end
    return mat
@@ -276,7 +276,7 @@ end
 function Htsr1Nv(pr,j,s,nl)
    karray = collect(Float64,-nl:nl)
    p1 = ϕ(j,nl+1.0,s)*pr[12]
-   p1 = p1 .* sqrt.( (nl+1.0)^2 .+ karray .^2)
+   p1 *= sqrt.( (nl+1.0)^2 .+ karray .^2)
    mat = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
    return mat
 end

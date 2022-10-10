@@ -28,15 +28,15 @@ using LinearAlgebra.LAPACK
 using WignerSymbols
 using SparseArrays
 using Base.Threads
-include("/home/wes/files/westerfit/src/assign.jl")
-include("/home/wes/files/westerfit/src/common.jl")
-include("/home/wes/files/westerfit/src/filehandling.jl")
-include("/home/wes/files/westerfit/src/hamiltonian.jl")
-include("/home/wes/files/westerfit/src/intensities.jl")
-include("/home/wes/files/westerfit/src/jacobi.jl")
+include(pwd()*"/assign.jl")
+include(pwd()*"/common.jl")
+include(pwd()*"/filehandling.jl")
+include(pwd()*"/hamiltonian.jl")
+include(pwd()*"/intensities.jl")
+include(pwd()*"/jacobi.jl")
+include(pwd()*"/optimizer.jl")
+include(pwd()*"/WIGXJPF.jl")
 #using .jacobi
-include("/home/wes/files/westerfit/src/optimizer.jl")
-include("/home/wes/files/westerfit/src/WIGXJPF.jl")
 using .WIGXJPF
 
 #using WignerSymbols
@@ -202,7 +202,7 @@ end
 
 function westerfit_handcoded()
 """
-   The fitter! doesn't work for NFOLD>1
+   The fitter!
 """
    #mc, mmax = msetter(NFOLD,mcalc,0)
    global mmax=0
@@ -253,7 +253,7 @@ Dab = -3716.8
 ϵyy = -415.9114
 ϵxz = 345.6789
 ΔN = 0.01188
-η = 0.0
+η = 1.5
 μa = 1.0
 μb = 0.5
 μ = [μa 0.008; μb 0.006; 0.0 -0.034]
@@ -326,8 +326,8 @@ BJ = 0.5*(B+C)
 BK = A - 0.5*(B+C)
 Bp =  0.5*(B-C)
 
-parameters = [ BK;  BJ;  Bp; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz; 0.0;  ΔN]
-trsscales =  [1.0; 1.0; 1.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 0.0; 1.0]
+parameters = [ BK;  BJ;  Bp; Dab;   F; ρ*F;  V3; ϵzz; ϵxx; ϵyy; ϵxz;   η;  ΔN]
+trsscales =  [1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0]
 
 
 molnam = "hirota"
@@ -336,7 +336,7 @@ testlines = (pred2lne(transitions))
 #println(size(testlines))
 oparameters = copy(parameters)
 
-pert = 0.001*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
+pert = 0.4*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
 println(pert)
 parameters .+= pert
 @time westerfit_handcoded()
