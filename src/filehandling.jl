@@ -1,3 +1,83 @@
+#####INPUTS
+
+function paraminp(molnam::String)
+   NFOLD = 0
+   S = 0
+   TK = 25.0
+   mcalc = 0
+   mmax = 0
+   A = 0.0
+   B = 0.0
+   C = 0.0
+   Dab = 0.0
+   F = 0.0
+   ρ = 0.0
+   V3 = 0.0
+   ϵzz = 0.0
+   ϵxx = 0.0
+   ϵyy = 0.0
+   ϵxzb = 0.0
+   η = 0.0
+   χzz = 0.0
+   χxxmχyy = 0.0
+   χxz = 0.0
+   ΔN = 0.0
+   ΔNK = 0.0
+   ΔK = 0.0
+   δN = 0.0
+   δK = 0.0
+   Fm = 0.0
+   V6 = 0.0
+   V3m = 0.0
+   ρm = 0.0
+   ρ3 = 0.0
+   FN = 0.0
+   FK = 0.0
+   Fbc = 0.0
+   Fab = 0.0
+   V3N = 0.0
+   V3K = 0.0
+   V3ab = 0.0
+   V3bc = 0.0
+   ρN = 0.0
+   ρK = 0.0
+   ρab = 0.0
+   ρbN = 0.0
+   ΔsN = 0.0
+   ΔsNK = 0.0
+   ΔsKN = 0.0
+   ΔsK = 0.0
+   δsN = 0.0
+   δsK = 0.0
+   ΦJ = 0.0
+   ΦJK = 0.0
+   ΦKJ = 0.0
+   ΦK = 0.0
+   ϕJ = 0.0
+   ϕJK = 0.0
+   ϕK = 0.0
+   include(pwd()*"$molnam.inp")
+   if NFOLD==zero(NFOLD)
+      mcalc = 0
+      mmax = 0
+   end
+   BJ = 0.5*(B+C)
+   BK = A - BJ
+   Bp = 0.25*(B-C)
+   ao = -(ϵzz+ϵyy+ϵxx)/3.0
+   a = -(2.0*ϵzz-ϵyy-ϵxx)/6.0
+   d = -ϵxzb*0.5
+   b = (ϵxx - ϵyy)*0.5
+   χ2 = √(1.0/6.0)*χxxmχyy
+   χ1 = -√(2.0/3.0)*χxz
+   params = [BK; BJ; Bp; Dab; F; ρ*F; V3; a0; a; b; d; η; χzz; χ2; χ1
+         ΔN; ΔNK; ΔK; δN; δK;
+         Fm; V6; V3m; ρm; ρ3; FN; FK; Fbc; Fab; V3N; V3K; V3ab; V3bc; ρN; ρK; ρab; ρbN
+         ΔsN; ΔsNK; ΔsKN; ΔsK; δsN; δsK;
+         ΦJ; ΦJK; ΦKJ; ΦK; ϕJ; ϕJK; ϕK]
+   return params, S, NFOLD, mcalc, mmax
+end
+
 
 function lineprep(lns,s,mcalc)
    #converts the input file into a more code friendly format
@@ -105,7 +185,7 @@ function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of
    println("Transitions written to $molnam.cat!")
 end
 
-function TraWriter(molnam,freqs, qunus) 
+function TraWriter(molnam,freqs, qunus)
    c = 29979.2458
    p = sortperm(freqs[:,1])
    freqs = freqs[p,:]
