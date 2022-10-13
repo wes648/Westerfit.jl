@@ -58,8 +58,14 @@ function paraminp(molnam::String)
    ϕK = 0.0
    include(pwd()*"$molnam.inp")
    if NFOLD==zero(NFOLD)
-      mcalc = 0
-      mmax = 0
+      if mcalc != zero(mcalc)
+          print("NFOLD is zero; setting mcalc to 0.")
+	  mcalc = 0
+      end
+      if mmax != zero(mmax)
+          print("NFOLD is zero; setting mmax to 0.")
+	  mmax = 0
+      end
    end
    BJ = 0.5*(B+C)
    BK = A - BJ
