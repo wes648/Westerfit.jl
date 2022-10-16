@@ -79,9 +79,10 @@ function Htor(pr,mcalc,N,σ)
    else
    tmp = convert(Int,2*mcalc+1)
    ks = kron(ones(Float64,tmp),collect(Float64,-N:N))
-   ms = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
-   ondiags = Htor0m(pr,N,ks,ms,σ)
-   of1diags = Htor1m(pr,N,ks[tnp+1:end],ms[tnp+1:end],σ)
+   #array = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
+   marray = kron(msbuilder(Float64,mcalc,σ,NFOLD), ones(Float64,tnp))
+   ondiags = Htor0m(pr,N,ks,marray,σ)
+   of1diags = Htor1m(pr,N,ks[tnp+1:end],marray[tnp+1:end],σ)
    out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
    return out
    end
@@ -97,9 +98,10 @@ function Htor(pr,mcalc,j,s,σ)
       ks = vcat(ks,collect(Float64,-n:n))
    end
    ks = kron(ones(Float64,tmp),ks)
-   ms = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
-   ondiags = Htor0m(pr,j,ks,ms,σ)
-   of1diags = Htor1m(pr,j,ks[tnp+1:end],ms[tnp+1:end],σ)
+   #array = kron(NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ, ones(Float64,tnp))
+   marray = kron(msbuilder(Float64,mcalc,σ,NFOLD), ones(Float64,tnp))
+   ondiags = Htor0m(pr,j,ks,marray,σ)
+   of1diags = Htor1m(pr,j,ks[tnp+1:end],marray[tnp+1:end],σ)
    out = spdiagm(tnp*tmp,tnp*tmp,0=>ondiags,tnp=>of1diags,-tnp=>of1diags)
    return out
    end
@@ -205,7 +207,8 @@ function Hspi1N(pr,J::Float64,S::Float64,Nl)
 end
 
 function Htsr0N(pr,j,s,n,mcalc,σ)
-   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = msbuilder(Float64,mcalc,σ,NFOLD)
    karray = collect(Float64,-n:n)
    if n == zero(n)
       mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
@@ -219,7 +222,8 @@ function Htsr0N(pr,j,s,n,mcalc,σ)
 end
 function Htsr1N(pr,j::Float64,s::Float64,nl,mcalc,σ)
    karray = collect(Float64,-nl:nl)
-   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = msbuilder(Float64,mcalc,σ,NFOLD)
    mat = spzeros(Float64,0,0)
    for i in 1:length(marray)
       p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]*0.0
@@ -299,7 +303,8 @@ function Htsrmat2(pr,j,s,mcalc,σ)
    @inbounds tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
    @inbounds tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
-   marray = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = msbuilder(Float64,mcalc,σ,NFOLD)
    tspart = kron(diagm(0=>marray),tspart)
    out = kron(eye(2*mcalc+1),srpart) + tspart + trpart
    return out

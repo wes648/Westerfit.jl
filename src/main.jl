@@ -332,6 +332,7 @@ trsscales =  [1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0; 1.0]
 
 molnam = "hirota"
 @time transitions, qns, vals, vecs = westersim(parameters,0.5,nm,mc,0)
+#=
 testlines = (pred2lne(transitions))
 #println(size(testlines))
 oparameters = copy(parameters)
@@ -340,3 +341,4 @@ pert = 0.4*(0.5 .- rand(Float64,size(parameters))).*trsscales.*parameters
 println(pert)
 parameters .+= pert
 @time westerfit_handcoded()
+=#
