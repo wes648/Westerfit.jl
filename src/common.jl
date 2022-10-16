@@ -108,8 +108,8 @@ This generates a list of all the spin-torsion-rotation quantum numbers across a
       out = vcat(out,part)
    end
    out = kron(ones(Int,md),out)
-   ms = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,jsd))
-   out = hcat(fill(j,size(out)[1]),out,ms,fill(σ,jsd*md))
+   marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,jsd))
+   out = hcat(fill(j,size(out)[1]),out,marray,fill(σ,jsd*md))
    return out
 end
 
@@ -174,24 +174,32 @@ Determines the number of σ values that will result in unique values a provided
    out = floor(Int,nfold/2)+1
 end
 
-function msetter(nfold,mcalc,mmax)
-"""
-Sets mcalc & mmax to zero if NFOLD=0 to fully disable torsional behavior.
-   If NFOLD>0, makes sure that mcalc is not less than NFOLD. This is due to the
-   odd behavior of westerfit which will fail if the torsional basis is not
-   sufficiently large. While technically a bug, there are no current plans to
-   change this behavior.
-"""
-   if nfold==zero(nfold)
-      mcalc = zero(mcalc)
-      mmax = zero(mmax)
-   else
-      if mcalc < nfold
-         println("mcalc was too low for NFOLD value. Setting mcalc=NFOLD")
-         mcalc = nfold
-      end
+function σtype(σ,nfold)
+   if σ==zero(σ) # A state
+      return 0
+   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+      return 2
+   else # E state
+      return 1
    end
-   return mcalc, mmax
+end
+
+function msbuilder(T::Type,mcalc::Number,σ::Number,nfold::Number)
+   σt = σtype(σ,nfold)
+   lim = mcalc*nfold
+   if σt==0
+      marray = collect(T,-lim:nfold:lim)
+   elseif σt==2
+      lim += σ
+      marray = collect(T,-lim:nfold:lim)
+   else
+      marray = collect(T,(-lim+σ):nfold:(lim+σ))
+   end
+   return marray
+end
+function msbuilder(mcalc,σ,nfold)
+   marray = msbuilder(Int,mcalc,σ,nfold)
+   return marray
 end
 
 function srprep(J,S)
