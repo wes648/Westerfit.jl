@@ -18,7 +18,7 @@ function anaderiv(j,s,σ,vec,rp,rpid)
    if σ==zero(σ)
       U *= ut(mcalc,j,s)
    end
-   mat = Matrix(U*Htsrmat2(rp,j,s,mcalc,σ)*U)
+   mat = Matrix(U*Htsrmat(rp,j,s,mcalc,σ)*U)
    out = transpose(vec)*mat*vec
    return out
 end
