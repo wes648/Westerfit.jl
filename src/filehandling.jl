@@ -19,7 +19,7 @@ function paraminp(molnam::String)
    ϵxzb = 0.0
    η = 0.0
    χzz = 0.0
-   χxxmχyy = 0.0
+   χxmy = 0.0
    χxz = 0.0
    ΔN = 0.0
    ΔNK = 0.0
@@ -74,7 +74,7 @@ function paraminp(molnam::String)
    a = -(2.0*ϵzz-ϵyy-ϵxx)/6.0
    d = -ϵxzb*0.5
    b = (ϵxx - ϵyy)*0.5
-   χ2 = √(1.0/6.0)*χxxmχyy
+   χ2 = √(1.0/6.0)*χxmy
    χ1 = -√(2.0/3.0)*χxz
    params = [BK; BJ; Bp; Dab; F; ρ*F; V3; a0; a; b; d; η; χzz; χ2; χ1
          ΔN; ΔNK; ΔK; δN; δK;

@@ -8,14 +8,29 @@ The fr stands for free rotor as this version does not use the belgi 2-stage
    approach and instead does everything in a single stage. The matrix is twice
    Wang transformed to improve eigenvector definition
 
-interal parameters:
-      1  2  3   4   5    6    7   8  9 10 11 12
-prs =[A; B; C; Dab; Fr; Frρ; V3; ao; a; b; d; η]
+   input parameters:
+         1  2  3    4  5  6   7    8    9   10    11 12   13    14   15
+   prs =[A; B; C; Dab; F; ρ; V3; ϵzz; ϵxx; ϵyy; ϵxzb; η; χzz; χxmy; χxz;
+         16   17  18  19  20
+         ΔN; ΔNK; ΔK; δN; δK;
+         21  22   23  24  25  26  27   28   29   30   31    32    33  34  35   36   37
+         Fm; V6; V3m; ρm; ρ3; FN; FK; Fbc; Fab; V3N; V3K; V3ab; V3bc; ρN; ρK; ρab; ρbN
+          38    39    40   41   42   43
+         ΔsN; ΔsNK; ΔsKN; ΔsK; δsN; δsK;
+         44   45   46  47  48   49  50
+         ΦJ; ΦJK; ΦKJ; ΦK; ϕJ; ϕJK; ϕK]
 
-input parameters:
-      1  2  3  4  5   6   7    8    9    10  11
-prs =[A; B; C; δ; F; V3; ϵzz; ϵxx; ϵyy; ϵxzb; η]
-
+   internal parameters:
+         1  2  3   4    5    6   7   8  9 10 11 12  13  14  15
+   prs =[A; B; C; Dab; Fr; F*ρ; V3; ao; a; b; d; η; χ0; χ2; χ1;
+         16   17  18  19  20
+         ΔN; ΔNK; ΔK; δN; δK;
+         21  22   23  24  25  26  27   28   29   30   31    32    33  34  35   36   37
+         Fm; V6; V3m; ρm; ρ3; FN; FK; Fbc; Fab; V3N; V3K; V3ab; V3bc; ρN; ρK; ρab; ρbN
+          38    39    40   41   42   43
+         ΔsN; ΔsNK; ΔsKN; ΔsK; δsN; δsK;
+         44   45   46  47  48   49  50
+         ΦJ; ΦJK; ΦKJ; ΦK; ϕJ; ϕJK; ϕK]
 """
 
 using DelimitedFiles
@@ -218,7 +233,7 @@ function westerfit_handcoded()
    linds, ofreqs, uncs = lineprep(lines,S,mmax)
    #println(linds)
    jlist = jlister(linds)
-   global nmax= S + 0.5*maximum(jlist[:,1])
+   global nmax = S + 0.5*maximum(jlist[:,1])
    #opt
    scales = trsscales
    λ = 1.0E+4
@@ -305,8 +320,8 @@ function westerenergies(prm,s,nmax,mcalc,mmax)
 end
 
 
-global NFOLD=3
-global TK = 25.0
+const NFOLD=3
+const TK = 25.0
 const KB = 2.083661912E+4 #MHz/K
 mc = 3
 nm = 3

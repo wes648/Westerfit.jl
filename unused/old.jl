@@ -4,6 +4,52 @@ replaced or otherwise abandonded. Functions that I have future plans for are
 included with their related functions
 """
 
+function Htsr0N(pr,j,s,n,mcalc,σ)
+   #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = msbuilder(Float64,mcalc,σ,NFOLD)
+   karray = collect(Float64,-n:n)
+   if n == zero(n)
+      mat = spzeros(Float64,length(marray),length(marray))#diagm(0=>ondiags)
+   else
+      mat = pr[12]*θ(j,n,s)*0.0
+      mat .*= karray
+      mat = kron(marray,mat)
+      mat = spdiagm(0=>mat)
+   end
+   return mat
+end
+function Htsr1N(pr,j::Float64,s::Float64,nl,mcalc,σ)
+   karray = collect(Float64,-nl:nl)
+   #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
+   marray = msbuilder(Float64,mcalc,σ,NFOLD)
+   mat = spzeros(Float64,0,0)
+   for i in 1:length(marray)
+      p1 = ϕ(j,nl+1.0,s)*pr[12]*marray[i]*0.0
+      p1 .*= sqrt.( (nl+1.0)^2 .+ karray .^2)
+      part = spdiagm((2*Int(nl)+1),(2*Int(nl)+3), 1=>p1)
+      mat = cat(mat,part,dims=(1,2))
+   end
+   return mat
+end
+
+function Htsr(pr,J,S,mcalc,σ)#OLD
+   md = 2*mcalc + 1
+   ns, nd, ni, jd = srprep(J,S,md)
+#   ni = ni
+   ni[1,1] = 1 #investigate why this is needed should be definitional to srprep but isn't???
+   out = spzeros(Float64,md*jd,md*jd)
+   out[1:ni[1,2],1:ni[1,2]] = kron(eye(md),Hrot(pr,ns[1]) + Hspi0N(pr,J,S,ns[1]))
+   out[1:ni[1,2],1:ni[1,2]] += Htor(pr,mcalc,ns[1],σ) + Htsr0N(pr,J,S,ns[1],mcalc,σ)
+   for i in 2:length(ns)
+   n = ns[i]
+   n1part = kron(eye(md),Hspi1N(pr,J,S,n-1.0)) + Htsr1N(pr,J,S,n-1.0,mcalc,σ)
+   @inbounds out[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+   @inbounds out[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = kron(eye(md),
+               Hrot(pr,n) + Hspi0N(pr,J,S,n)) + Htor(pr,mcalc,n,σ) + Htsr0N(pr,J,S,n,mcalc,σ)
+   @inbounds out[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+   end
+   return out
+end
 
 function lbmq_step2(jcbn, weights, omc, λ, perm)
 """
