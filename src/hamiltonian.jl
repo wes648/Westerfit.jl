@@ -56,7 +56,7 @@ end
 function Hrt1K0m(pr,N,K,m,σ)
    #<N K+1 m+1 | H |N K>
    out = @. (pr[32]+pr[29]*m^2)*(K-0.5)
-   out = @. out + pr[36]*m*(2.0*K^2 + 1.5*K + 0.5) + pr[37]*0.5*m*N*(N+1.0)
+   out = @. out + pr[36]*m*(2.0*K^2 - 2.0*K + 0.5) + pr[37]*0.5*m*N*(N+1.0)
    out = @. out*sqrt(N*(N+1.0)-K*(K-1.0))
 end
 function Hrt1K1m(pr,N,K,m,σ)
