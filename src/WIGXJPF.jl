@@ -12,8 +12,8 @@ function __init__()
           Cvoid,
           (Cint, Cint),
           max_two_j, 9)
-    for i in 1:Threads.nthreads()
-#    Threads.@threadcall((:wig_thread_temp_init, pwd()*"/../lib/libwigxjpf_shared.so"),
+    Threads.@threads :static for i in 1:Threads.nthreads()
+    #Threads.@threadcall((:wig_thread_temp_init, pwd()*"/../lib/libwigxjpf_shared.so"),
     ccall((:wig_thread_temp_init, pwd()*"/../lib/libwigxjpf_shared.so"),
           Cvoid,
           (Cint,),
