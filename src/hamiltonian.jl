@@ -102,19 +102,6 @@ function Hrot(pr,N)
       return dropzeros(out)
    end
 end
-function Rotbuilder(pr,nmax)
-   nmd = convert(Int,2*nmax+1)
-   out = zeros(typeof(pr[1]),nmd,nmd,nmax+1)
-   @threads for n in 1:nmax
-      nd = 2*n+1
-      out[nd,nd,n+1] = Hrot(pr,n)
-   end
-   return out
-end
-function Rotcall(n::Int,bigrot)
-   nd = 2*n+1
-   return bigrot[nd,nd,n+1]
-end
 
 function Hrt0K0m(pr,nt,K,m,σ)
    #<m K|Htor|m K> =
