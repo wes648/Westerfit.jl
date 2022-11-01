@@ -3,7 +3,7 @@ function Rotbuilder(pr,nmax)
    out = zeros(typeof(pr[1]),nmd,nmd,nmax+1)
    @threads for n in 1:nmax
       nd = 2*n+1
-      @inbouds out[nd,nd,n+1] = Hrot(pr,n)
+      @inbounds out[nd,nd,n+1] = Hrot(pr,n)
    end
    return out
 end
@@ -18,8 +18,8 @@ function Spibuilder(pr,hrot,jlist,s)
    @threads for i in 1:length(jlist)
       j = jlist[i]
       jd = convert(Int,2.0*j+1.0)*sd
-      @inbouds out[jd,jd,i] = Hsr2(pr,hrot,j,s)
-      @inbouds out[jd,jd,i] = Hhyp!(pr,out[jd,jd,i],j,s)
+      @inbounds out[jd,jd,i] = Hsr2(pr,hrot,j,s)
+      @inbounds out[jd,jd,i] = Hhyp!(pr,out[jd,jd,i],j,s)
    end
    return out
 end

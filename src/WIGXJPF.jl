@@ -6,14 +6,19 @@ This is a modified version of https://github.com/jagot/WIGXJPF.jl which has
    now been replaced by https://github.com/Jutho/WignerSymbols.jl
 """
 
+using .WIGXJPF
+
+export wig3j, wig6j, wig9j
+
 function __init__()
     max_two_j = 1000
-    ccall((:wig_table_init, pwd()*"/../lib/libwigxjpf_shared.so"),
+    ccall((:wig_table_init, homedir()*"/rot/bin/libwigxjpf_shared.so"),
           Cvoid,
           (Cint, Cint),
           max_two_j, 9)
     Threads.@threads :static for i in 1:Threads.nthreads()
-    ccall((:wig_thread_temp_init, pwd()*"/../lib/libwigxjpf_shared.so"),
+    #Threads.@threadcall((:wig_thread_temp_init, homedir()*"/rot/bin/libwigxjpf_shared.so"),
+    ccall((:wig_thread_temp_init, homedir()*"/rot/bin/libwigxjpf_shared.so"),
           Cvoid,
           (Cint,),
           max_two_j)
@@ -26,7 +31,7 @@ doubled(f::Float64) = Int(2.0*f)
 
 function wig3jj(j12::Integer, j22::Integer, j32::Integer,
                 m12::Integer, m22::Integer, m32::Integer)
-    ccall((:wig3jj, pwd()*"/../lib/libwigxjpf_shared.so"),
+    ccall((:wig3jj, homedir()*"/rot/bin/libwigxjpf_shared.so"),
           Cdouble,
           (Cint, Cint, Cint,
            Cint, Cint, Cint),
@@ -40,7 +45,7 @@ wig3j(j1, j2, j3,
 
 function wig6jj(j12::Integer, j22::Integer, j32::Integer,
                 j42::Integer, j52::Integer, j62::Integer)
-    ccall((:wig6jj, pwd()*"/../lib/libwigxjpf_shared.so"),
+    ccall((:wig6jj, homedir()*"/rot/bin/libwigxjpf_shared.so"),
           Cdouble,
           (Cint, Cint, Cint,
            Cint, Cint, Cint),
@@ -55,7 +60,7 @@ wig6j(j1, j2, j3,
 function wig9j(j12::Integer, j22::Integer, j32::Integer,
                j42::Integer, j52::Integer, j62::Integer,
                j72::Integer, j82::Integer, j92::Integer)
-    ccall((:wig9jj, pwd()*"/../lib/libwigxjpf_shared.so"),
+    ccall((:wig9jj, homedir()*"/rot/bin/libwigxjpf_shared.so"),
           Cdouble,
           (Cint, Cint, Cint,
            Cint, Cint, Cint,
