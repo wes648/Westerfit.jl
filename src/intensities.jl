@@ -20,6 +20,33 @@ This sloppy function calls the elements of the Cₛ dipole spherical tensor from
    end
 end
 
+function μlister(jmax,s,mΔj)
+   jmin = 0.5*iseven(Int(2*s+1))
+   jlist = collect(jmin:jmax)
+   part = kron(jlist,ones(mΔj+1))
+   out = [part[1:end-1] part[2:end]]
+   return out
+end
+function μindexer(list,jk,jb)
+   if jk≥jb
+      ju = jk
+      jl = jb
+   else
+      ju = jb
+      jl = jk
+   end
+   pl = findall(list[:,1] .== jl)
+   pu = findall(list[:,2] .== ju)
+   check = unique(vcat(pl,pu))
+   for a in check
+      if (a∈pl)&&(a∈pu)
+         return a
+         break
+      else
+      end
+   end
+end
+
 function intelem(jb,nb,kb,s,j,n,k,μ)
 """
 This implements the dipole moment operator in spherical tensor notation. It is
@@ -35,7 +62,7 @@ This implements the dipole moment operator in spherical tensor notation. It is
       return out
    end
 end
-function intmat(jb,jk,s,mcalc,σ)
+function intmat(μ,jb,jk,s,mcalc,σ)
 """
 This builds the matrix of dipole elements and wang transforms it for the A states
 """
@@ -65,7 +92,7 @@ This builds the matrix of dipole elements and wang transforms it for the A state
    return mat
 end
 
-function intcalc(nmax,s,mcalc,σ,qns,vecs)
+function intcalc(μ,nmax,s,mcalc,σ,qns,vecs)
    len = size(qns)[1]
    ints = spzeros(Float64,len,len,2)
    for i in 1:len
@@ -94,7 +121,7 @@ function thermfact(i,j,qs,vals,Q)
    out = abs(qs[i] - qs[j])*abs(vals[j] - vals[i])/Q
 end
 
-function tracalc(nmax,s,mcalc,σ,qns,vals,vecs)
+function tracalc(nmax,μ,s,mcalc,σ,qns,vals,vecs)
 """
 This repulsively slow function calculates all of the transitions from the
    eigenvalues & vectors from tsrdiag. This does include an intensity cutoff but
@@ -111,10 +138,11 @@ This repulsively slow function calculates all of the transitions from the
       ojb = 1.5
       ojk = 0.5
    end
+   #global μ
    qs, Q = partitioncalc(12.0,s,qns,vals,σ)
    lenb = convert(Int,(2*s+1)*(2*ojb+1)*(2*mcalc+1))
    lenk = convert(Int,(2*s+1)*(2*ojk+1)*(2*mcalc+1))
-   μmat = intmat(ojb,ojk,s,mcalc,σ)
+   μmat = intmat(μ,ojb,ojk,s,mcalc,σ)
    for i in 1:length(vals)
    for j in (i+1):length(vals)
       Δj = abs(qns[j,1] - qns[i,1])
@@ -128,7 +156,7 @@ This repulsively slow function calculates all of the transitions from the
          lenk = convert(Int,(2*s+1)*(2*jk+1)*(2*mcalc+1))
          freq = vals[j] - vals[i]
          if (jb!=ojb)||(jk!=ojk)
-            μmat = intmat(jb,jk,s,mcalc,σ)
+            μmat = intmat(μ,jb,jk,s,mcalc,σ)
          end
          ojb = jb
          ojk = jk

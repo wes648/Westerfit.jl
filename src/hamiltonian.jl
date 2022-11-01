@@ -168,7 +168,7 @@ function Htor(pr,mcalc,N,σ)
    end
 end
 function Htor(pr,mcalc,j,s,σ)
-   ns, nd, ni, jd = srprep(J,S,2*mcalc+1)
+   ns, nd, ni, jd = srprep(j,s,2*mcalc+1)
    tnp = jd*(2*mcalc+1)
    if NFOLD == zero(NFOLD)
       return spzeros(tnp,tnp)
