@@ -147,15 +147,15 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    ind = convert(Int,ind)
    return ind
 end
-function qn2ind(mcalc,m,j,s,n,ka,kc)
+function qn2ind(nf,mcalc,m,j,s,n,ka,kc)
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
-   if NFOLD!=zero(NFOLD)
+   if nf!=zero(nf)
    ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
-   ind += (mcalc+floor(m/NFOLD))*(2*s+1)*(2*j+1)
+   ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
    ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + ka*(-1)^(n-ka-kc) + 1
    ind = convert(Int,ind)
    return ind
@@ -247,6 +247,15 @@ This returns the first and final indices for a certain J value for a given S.
    fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
    return snd,fnd
 end
+function jlinds(j,s)
+"""
+This returns the first and final indices for a certain J value for a given S.
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+   snd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+   return collect(snd:fnd)
+end
 
 function jinds(j,s,m)
 """
@@ -257,7 +266,19 @@ This returns the first and final indices for a certain J value for a given S.
    fnd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
    return snd,fnd
 end
-
+function jlinds(j,s,m)
+"""
+This returns the first and final indices for a certain J value for a given S.
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+   snd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+   return collect(snd:fnd)
+end
+function mfilter(jsd,nf,mc,mm,σ)
+   mlowest = σ
+   mhighst = (σ + nf*mm)*(-1)^(isodd(mm))
+end
 ################################################################################
 #These are the various Wang Matrices
 ################################################################################
@@ -299,14 +320,30 @@ This builds the torsional Wang Transformation matrix for a span of -m:m with a
    out = kron(out,eye(nd))
    return out
 end
+function ut(m,σt,j,s)
+"""
+This builds the torsional Wang Transformation matrix for a span of -m:m with
+   rotational blocks for every n in Δlist(j,s)
+"""
+   jd = Int((2*s+1)*(2*j+1))
+   if σt != 2
+   out = (1/sqrt(2)) .*  [-1*eye(m) spzeros(m) rotl90(eye(m)); spzeros(1,m) sqrt(2) spzeros(1,m);
+   rotl90(eye(m)) spzeros(m) eye(m)]
+   else
+   m += 1
+   out = (1/sqrt(2)) .*  [-1*eye(m) rotl90(eye(m)); rotl90(eye(m)) eye(m)]
+   end
+   out = kron(out,eye(jd))
+   return out
+end
 function ut(m,j,s)
 """
 This builds the torsional Wang Transformation matrix for a span of -m:m with
    rotational blocks for every n in Δlist(j,s)
 """
    jd = Int((2*s+1)*(2*j+1))
-   out = (1/sqrt(2)) .*  [-1*eye(m) zeros(m) rotl90(eye(m)); zeros(1,m) sqrt(2) zeros(1,m);
-   rotl90(eye(m)) zeros(m) eye(m)]
+   out = (1/sqrt(2)) .*  [-1*eye(m) spzeros(m) rotl90(eye(m)); spzeros(1,m) sqrt(2) spzeros(1,m);
+   rotl90(eye(m)) spzeros(m) eye(m)]
    out = kron(out,eye(jd))
    return out
 end
@@ -317,25 +354,35 @@ This builds the rotational Wang Transformation matrix for a given n. This will
    torsional-rotational nature. A purely rotational form can be built using m=0
 """
    md = 2*m+1
-   out = (1/sqrt(2)) .* [-eye(n) zeros(n) rotl90(eye(n)); zeros(1,n) sqrt(2) zeros(1,n);
-      rotl90(eye(n)) zeros(n) eye(n)]
-   out = kron(eye(md),out)
+   out = (1/sqrt(2)) .* [-I(n) zeros(n) rotl90(I(n)); zeros(1,n) sqrt(2) zeros(1,n);
+      rotl90(I(n)) zeros(n) I(n)]
+   out = kron(I(md),out)
    return out
 end
-function ur(j,s,m)
+function eyr(x::Int)::Array{Float64,2}
+   diagm(ones(x))
+end
+function ur(n)
+   md = 1
+   out = (1/sqrt(2)) .* [-eyr(n) zeros(n) rotl90(eyr(n)); zeros(1,n) sqrt(2) zeros(1,n);
+      rotl90(eyr(n)) zeros(n) eyr(n)]
+   out = kron(eyr(md),out)
+   return out
+end
+function ur(j,s,m,σt)
 """
 This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
    This will be kronecker producted with an identy matrix of size 2*m+1 for the
    torsional-rotational nature. A purely rotational form can be built using m=0
 """
    nlist = Δlist(j,s)
-   out = zeros(0,0)
+   out = spzeros(0,0)
    for n in nlist
-      part = (1/sqrt(2)) .* [-eye(n) zeros(n) rotl90(eye(n)); zeros(1,n) sqrt(2) zeros(1,n);
-         rotl90(eye(n)) zeros(n) eye(n)]
+      part = (1/sqrt(2)) .* [-eye(n) spzeros(n) rotl90(eye(n)); spzeros(1,n) sqrt(2) spzeros(1,n);
+         rotl90(eye(n)) spzeros(n) eye(n)]
       out = cat(out,part,dims=(1,2))
    end
-   md = 2*m+1
+   md = 2*m + 1 + (σt==2)
    out = kron(eye(md),out)
    return out
 end

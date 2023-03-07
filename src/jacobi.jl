@@ -3,23 +3,24 @@ Jacobi transformers to for cleaner eigenvectors.
 Blatantly stolen & modified from
 https://github.com/albi3ro/M4/blob/master/Numerics_Prog/Jacobi-Transformation.ipynb
 Thanks Christina Lee!
+I have removed the compV options since I always want to do that in the westerfit package
 """
 
 #module jacobi
 #
 #export jacobisweep
 
-using LinearAlgebra
+using LinearAlgebra, LinearAlgebra.BLAS
 
 # First, Lets make our nice, helpful functions
 
 ## A function to look at the convergence
 function convergence(A::Array)
-    num=0.0
-    l=size(A)[1]
+    num = 0.0
+    l=size(A,1)
     for ii in 1:(l-1)
         for jj in (ii+1):l ## just looking at the lower triangle
-            num+=A[ii,jj]^2
+            num += A[ii,jj]^2
             #println(ii,' ',jj,' ',num,' ',A[ii,jj])
         end
     end
@@ -31,8 +32,8 @@ end
 function roundmatrix(A::Array,rtol::Real)
     Ap=copy(A)
     for ii in 1:length(A)
-        if abs(Ap[ii])<rtol
-            Ap[ii]=0
+        if abs(Ap[ii]) < rtol
+            Ap[ii] = 0.0
         end
     end
     return Ap;
@@ -47,6 +48,16 @@ function makeA(n)
     return A#,copy(A),V
 end
 
+function nulldiag(A::Array)::Array
+    mat = copy(A)
+    mat[diagind(A)] .= 0
+    return mat
+end
+function lrgstoffd(A::Array)
+    mat = nulldiag(A)
+    out = [iamax(mat[:,i]) for i in 1:size(mat,2)]
+    return out
+end
 #Now on to the Rotations!
 
 # We don't always want to compute the eigenvectors, so those are in the
@@ -54,76 +65,74 @@ end
 # Both tell the function to compute the vectors with computeV=true
 # and input the V=V after the semicolon.
 
-function Rotate(A::Array,p::Int,q::Int; computeV=false, V::Array=Matrix{Float64}(I,1,1) )
-    θ=(A[q,q]-A[p,p])/(2*A[p,q]);
-    t=sign(θ)/(abs(θ)+sqrt(θ^2+1));
-    c=1/sqrt(t^2+1)
-    s=t*c
-    τ=s/(1+c)
-#    if (c-1)==zero(c)
-#        println("FUCK")
-#    end
-    l=size(A)[1]
+function Rotate(A::Array,p::Int,q::Int, V::Array=Matrix{Float64}(I,1,1) )
+    Apq = A[p,q]
+    if Apq != 0.0
+    θ = (A[q,q] - A[p,p]) / (2.0*A[p,q])
+    t = sign(θ)/(abs(θ)+sqrt(θ^2 + 1.0))
+    c = 1.0/√(t^2 + 1.0)
+    s = t*c
+    τ = s/(1.0 + c)
+    l=size(A,1)
     Ap=copy(A[:,p])
     Aq=copy(A[:,q])
-    for r in 1:l
-        A[r,p]=Ap[r]-s*(Aq[r]+τ*Ap[r])
-        A[r,q]=Aq[r]+s*(Ap[r]-τ*Aq[r])
-        A[p,r]=A[r,p]
-        A[q,r]=A[r,q]
+    rs = collect(1:l)
+    @. A[rs,p] = Ap[rs] - s*(Aq[rs] + τ*Ap[rs])
+    @. A[rs,q] = Aq[rs] + s*(Ap[rs] - τ*Aq[rs])
+    @. A[p,rs]=A[rs,p]
+    @. A[q,rs]=A[rs,q]
+    A[p,q] = 0.0
+    A[q,p] = 0.0
+    A[p,p] = Ap[p] - t*Aq[p]
+    A[q,q] = Aq[q] + t*Aq[p]
+    Vp = copy(V[:,p])
+    Vq = copy(V[:,q])
+    @. V[rs,p] = c*Vp[rs] - s*Vq[rs]
+    @. V[rs,q] = s*Vp[rs] + c*Vq[rs]
     end
-    A[p,q]=0
-    A[q,p]=0
-    A[p,p]=Ap[p]-t*Aq[p]
-    A[q,q]=Aq[q]+t*Aq[p]
-    if computeV==true
-        Vp=copy(V[:,p])
-        Vq=copy(V[:,q])
-        for r in 1:l
-            V[r,p]=c*Vp[r]-s*Vq[r]
-            V[r,q]=s*Vp[r]+c*Vq[r]
-        end
-        return A,V
-    else
-        return A;
-    end
+    return A,V
 end
 
 # This function performs one sweep
-function Sweep(A;compV=false,V=Matrix{Float64}(I,1,1))
-    n=size(A)[1]
+function Sweep(A,V=Matrix{Float64}(I,size(A)))
+    n=size(A,1)
     for ii in 2:n
         for jj in 1:(ii-1) ## Just over one triangle
-            if compV==false
-                A=Rotate(A,ii,jj)
-            else
-                A,V=Rotate(A,ii,jj;computeV=true,V=V);
-            end
+            A, V = Rotate(A,ii,jj,V)
         end
     end
-    if compV==false
-        return A
-    else
-        return A,V
+    return A,V
+end
+function limsweep(A,cnt=1,V=Matrix{Float64}(I,size(A)))
+    n=size(A,1)
+    for m in 1:cnt
+    for ii in 2:n
+        jjlist = lrgstoffd(A)
+        for jj in jjlist 
+            A, V = Rotate(A,ii,jj,V)
+        end
     end
+    end
+    return A,V
 end
 
+
 function jacobisweep(A,iters)
-    n=size(A)[1]
+    n=size(A,1)
     V = Matrix(Float64.(I(n)))
     Vout = Matrix(Float64.(I(n)))
     for i in 1:iters
-        A,V = Sweep(A;compV=true,V)
+        A,V = Sweep(A,V)
         Vout = transpose(V)*Vout
     end
     return Matrix(A),Vout
 end
 function jacobisweep2(A,iters)
-    n=size(A)[1]
+    n=size(A,1)
     V = Matrix(Float64.(I(n)))
     Vout = Matrix(Float64.(I(n)))
     for i in 1:iters
-        A,V = Sweep(A;compV=true,V)
+        A,V = Sweep(A,V)
 #        Vout = transpose(V)*Vout
     end
     return Matrix(A),V
