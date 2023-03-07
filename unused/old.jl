@@ -452,3 +452,130 @@ function xtxsolve(A)
    x = √(diagm(a))*transpose(b)
    return x
 end
+
+function paraminp_old(molnam::String)
+   NFOLD = 3
+   S = 0.0
+   TK = 25.0
+   mcalc = 0
+   mmax = 0
+   Nmax = 0
+   A = 0.0, 0.0
+   B = 0.0, 0.0
+   C = 0.0, 0.0
+   Dab = 0.0, 0.0
+   F = 0.0, 0.0
+   ρ = 0.0, 0.0
+   V3 = 0.0, 0.0
+   ϵzz = 0.0, 0.0
+   ϵxx = 0.0, 0.0
+   ϵyy = 0.0, 0.0
+   ϵxz = 0.0, 0.0
+   η = 0.0, 0.0
+   χzz = 0.0, 0.0
+   χxmy = 0.0, 0.0
+   χxz = 0.0, 0.0
+   ΔN = 0.0, 0.0
+   ΔNK = 0.0, 0.0
+   ΔK = 0.0, 0.0
+   δN = 0.0, 0.0
+   δK = 0.0, 0.0
+   Fm = 0.0, 0.0
+   V6 = 0.0, 0.0
+   V3m = 0.0, 0.0
+   ρm = 0.0, 0.0
+   ρ3 = 0.0, 0.0
+   FN = 0.0, 0.0
+   FK = 0.0, 0.0
+   Fbc = 0.0, 0.0
+   Fab = 0.0, 0.0
+   V3N = 0.0, 0.0
+   V3K = 0.0, 0.0
+   V3ab = 0.0, 0.0
+   V3bc = 0.0, 0.0
+   ρN = 0.0, 0.0
+   ρK = 0.0, 0.0
+   ρab = 0.0, 0.0
+   ρbN = 0.0, 0.0
+   ΔsN = 0.0, 0.0
+   ΔsNK = 0.0, 0.0
+   ΔsKN = 0.0, 0.0
+   ΔsK = 0.0, 0.0
+   δsN = 0.0, 0.0
+   δsK = 0.0, 0.0
+   ΦJ = 0.0, 0.0
+   ΦJK = 0.0, 0.0
+   ΦKJ = 0.0, 0.0
+   ΦK = 0.0, 0.0
+   ϕJ = 0.0, 0.0
+   ϕJK = 0.0, 0.0
+   ϕK = 0.0, 0.0
+   μa = 1.0, 0.008
+   μb = 0.5, 0.006
+   μc = 0.0, -0.034
+   #eval.(Meta.parse.(readlines(pwd()*"/"*molnam*".inp"))) 
+             #doesn't work due to scope behavior of eval()
+   inp = readlines(pwd()*"/"*molnam*".inp")
+   for ln in 1:length(inp)
+      str = inp[ln]
+      str = filter(x -> !isspace(x), str)
+      name, tuple = split(str, "=")
+      if occursin(",", tuple)
+         val, err = split(tuple, ",")
+         val = parse(Float64,val)
+         err = parse(Float64,err)
+         string_as_varname_function(name,(val,err))
+         println("$name = $val, $err")
+         println(typeof(name),typeof(val),typeof(err))
+      else
+         tuple = parse(Float64,tuple)
+         string_as_varname_function(name,tuple)
+         println("$name = $tuple")
+         println(typeof(name),typeof(tuple))
+      end#if
+   end#for
+   println(Nmax)
+   if NFOLD==zero(NFOLD)
+      if mcalc != zero(mcalc)
+         print("NFOLD is zero; setting mcalc to 0")
+         mcalc = 0
+      end
+      if mmax != zero(mmax)
+         print("NFOLD is zero; setting mmax to 0")
+         mmax = 0
+      end
+   end
+   BJ = 0.5*(B[1]+C[1])
+   BK = A[1] - BJ
+   Bp = 0.25*(B[1] - C[1])
+   ao = -(ϵzz[1] + ϵyy[1] + ϵxx[1])/3.0
+   a = -(2.0*ϵzz[1] - ϵyy[1] - ϵxx[1])/6.0
+   d = -ϵxz[1]*0.5
+   b = (ϵxx[1] - ϵyy[1])*0.5
+   χ2 = √(1.0/6.0)*χxmy[1]
+   χ1 = -√(2.0/3.0)*χxz[1]
+   params = [BK; BJ; Bp; Dab[1]; F[1]; ρ[1]*F[1]; V3[1]; ao[1]; a[1]; b[1]; d[1]
+         η[1]; χzz[1]; χ2; χ1; ΔN[1]; ΔNK[1]; ΔK[1]; δN[1]; δK[1]; Fm[1]; V6[1]
+         V3m[1]; ρm[1]; ρ3[1]; FN[1]; FK[1]; Fbc[1]; Fab[1]; V3N[1]; V3K[1]
+         V3ab[1]; V3bc[1]; ρN[1]; ρK[1]; ρab[1]; ρbN[1]; ΔsN[1]; ΔsNK[1]
+         ΔsKN[1]; ΔsK[1]; δsN[1]; δsK[1]; ΦJ[1]; ΦJK[1]; ΦKJ[1]; ΦK[1]; ϕJ[1]; ϕJK[1]; ϕK[1]]
+   scales = [A[2]; B[2]; C[2]; Dab[2]; F[2]; ρ[2]; V3[2]; ϵzz[2]; ϵxx[2]; ϵyy[2]; ϵxz[2];
+           η[2]; χzz[2]; χxmy[2]; χxz[2]; ΔN[2]; ΔNK[2]; ΔK[2]; δN[2]; δK[2];
+           Fm[2]; V6[2]; V3m[2]; ρm[2]; ρ3[2]; FN[2]; FK[2];
+           Fbc[2]; Fab[2]; V3N[2]; V3K[2]; V3ab[2]; V3bc[2]; ρN[2]; ρK[2]; ρab[2]; ρbN[2]
+           ΔsN[2]; ΔsNK[2]; ΔsKN[2]; ΔsK[2]; δsN[2]; δsK[2];
+           ΦJ[2]; ΦJK[2]; ΦKJ[2]; ΦK[2]; ϕJ[2]; ϕJK[2]; ϕK[2]]
+   μs = [μa[1] μa[2]; μb[1] μb[2]; 0.0 μc[2]]
+   println(A)
+   println("End of file reader!")
+   return params, scales, μs, Nmax, S, NFOLD, mcalc, mmax
+end
+
+macro string_as_varname_macro(s::AbstractString, v::Any)
+   s = Symbol(s)
+   esc(:($s = $v))
+end
+function string_as_varname_function(s::AbstractString, v::Any)
+   s = Symbol(s)
+   @eval (($s) = ($v))
+end

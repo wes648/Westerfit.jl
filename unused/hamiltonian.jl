@@ -159,7 +159,7 @@ function Htor(pr,mcalc,N,σ)
    t1k0m .+= t2k1m
    t2k0m .+= t1k1m
    end
-   out = spdiagm(tnp*tmp,tnp*tmp,0=>t0k0m,1=>t1k0m,-1=>t1k0m,2=>t2k0m,-2=>t2k0m,
+   out = @inbounds spdiagm(tnp*tmp,tnp*tmp,0=>t0k0m,1=>t1k0m,-1=>t1k0m,2=>t2k0m,-2=>t2k0m,
                  tnp=>t0k1m,-tnp=>t0k1m,
                  tnp+1=>t1k1m[2:end-1],-tnp-1=>t1k1m[2:end-1],tnp-1=>t1k1m,-tnp+1=>t1k1m,
                  tnp+2=>t2k1m[3:end-2],-tnp-2=>t2k1m[3:end-2],tnp-2=>t2k1m,-tnp+2=>t2k1m,
@@ -174,9 +174,9 @@ function Htor(pr,mcalc,j,s,σ)
       return spzeros(tnp,tnp)
    else
       out = spzeros(tnp,tnp)
-      for i in 1:length(ns)
+      @inbounds for i in 1:length(ns)
          n = ns[i]
-         @inbounds out[ni[i,1]:ni[i,2],ni[i,1]:ni[i,2]] = Htor(pr,mcalc,n,σ)
+         out[ni[i,1]:ni[i,2],ni[i,1]:ni[i,2]] = Htor(pr,mcalc,n,σ)
       end
    return out
    end
@@ -356,16 +356,16 @@ function Htsrmat(pr,j,s,mcalc,σ)
    srpart[1:nd[1],1:nd[1]] = Hrot(pr,ns[1]) + Hspi0N(pr,j,s,ns[1])
    tspart[1:nd[1],1:nd[1]] = Htsr0Nv(pr,j,s,ns[1])
    trpart = Htor(pr,mcalc,j,s,σ)
-   for i in 2:length(ns)
+   @inbounds for i in 2:length(ns)
       n = ns[i]
       srn1part = Hspi1N(pr,j,s,n-1.0)
-   @inbounds srpart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = srn1part
-   @inbounds srpart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n)+ Hspi0N(pr,j,s,n)
-   @inbounds srpart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(srn1part)
+      srpart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = srn1part
+      srpart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Hrot(pr,n)+ Hspi0N(pr,j,s,n)
+      srpart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(srn1part)
       n1part = Htsr1Nv(pr,j,s,n-1.0)
-   @inbounds tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
-   @inbounds tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
-   @inbounds tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+      tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+      tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
+      tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
    #array = NFOLD .* collect(Float64,-mcalc:mcalc) .+ σ
    marray = msbuilder(Float64,mcalc,σ,NFOLD)
@@ -379,12 +379,12 @@ function Htsrmat2(pr,hrsr,j,s,mcalc,σ)
    tspart = spzeros(Float64,jd,jd)
    tspart[1:nd[1],1:nd[1]] = Htsr0Nv(pr,j,s,ns[1])
    #trpart = Htor(pr,mcalc,j,s,σ)
-   for i in 2:length(ns)
+   @inbounds for i in 2:length(ns)
       n = ns[i]
       n1part = Htsr1Nv(pr,j,s,n-1.0)
-   @inbounds tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
-   @inbounds tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
-   @inbounds tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
+      tspart[ni[i-1,1]:ni[i-1,2],   ni[i,1]:ni[i,2]] = n1part
+      tspart[   ni[i,1]:ni[i,2],   ni[i,1]:ni[i,2]] = Htsr0Nv(pr,j,s,n)
+      tspart[   ni[i,1]:ni[i,2],ni[i-1,1]:ni[i-1,2]] = transpose(n1part)
    end
    marray = msbuilder(Float64,mcalc,σ,NFOLD)
    tspart = kron(diagm(0=>marray),tspart)
