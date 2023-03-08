@@ -290,22 +290,19 @@ end
 function englin(s,eng,qunl)
    if s==zero(s)
       part = lpad(qunl[2],4)*","
-      part *= lpad(qunl[3],4)*","
-      part *= lpad(qunl[4],4)*","
-      part *= lpad(qunl[5],4)*","
-      part *= " "*@sprintf("%13.10f", eng)
    else
       part = lpad(qunl[1],4)*"/2,"
       part *= lpad(qunl[2],4)*","
-      part *= lpad(qunl[3],4)*","
-      part *= lpad(qunl[4],4)*","
-      part *= lpad(qunl[5],4)*","
-      part *= " "*@sprintf("%13.10f", eng)*","
    end
+   part *= lpad(qunl[3],4)*","
+   part *= lpad(qunl[4],4)*","
+   part *= lpad(qunl[5],4)*","
+   part *= lpad(qunl[6],4)*","
+   part *= " "*lpad(@sprintf("%0.10f", eng), 16)
    return part
 end
 
-function EngWriter(ctrl,energies,qunus)
+function EngWriter(molnam,ctrl,energies,qunus)
 """
 Outputs energy levels with state assignments to a csv-like file
 """
@@ -316,12 +313,12 @@ Outputs energy levels with state assignments to a csv-like file
       eng = vcat(eng,energies[:,sc])
       qns = vcat(qns,qunus[:,:,sc])
    end
-   len = size(energies,1)
+   len = size(eng,1)
    out = fill("0",len)
    for i in 1:len
       energy = eng[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
-      egnlin(s,energy,qns[i,:])
+      out[i] = englin(ctrl["S"],energy,qns[i,:])
    end
    io = open("$molnam.eng", "w") do io
       for i in out
