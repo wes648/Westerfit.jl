@@ -335,14 +335,15 @@ function hrot2s(pr,nb,kb,nk,kk)
    return out
 end
 function hrot2v2(pr,nb,kb,nk,kk)#fastest
-   out = zeros(size(kb))
-   lst = diagind(out)
-   out[lst] .= hrdiag(pr[2],pr[1],nb[lst],kb[lst],nk[lst],kk[lst])
+   out = spzeros(size(kb))
    lst = diagind(out,1)
    out[lst] .= hrfu1(pr[4],nb[lst],kb[lst],nk[lst],kk[lst])
    lst = diagind(out,2)
    out[lst] .= hrfu2(pr[3],nb[lst],kb[lst],nk[lst],kk[lst])
-   return Matrix(Symmetric(out))
+   out += transpose(out)
+   lst = diagind(out)
+   out[lst] .= hrdiag(pr[2],pr[1],nb[lst],kb[lst],nk[lst],kk[lst])
+   return out
 end
 
 function hrlpart(out,pr,l::Int,nb,kb,nk,kk)::Array{Float64,2}
@@ -556,9 +557,9 @@ function szep(j::Float64,s::Float64,nb::Array{Int,2},
    return @. δ(nb-1,nk)*δ(kb,kk)*□rt(nb^2 - kk^2)*ϕ(j,nb,s)*0.5
 end
 function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})#::Array{Float64,2}
    if s==zero(s)
-      return I(size(nb,1))
+      return eye(size(nb,1))
    else
    return (szen(j,s,nb,kb,nk,kk) .+ szem(j,s,nb,kb,nk,kk) .+ szep(j,s,nb,kb,nk,kk))^p
    end
@@ -583,22 +584,22 @@ function szop3(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
 end
 
 
-function rsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,
-               j,s,nb::Array{Int,2},kb::Array{Int,2},
-               nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
-   tz = ntop(a,nb,kb,nk,kk).*nzop(b,nb,kb,nk,kk).*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
-   pm = npmp(c,nb,kb,nk,kk)
-   sz = szop(e,j,s,nb,kb,nk,kk)
-   return (tz*sz*pm + pm*sz*tz) .* (pr/4.0)
-end
+#function rsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,
+#               j,s,nb::Array{Int,2},kb::Array{Int,2},
+#               nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+#   tz = ntop(a,nb,kb,nk,kk).*nzop(b,nb,kb,nk,kk).*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
+#   pm = npmp(c,nb,kb,nk,kk)
+#   sz = szop(e,j,s,nb,kb,nk,kk)
+#   return (tz*sz*pm + pm*sz*tz) .* (pr/4.0)
+#end
 function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
-               nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
-   tz = ntop(a,nb,kb,nk,kk).*nzop(b,nb,kb,nk,kk).*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
-   pm = npmp(c,nb,kb,nk,kk)
-   ny = nyop(1-δi(0,h),nb,kb,nk,kk)
-   sz = szop(e,j,s,nb,kb,nk,kk)
-   return scal!(0.5,(tz*sz*pm*ny + ny*pm*sz*tz))
+               nk::Array{Int,2},kk::Array{Int,2})#::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+   tz = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
+   pm = sparse(npmp(c,nb,kb,nk,kk))
+   ny = sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
+   sz = sparse(szop(e,j,s,nb,kb,nk,kk))
+   return 0.5 * (tz*sz*pm*ny + ny*pm*sz*tz)
 end
 
 function paop(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
@@ -611,15 +612,15 @@ function sinp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
    return @. (δ(mb+p,mk) + δ(mb-p,mk)) / 2.0
 end
 function torop(pr::Float64,p::Int,c::Int,s::Int,
-               mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
+               mb::Array{Int,2},mk::Array{Int,2})#::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    pa = paop(p,mb,mk)
-   sc = cosp(c,mb,mk)*sinp(s,mb,mk)
+   sc = sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    out = (pa*sc + sc*pa)
-   return scal!(pr*0.5, out)
+   return (pr*0.5) * out
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
-               mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
+               mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
    out = torop(pr[1],p[1],c[1],s[1],mb,mk)
    for i in 2:length(pr)
       out .+= torop(pr[1]*pr[i],p[i],c[i],s[i],mb,mk)
@@ -627,34 +628,36 @@ function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
    return out
 end
 function torop(pr::Float64,p::Int,c::Int,
-               mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
+               mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
    pa = paop(p,mb,mk)
-   co = cosp(c,mb,mk)
+   co = sparse(cosp(c,mb,mk))
    return (pa*co + co*pa) .* (pr/2.0)
 end
 
 function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-               mk::Array{Int,2})::Array{Float64,2}
+               mk::Array{Int,2})#::Array{Float64,2}
    return kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk))
 end
 function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
                g::Tuple,h::Tuple,
                j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-               mk::Array{Int,2})::Array{Float64,2}
+               mk::Array{Int,2})#::Array{Float64,2}
    out = tsrop(pr[1],a[1],b[1],c[1],d[1],e[1],f[1],g[1],h[1],j,s,nb,kb,mb,nk,kk,mk)
    for i in 2:length(pr)
-      out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],j,s,nb,kb,mb,nk,kk,mk)
+      out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],
+                   j,s,nb,kb,mb,nk,kk,mk)
    end
    return out
 end
 function tsrop(pr::Float64,op::Array,j::Float64,s::Float64,
                nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-               mk::Array{Int,2})::Array{Float64,2}
-   return tsrop(pr,op[1],op[2],op[3],op[4],op[5],op[6],op[7],op[8],j,s,nb,kb,mb,nk,kk,mk)
+               mk::Array{Int,2})#::Array{Float64,2}
+   return tsrop(pr,op[1],op[2],op[3],op[4],op[5],op[6],op[7],op[8],
+                j,s,nb,kb,mb,nk,kk,mk)
 end
 
 function hbuild(rot,spi,qua,tor,cdf,cdo,j,s,mb,mk)
@@ -662,10 +665,11 @@ function hbuild(rot,spi,qua,tor,cdf,cdo,j,s,mb,mk)
    kk = kgen(j,s)
    nb = Matrix(transpose(nk))
    kb = Matrix(transpose(kk))
-   hout = kron(I(size(mk,1)), hrsr(rot,spi,qua,j,s,nb,kb,nk,kk))
+   hout = kron(eye(size(mk,1)), hrsr(rot,spi,qua,j,s,nb,kb,nk,kk))
    htor = torop(tor[1],2,0,0,mb,mk)
    htor .+= torop(tor[3],0,1,0,mb,mk).+ torop(tor[3],0,0,0,mb,mk)
-   hout .+= kron(htor,I(size(nk,1))) .+ tsrop(tor[2],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
+   hout .+= kron(htor,eye(size(nk,1))) .+ 
+                 tsrop(tor[2],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    hout .+= tsrop(tor[4],0,0,0,0,1,1,0,0,j,s,nf,nb,kb,mb,nk,kk,mk)
    @simd for i in 1:length(cdf)
       hout .+= tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
@@ -677,7 +681,7 @@ function htor(sof,cdf::Array,cdo::Array,nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
    mb = Matrix(transpose(mk))
    out = torop(sof[12],2,0,mb,mk)
-   out += sof[14]*I(size(out,1)) - torop(sof[14],0,1,mb,mk)
+   out += sof[14]*eye(size(out,1)) - torop(sof[14],0,1,mb,mk)
    @simd for i in 1:length(cdf)
       out += torop(cdf[i],cdo[6,i],cdo[7,i],cdo[8,i],mb,mk)
    end
@@ -687,19 +691,19 @@ function htor(sof,cdf::Nothing,cdo::Nothing,nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
    mb = Matrix(transpose(mk))
    out = torop(sof[12],2,0,mb,mk)
-   out += sof[14]*I(size(out,1)) - torop(sof[14],0,1,mb,mk)
+   out += sof[14]*eye(size(out,1)) - torop(sof[14],0,1,mb,mk)
    return out, mk, mb
 end
 function htor(sof,nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
    mb = Matrix(transpose(mk))
    out = torop(sof[12],2,0,mb,mk)
-   out += sof[14]*I(size(out,1)) - torop(sof[14],0,nf,mb,mk)
+   out += sof[14]*eye(size(out,1)) - torop(sof[14],0,nf,mb,mk)
    return out, mk, mb
 end
 function htorq(sof,nf,mb,mk)
    out = torop(sof[1],2,0,mb,mk)
-   out += sof[3]*I(size(out,1)) - torop(sof[3],0,nf,mb,mk)
+   out += sof[3]*eye(size(out,1)) - torop(sof[3],0,nf,mb,mk)
    return out
 end
 function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
@@ -708,14 +712,15 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    nb = Matrix(transpose(nk))
    kb = Matrix(transpose(kk))
    #scale up tormat & add -2ρF
-   hout = kron(tormat,I(size(nk,1))) 
-   hout -= kron(sof[13] .* Diagonal(mk),Diagonal(nk))
+   hout = kron(tormat,eye(size(nk,1))) 
+   hout -= kron(sof[13] .* Diagonal(mk), Diagonal(nk))
    #tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #add 2nd order ro, spi, qua
-   if true ∈ isnan.(hout)
-      println("FUCK")
-   end
-   hout += kron(I(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
+   #if true ∈ isnan.(hout)
+   #   println("FUCK hamiltonian went imaginary again")
+   #end
+   hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
+   #println("hout type = $(typeof(hout))")
    #if s != zero(s)#add η
    #hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #end
@@ -730,9 +735,10 @@ function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
    nb = Matrix(transpose(nk))
    kb = Matrix(transpose(kk))
    #scale up tormat & add -2ρF
-   hout = kron(tormat,I(size(nk,1))) - tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
+   hout = kron(tormat,eye(size(nk,1))) -
+               tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #add 2nd order ro, spi, qua
-   hout += kron(I(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
+   hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #add η
    hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    return hout
@@ -741,12 +747,13 @@ end
 function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
+   #println("H type = $(typeof(H))")
    if σtype(nf,σ) != 1
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
    else
       U = ur(j,s,mcalc,σt)
    end
-   H = U*H*U 
+   H = Matrix(U*H*U)
    H, rvecs = Sweep(H)
    #H, rvecs = limsweep(H,3)
    rvecs = U*rvecs

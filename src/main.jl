@@ -52,11 +52,11 @@ function westersim(molnam::String, ctrl)
    end
    println("yay energy levels are calculated!")
    #write energies to file
-   if occursin("E",crtl["RUNmode"])
-      EngWriter(ctrl,fvls,fqns)
+   if occursin("E",ctrl["RUNmode"])
+      EngWriter(molnam,ctrl,fvls,fqns)
    end
    #calculate transitions
-   if occursin("S",crtl["RUNmode"])
+   if occursin("S",ctrl["RUNmode"])
       kbT = ctrl["TK"]*20836.61912 #MHz/K
       Qrt = sum(exp.(fvls))
       finfrq = zeros(0,3)
@@ -75,23 +75,7 @@ function westersim(molnam::String, ctrl)
    end
 end
 
-function westerfit(molnam::String)
-   molnam = replace(molnam, r".inp"=>"")
-   #read input file
-   ctrl = ctrlinp(molnam)
-   if occursin("E",crtl["RUNmode"])||occursin("S",crtl["RUNmode"])
-      westersim(molnam, ctrl)
-   end
-   if occursin("F",ctrl["RUNmode"])
-      westerfit(molnam, ctrl)
-   end
-end
-
-
-#h = hsr(ones(12),0.5,0.5)
-#println(h)
-
-function westerfit(molnam::String,ctrl)
+function westerfit(molnam::String,ctrl::Dict{String,Any})
 """
    The fitter!
 """
@@ -119,4 +103,18 @@ function westerfit(molnam::String,ctrl)
    #write output file
 end
 
-@time westerfit(ARGS[1])
+function westerfit(molnam::String)
+   molnam = replace(molnam, r".inp"=>"")
+   #read input file
+   ctrl = ctrlinp(molnam)
+   if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
+      westersim(molnam, ctrl)
+   end
+   if occursin("F",ctrl["RUNmode"])
+      westerfit(molnam, ctrl)
+   end
+
+end
+
+
+#@time westerfit(ARGS[1])
