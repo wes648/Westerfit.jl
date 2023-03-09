@@ -503,7 +503,7 @@ end
 #end
 function nzop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
-   return Diagonal(nk) ^ p
+   return Diagonal(kk) ^ p
 end
 function ntop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
@@ -594,15 +594,18 @@ end
 #end
 function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
-               nk::Array{Int,2},kk::Array{Int,2})#::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
-   tz = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
+               nk::Array{Int,2},kk::Array{Int,2})
+   #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+   tz = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
+   #the above all commute!
    pm = sparse(npmp(c,nb,kb,nk,kk))
    ny = sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
    sz = sparse(szop(e,j,s,nb,kb,nk,kk))
    return 0.5 * (tz*sz*pm*ny + ny*pm*sz*tz)
 end
 
-function paop(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+function paop(p::Int,mb::Array{Int,2},
+             mk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return Diagonal(mk) ^ p
 end
 function cosp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
@@ -694,7 +697,7 @@ function htor(sof,cdf::Nothing,cdo::Nothing,nf,mcalc,σ)
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,1,mb,mk)
    return out, mk, mb
 end
-function htor(sof,nf,mcalc,σ)
+function htor(sof,nf,mcalc,σ) #this is the current one being called by the code
    mk = mgen(nf,mcalc,σ)
    mb = Matrix(transpose(mk))
    out = torop(sof[12],2,0,mb,mk)
@@ -713,12 +716,9 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    kb = Matrix(transpose(kk))
    #scale up tormat & add -2ρF
    hout = kron(tormat,eye(size(nk,1))) 
-   hout -= kron(sof[13] .* Diagonal(mk), Diagonal(nk))
+   hout -= kron(sof[13] * Diagonal(mk), Diagonal(kk))
    #tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #add 2nd order ro, spi, qua
-   #if true ∈ isnan.(hout)
-   #   println("FUCK hamiltonian went imaginary again")
-   #end
    hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #println("hout type = $(typeof(hout))")
    #if s != zero(s)#add η
@@ -729,7 +729,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    end
    return hout
 end
-function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
+#=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
    nk = ngen(j,s)
    kk = kgen(j,s)
    nb = Matrix(transpose(nk))
@@ -742,7 +742,7 @@ function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
    #add η
    hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    return hout
-end
+end=#
 
 function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    #fuse sof & cdf in tsdriag call 
@@ -760,7 +760,7 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    vals, vecs = LAPACK.syev!('V', 'U', H)
    perm = assignperm(vecs)
    vals = vals[perm]
-   vecs = vecs[:,perm]
+   vecs = vecs[perm,:]
    vecs = rvecs*vecs 
    return vals, vecs
 end

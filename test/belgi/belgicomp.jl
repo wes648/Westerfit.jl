@@ -75,7 +75,7 @@ function procbelgi()
 end
 
 function rms(a::Array,b::Array)::Float64
-   c = a .- b
+   c = a - b
    return BLAS.nrm2(c) / √(length(c))
 end
 
@@ -96,6 +96,9 @@ function runtest()
    belg = procbelgi()
    west = readdlm("belgi.eng",',')
    westvbelg(belg,west)
+   q = sort(belg[:,end]) - sort(west[:,end])
+   q = BLAS.nrm2(q) / √(length(q))
+   println("q = $q")
 end
 #
 
