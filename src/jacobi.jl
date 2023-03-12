@@ -58,6 +58,15 @@ function lrgstoffd(A::Array)
     out = [iamax(mat[:,i]) for i in 1:size(mat,2)]
     return out
 end
+
+function givenS(A,p::Int,q::Int,θ::Float64)
+    V = eye(size(A,1))
+    V[p,p] = cos(θ)
+    V[q,q] = cos(θ)
+    V[p,q] = sin(θ)
+    V[q,p] = -sin(θ)
+    return V
+end
 #Now on to the Rotations!
 
 # We don't always want to compute the eigenvectors, so those are in the
@@ -79,6 +88,31 @@ function Rotate(A::Array,p::Int,q::Int, V::Array=Matrix{Float64}(I,1,1) )
     rs = collect(1:l)
     @. A[rs,p] = Ap[rs] - s*(Aq[rs] + τ*Ap[rs])
     @. A[rs,q] = Aq[rs] + s*(Ap[rs] - τ*Aq[rs])
+    @. A[p,rs] = A[rs,p]
+    @. A[q,rs] = A[rs,q]
+    A[p,q] = 0.0
+    A[q,p] = 0.0
+    A[p,p] = Ap[p] - t*Aq[p]
+    A[q,q] = Aq[q] + t*Aq[p]
+    Vp = copy(V[:,p])
+    Vq = copy(V[:,q])
+    @. V[rs,p] = c*Vp[rs] - s*Vq[rs]
+    @. V[rs,q] = s*Vp[rs] + c*Vq[rs]
+    end
+    return A,V
+end
+function Rotate(A::SparseMatrixCSC{Float64,Int64},p::Int,q::Int, V)
+    if A[p,q] != 0.0
+    t = (A[q,q] - A[p,p]) / (2.0*A[p,q]) #this is the angle, called t to save mem
+    t = sign(t)/(abs(t)+sqrt(t^2 + 1.0))
+    c = 1.0/√(t^2 + 1.0)
+    s = t*c
+    τ = s/(1.0 + c)
+    Ap=copy(A[:,p])
+    Aq=copy(A[:,q])
+    rs = collect(1:size(A,1))
+    @. A[rs,p] = Ap[rs] - s*(Aq[rs] + τ*Ap[rs])
+    @. A[rs,q] = Aq[rs] + s*(Ap[rs] - τ*Aq[rs])
     @. A[p,rs]=A[rs,p]
     @. A[q,rs]=A[rs,q]
     A[p,q] = 0.0
@@ -92,17 +126,40 @@ function Rotate(A::Array,p::Int,q::Int, V::Array=Matrix{Float64}(I,1,1) )
     end
     return A,V
 end
-
 # This function performs one sweep
 function Sweep(A,V=Matrix{Float64}(I,size(A)))
-    n=size(A,1)
-    for ii in 2:n
+    for ii in 2:size(A,1)
         for jj in 1:(ii-1) ## Just over one triangle
             A, V = Rotate(A,ii,jj,V)
         end
     end
     return A,V
 end
+function SparseSweep(A,V)
+    r, c, = findnz(A)
+    rf = r[c .< r]
+    cf = c[c .< r]
+    for i in 1:length(rf)
+        A, V = Rotate(A,rf[i],cf[i],V)
+    end
+    return A,V
+end
+function SparseList(A)
+    r, c, = findnz(A)
+    rf = r[c .< r]
+    cf = c[c .< r]
+    for i in 1:length(rf)
+        println(A[rf[i],cf[i]])
+    end
+end
+function limsparsweep(A,cnt=1)
+    V = eye(size(A,1))
+    for m in 1:cnt
+        A,V = SparseSweep(A,V)
+    end
+    return A,V
+end
+
 function limsweep(A,cnt=1,V=Matrix{Float64}(I,size(A)))
     n=size(A,1)
     for m in 1:cnt

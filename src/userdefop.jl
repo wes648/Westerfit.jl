@@ -596,12 +596,12 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
                nk::Array{Int,2},kk::Array{Int,2})
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
-   tz = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
+   op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    #the above all commute!
-   pm = sparse(npmp(c,nb,kb,nk,kk))
-   ny = sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
-   sz = sparse(szop(e,j,s,nb,kb,nk,kk))
-   return 0.5 * (tz*sz*pm*ny + ny*pm*sz*tz)
+   op *= sparse(npmp(c,nb,kb,nk,kk))
+   op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
+   op *= sparse(szop(e,j,s,nb,kb,nk,kk))
+   return 0.5 * (op + transpose(op))
 end
 
 function paop(p::Int,mb::Array{Int,2},
@@ -616,11 +616,11 @@ function sinp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
 end
 function torop(pr::Float64,p::Int,c::Int,s::Int,
                mb::Array{Int,2},mk::Array{Int,2})#::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
-   pa = paop(p,mb,mk)
-   sc = sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
+   op = paop(p,mb,mk)
+   op *= sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
-   out = (pa*sc + sc*pa)
-   return (pr*0.5) * out
+   #out = (pa*sc + sc*pa)
+   return (pr*0.5) * (op + transpose(op))
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
                mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
@@ -632,9 +632,8 @@ function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
 end
 function torop(pr::Float64,p::Int,c::Int,
                mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
-   pa = paop(p,mb,mk)
-   co = sparse(cosp(c,mb,mk))
-   return (pa*co + co*pa) .* (pr/2.0)
+   op = paop(p,mb,mk)*sparse(cosp(c,mb,mk))
+   return (op + transpose(op)) .* (pr/2.0)
 end
 
 function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
@@ -753,11 +752,11 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    else
       U = ur(j,s,mcalc,σt)
    end
-   H = Matrix(U*H*U)
-   H, rvecs = Sweep(H)
-   #H, rvecs = limsweep(H,3)
+   H = (U*H*U)
+   H, rvecs = SparseSweep(H)
+   #H, rvecs = limsparsweep(H,3)
    rvecs = U*rvecs
-   vals, vecs = LAPACK.syev!('V', 'U', H)
+   vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    perm = assignperm(vecs)
    vals = vals[perm]
    vecs = vecs[perm,:]
