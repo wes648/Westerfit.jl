@@ -46,16 +46,16 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    prd[1] += prd[12]*prd[13]^2              # Aeff = A + Fρ²
    out[2] = 0.5*(prd[2] + prd[3])                 #BJ
-   out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
+   out[1] = prd[1] - out[2]                       #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
-   out[5] = -(prd[5] + prd[6] + prd[7]) / √3.0    #a0
-   out[6] = (2.0*prd[5] - prd[6] - prd[7]) / √6.0 #a
-   out[7] = -prd[8]                               #b
-   out[8] = (prd[6] - prd[7])*0.5                 #d
-   out[9] = prd[9]                                #χ0
-   out[10] = -√(2.0/3.0)*prd[11]                  #χ1
-   out[11] = prd[10] / √6.0                       #χ2
+   out[5] = -(prd[5] + prd[6] + prd[7]) / √3.0    #T⁰₀(ϵ)
+   out[6] = (2.0*prd[5] - prd[6] - prd[7]) / √6.0 #T²₀(ϵ)
+   out[7] = -prd[8]                               #T²₁(ϵ)
+   out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
+   out[9] = prd[9]                                #T²₀(χ)
+   out[10] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
+   out[11] = prd[10] / √6.0                       #T²₂(χ)
    out[12] = prd[12]                              #F
    out[13] = 2.0*prd[13]*prd[12]                  #ρF
    out[14] = prd[14]*0.5                          #V3/2

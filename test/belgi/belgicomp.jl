@@ -49,13 +49,19 @@ function runbelgi()
    run(`sed -i 's/PURITY=/,  1, 1/g' output`, wait=true)
 end
 
-function vt2m(vt,σ)
-   if vt==zero(vt)
-      return σ
-   elseif iseven(vt)
-      return 3*(vt-1) + σ
-   elseif isodd(vt)
-      return -3*vt + σ
+function m2vtsimp(m)
+   if (m==zero(m))||(m==1.0)
+      return 0.0
+   elseif (m==-3.0)||(m==-2.0)
+      return 1.0
+   elseif (m==3.0)||(m==4.0)
+      return 2.0
+   elseif (m==-6.0)||(m==-5.0)
+      return 3.0
+   elseif (m==6.0)||(m==7.0)
+      return 4.0
+   elseif (m==-9.0)||(m==-8.0)
+      return 5.0
    end
 end
 
@@ -67,38 +73,38 @@ function procbelgi()
    perm = [4, 2, 5, 1, 6, 3]
    belg = belg[:,perm]
    #println(belg)
-   #convert vt to m
-   @. belg[:,3] = vt2m(belg[:,3], belg[:,5])
    #sort by energy
    belg = belg[sortperm(belg[:,end]), :]
    return belg
 end
 
 function rms(a::Array,b::Array)::Float64
-   c = a - b
+   c = abs.(a) - abs.(b)
    return BLAS.nrm2(c) / √(length(c))
 end
 
 function westvbelg(belg,west)
+   @. west[:,4] = m2vtsimp(west[:,4])
    west = west[sortperm(west[:,end]),:]
+   wstp = west[1:size(belg,1), :]
    for i in 1:6
-      err = rms(belg[:,i], west[:,i])
+      err = rms(belg[:,i], wstp[:,i])
       println("RMS of $(qns[i]) = $err")
    end
 end
 
 function runtest()
    nams = ["Av"; "Bv"; "Cv"; "Dabv"; "Fv"; "V3v"; "rhov"]
-   vals = [3000.0/csl; 1500.0/csl; 1000.0/csl; 0.0/csl; 5.1; 200.0; 0.05]
+   vals = [3000.0/csl; 1500.0/csl; 1000.0/csl; 0.0/csl; 5.1; 20.0; 0.05]
    setvars(nams,vals)
    runbelgi()
    westerfit("belgi")
    belg = procbelgi()
    west = readdlm("belgi.eng",',')
    westvbelg(belg,west)
-   q = sort(belg[:,end]) - sort(west[:,end])
-   q = BLAS.nrm2(q) / √(length(q))
-   println("q = $q")
+   #q = sort(belg[:,end]) - sort(west[:,end])
+   #q = BLAS.nrm2(q) / √(length(q))
+   #println("q = $q")
 end
 #
 
