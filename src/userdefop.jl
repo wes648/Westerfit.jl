@@ -77,6 +77,41 @@ function Δlist(J,S)
    return collect(min:max)
 end
 
+function kperm(n::Int)::Array{Int}
+   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+end
+function kperm(j,s)::Array{Int}
+   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
+   shift = 0
+   for n in Δlist(j,s)
+      nd = 2*n+1
+      perm[(1+shift):(nd+shift)] = ksorter(n) .+ shift
+      shift += nd
+   end
+   return perm
+end
+function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
+   #perm = zeros(Int,jsd)
+   for n in Δl
+      nd = 2*n+1
+      perm[(1+shift):(nd+shift)] = ksorter(n) .+ shift
+      shift += nd
+   end
+   return perm#, shift
+end
+function kperm(j,s,m)
+   jsd = Int((2*j+1)*(2*s+1))
+   Δlst = Δlist(j,s)
+   shift = 0
+   perm = zeros(Int,jsd*(2*m+1))
+   for i in 0:(2*m)
+      perm = kperm(j,s,shift,jsd,Δlst,perm)
+      shift += jsd
+   end
+   return perm
+end
+
+
 function qngen(n,nf,m,σ)
    nd = Int(2*n+1)
    md = Int(2*m+(σtype(nf,σ)==2)+1)
@@ -139,6 +174,10 @@ eh(x::Float64)::Float64 = √(x*(x+1.0))
 assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
 
 function fh(x::Int,y::Int)::Float64
+   out = □rt((x-y)*(x+y+1))
+   return out
+end
+function fh(x::Float64,y::Float64)::Float64
    out = □rt((x-y)*(x+y+1))
    return out
 end
@@ -320,6 +359,17 @@ end
 function hrfl2(bpm,nb,kb,nk,kk)::Array{Float64}
    @. return bpm*fh(nk,kk-1)*fh(nk,kk-2)*δ(kb,kk-2)*δ(nb,nk)
 end
+
+function hrdiag(bn::Float64,bk::Float64,nk,kk)::Array{Float64}
+   @. return bn*nk*(nk+1.0) + bk*kk^2
+end
+function hrfu1(dab::Float64,nk,kk)::Array{Float64}
+   @. return dab*(kk+0.5)*fh(nk,kk)
+end
+function hrfu2(bpm::Float64,nk,kk)::Array{Float64}
+   @. return bpm*fh(nk,kk)*fh(nk,kk+1)
+end
+
 function hrot2s(pr,nb,kb,nk,kk)
    out = spzeros(size(kb))
    lst = diagind(out)
@@ -334,16 +384,24 @@ function hrot2s(pr,nb,kb,nk,kk)
    out[lst] .= hrfl2(pr[3],nb[lst],kb[lst],nk[lst],kk[lst])
    return out
 end
-function hrot2v2(pr,nb,kb,nk,kk)#fastest
-   out = spzeros(size(kb))
+function hrot2v2(pr,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}#fastest
+   out = spzeros(Float64, size(kb))
    lst = diagind(out,1)
-   out[lst] .= hrfu1(pr[4],nb[lst],kb[lst],nk[lst],kk[lst])
+   out[lst] .= hrfu1(pr[4],nk[lst],kk[lst])
    lst = diagind(out,2)
-   out[lst] .= hrfu2(pr[3],nb[lst],kb[lst],nk[lst],kk[lst])
-   out += transpose(out)
+   out[lst] .= hrfu2(pr[3],nk[lst],kk[lst])
+   out .+= transpose(out)
    lst = diagind(out)
-   out[lst] .= hrdiag(pr[2],pr[1],nb[lst],kb[lst],nk[lst],kk[lst])
+   out[lst] .= hrdiag(pr[2],pr[1],nk[lst],kk[lst])
    return out
+end
+function hrtest(n)::SparseMatrixCSC{Float64, Int64}
+   pr = [1.75; 1.25; 0.25; 0.02]
+   nk = ngen(n)
+   kk = kgen(n)
+   nb = Matrix(transpose(nk))
+   kb = Matrix(transpose(kk))
+   return hrot2v2(pr,nb,kb,nk,kk)
 end
 
 function hrlpart(out,pr,l::Int,nb,kb,nk,kk)::Array{Float64,2}
@@ -364,9 +422,9 @@ function hrot(pr,n)
    return out
 end
 function hrot3(pr,nb,kb,nk,kk)
-   out = zeros(size(kks))
+   out = zeros(size(kk))
    @simd for l in 0:2:2
-      out .= hrlpart(out,pr,l,nbs,kbs,nks,kks)
+      out .= hrlpart(out,pr,l,nb,kb,nk,kk)
    end
    return out
 end
@@ -510,24 +568,26 @@ function ntop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
    return eh.(Diagonal(nk)) ^ p
 end
 function nyel(nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    return @. δ(nb,nk)*(δ(kb-1,kk)*fh(nk,kk) - δ(kb+1,kk)*fh(nk,kk-1))
 end
 function nyop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    return nyel(nb,kb,nk,kk)^p
 end
 function nmel(nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. δ(nb,nk)*δ(kb,kk+1)*fh(nk,kk)
 end
 function npel(nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. δ(nb,nk)*δ(kb,kk-1)*fh(nk,kk-1)
 end
 function npmp(p::Int,nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
-   return npel(nb,kb,nk,kk)^p + nmel(nb,kb,nk,kk)^p
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+   out = npel(nb,kb,nk,kk)^p
+   return out + transpose(out)
+   #return npel(nb,kb,nk,kk)^p + nmel(nb,kb,nk,kk)^p
 end
 function rotop(pr::Float64,t::Int,z::Int,x::Int,
                nb::Array{Int,2},kb::Array{Int,2},
@@ -538,7 +598,7 @@ function rotop(pr::Float64,t::Int,z::Int,x::Int,
 end
 function nsop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
                      nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
-          return (0.5 .*((eh(j)-eh(s))*I(size(nk,1)) - eh.(Diagonal(nk)))) ^ p
+   return (0.5 *((eh(j)-eh(s))*I(size(nk,1)) - eh.(Diagonal(nk)))) ^ p
 end
 function nsop_old(p::Int,j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
@@ -561,7 +621,10 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    if s==zero(s)
       return eye(size(nb,1))
    else
-   return (szen(j,s,nb,kb,nk,kk) .+ szem(j,s,nb,kb,nk,kk) .+ szep(j,s,nb,kb,nk,kk))^p
+      out = szep(j,s,nb,kb,nk,kk)
+      out += transpose(out)
+      out += szen(j,s,nb,kb,nk,kk)
+   return out
    end
 end
 
@@ -594,33 +657,34 @@ end
 #end
 function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
-               nk::Array{Int,2},kk::Array{Int,2})
+               nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    #the above all commute!
    op *= sparse(npmp(c,nb,kb,nk,kk))
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
    op *= sparse(szop(e,j,s,nb,kb,nk,kk))
-   return 0.5 * (op + transpose(op))
+   return 0.25 * (op + transpose(op))
 end
 
 function paop(p::Int,mb::Array{Int,2},
              mk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return Diagonal(mk) ^ p
 end
-function cosp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
+function cosp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. (δ(mb+p,mk)+δ(mb-p,mk))/2.0
 end
-function sinp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::Array{Float64,2}
+function sinp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. (δ(mb+p,mk) + δ(mb-p,mk)) / 2.0
 end
 function torop(pr::Float64,p::Int,c::Int,s::Int,
-               mb::Array{Int,2},mk::Array{Int,2})#::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+               mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    op = paop(p,mb,mk)
    op *= sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
+   op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
-   return (pr*0.5) * (op + transpose(op))
+   return (pr*0.5) * op
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
                mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
@@ -631,7 +695,7 @@ function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
    return out
 end
 function torop(pr::Float64,p::Int,c::Int,
-               mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
+               mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    op = paop(p,mb,mk)*sparse(cosp(c,mb,mk))
    return (op + transpose(op)) .* (pr/2.0)
 end
@@ -639,8 +703,8 @@ end
 function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-               mk::Array{Int,2})#::Array{Float64,2}
-   return kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk))
+               mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+   return dropzeros!(kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk)))
 end
 function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
                g::Tuple,h::Tuple,
@@ -652,7 +716,7 @@ function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
       out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],
                    j,s,nb,kb,mb,nk,kk,mk)
    end
-   return out
+   return dropzeros!(out)
 end
 function tsrop(pr::Float64,op::Array,j::Float64,s::Float64,
                nb::Array{Int,2},kb::Array{Int,2},
@@ -753,6 +817,8 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
       U = ur(j,s,mcalc,σt)
    end
    H = (U*H*U)
+   perm = kperm(j,s,mcalc)
+   H = permute!(H,perm,perm)
    H, rvecs = SparseSweep(H)
    #H, rvecs = limsparsweep(H,3)
    rvecs = U*rvecs
