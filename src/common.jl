@@ -282,14 +282,14 @@ end
 ################################################################################
 #These are the various Wang Matrices
 ################################################################################
-function eye(x)
+function eye(x::Int)::SparseMatrixCSC{Float64, Int64}
 """
 Returns a sparse identity matrix of size x. Mostly used for type consistency in
    the Wang Transformations.
 """
-   spdiagm(ones(x))
+   return sparse(I,x,x)
 end
-function un(m)
+function un(m::Int)::SparseMatrixCSC{Float64, Int64}
 """
 This generates a standard Wang Transformation Matrix for a matrix of size m. As
    an example, if you want the matrix for N=1, input m = 3 (= 2*N+1). Or if you
@@ -347,7 +347,7 @@ This builds the torsional Wang Transformation matrix for a span of -m:m with
    out = kron(out,eye(jd))
    return out
 end
-function ur(n,m)
+function ur(n::Int,m::Int)::SparseMatrixCSC{Float64, Int64}
 """
 This builds the rotational Wang Transformation matrix for a given n. This will
    be kronecker producted with an identy matrix of size 2*m+1 for the
@@ -362,14 +362,15 @@ end
 function eyr(x::Int)::Array{Float64,2}
    diagm(ones(x))
 end
-function ur(n)
+function ur(n)::SparseMatrixCSC{Float64, Int64}
    md = 1
-   out = (1/sqrt(2)) .* [-eyr(n) zeros(n) rotl90(eyr(n)); zeros(1,n) sqrt(2) zeros(1,n);
-      rotl90(eyr(n)) zeros(n) eyr(n)]
-   out = kron(eyr(md),out)
+   out = (1.0/sqrt(2.0)) * [-eye(n) spzeros(n) rotl90(eye(n)); 
+                        spzeros(1,n) sqrt(2) spzeros(1,n);
+                        rotl90(eye(n)) spzeros(n) eye(n)]
+   out = kron(eye(md),out)
    return out
 end
-function ur(j,s,m,σt)
+function ur(j::Int,s::Int,m::Int,σt::Int)::SparseMatrixCSC{Float64, Int64}
 """
 This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
    This will be kronecker producted with an identy matrix of size 2*m+1 for the
