@@ -85,7 +85,7 @@ function kperm(j,s)::Array{Int}
    shift = 0
    for n in Δlist(j,s)
       nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = ksorter(n) .+ shift
+      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
       shift += nd
    end
    return perm
@@ -94,7 +94,7 @@ function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
    #perm = zeros(Int,jsd)
    for n in Δl
       nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = ksorter(n) .+ shift
+      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
       shift += nd
    end
    return perm#, shift
@@ -819,8 +819,8 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    H = (U*H*U)
    perm = kperm(j,s,mcalc)
    H = permute!(H,perm,perm)
-   H, rvecs = SparseSweep(H)
-   #H, rvecs = limsparsweep(H,3)
+   #H, rvecs = SparseSweep(H)
+   H, rvecs = limsparsweep(H,3)
    rvecs = U*rvecs
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    perm = assignperm(vecs)
