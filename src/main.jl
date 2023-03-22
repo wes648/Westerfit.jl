@@ -84,7 +84,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)
-   lines = readdlm("$molnam.lne", ',', Float64)
+   lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
    #determine the states
    linds, ofreqs, uncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
    #println(linds)

@@ -56,9 +56,9 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[9] = prd[9]                                #T²₀(χ)
    out[10] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
    out[11] = prd[10] / √6.0                       #T²₂(χ)
-   out[12] = prd[12]                              #F
+   out[12] = prd[12]*csl                          #F
    out[13] = 2.0*prd[13]*prd[12]                  #ρF
-   out[14] = prd[14]*0.5                          #V3/2
+   out[14] = prd[14]*0.5*csl                      #V3/2
    out[15] = prd[15]                              #η
    return out
 end
@@ -331,14 +331,14 @@ end
 
 function linestrng(s,frql,qunl)
    if s==zero(s)
-      part  = lpad(qunl[2],3)*","
-      part *= lpad(qunl[3],3)*","
-      part *= lpad(qunl[4],3)*","
-      part *= lpad(qunl[5],3)*","
-      part *= lpad(qunl[8],3)*","
-      part *= lpad(qunl[9],3)*","
-      part *= lpad(qunl[10],3)*","
-      part *= lpad(qunl[11],3)*","
+      part  = lpad(qunl[2],3)*","  #N
+      part *= lpad(qunl[3],3)*","  #Ka
+      part *= lpad(qunl[4],3)*","  #Kc
+      part *= lpad(qunl[5],3)*","  #m
+      part *= lpad(qunl[8],3)*","  #N
+      part *= lpad(qunl[9],3)*","  #Ka
+      part *= lpad(qunl[10],3)*"," #Kc
+      part *= lpad(qunl[11],3)*"," #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
       part *= @sprintf("%8.4f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])

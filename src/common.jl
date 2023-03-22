@@ -116,22 +116,23 @@ end
 function k2kc(n,k)
 """
 Determines the value of Kc based on the value of N and |Kₐ|
-Needs to be reworked as of 3/20/23
 """
    ka = abs(k)
    if k < 0
-      kc = n - ka + 1
+      kc = n - ka + 1 - isodd(n + k)
+   elseif k == zero(k)
+      kc = n
    else
-      kc = n - ka
+      kc = n - ka + isodd(n + k)
    end
    return kc
 end
-function kakc2k(ka,kc)
+function kakc2k(n,ka,kc)
    ka = abs(ka)
-   if iseven(ka+kc)
-      return ka
-   else isodd(ka+kc)
-      return -ka
+   if iseven(n+ka+kc)
+      return ka*(-1)^(n+ka)
+   else isodd(n+ka+kc)
+      return -ka*(-1)^(n+ka)
    end
 end
 
@@ -140,8 +141,8 @@ function qn2ind(n,ka,kc)
 This determines the specific index of a N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
-   ka = kakc2k(ka,kc)
-   ind = convert(Int,n*(n+1)+ ka +1)
+   ka = kakc2k(n,ka,kc)
+   ind = convert(Int,n*(n+1) + ka +1)
 end
 function qn2ind(j,s,n,ka,kc)
 """
@@ -150,7 +151,7 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
 """
    jp = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)
    np = sum(2 .* collect((j-s):(n-1)) .+ 1)
-   kp = n + kakc2k(ka,kc) + 1
+   kp = n + kakc2k(n,ka,kc) + 1
    ind = jp + np + kp
    ind = convert(Int,ind)
    return ind
@@ -164,7 +165,7 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
    ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
-   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(ka,kc) + 1
+   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
    ind = convert(Int,ind)
    return ind
    else
