@@ -74,7 +74,7 @@ function derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
       pr[rpid-11] = 1.0
       out = kron(htorq(pr,nf,mb,mk), I(size(nk,1)))
    elseif rpid==13 # ρF
-      out = -kron(Diagonal(mk),Diagonal(kk))
+      out = kron(Diagonal(mk),Diagonal(kk))
    elseif rpid==15 # η 
       out = tsrop(1.0,0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    else #user def
@@ -273,6 +273,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    perm,n = findnz(sparse(scales))
    println(perm)
    println(params)
+   println(omc)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
@@ -280,7 +281,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    ϵ0 = 0.1E-12
    ϵ1 = 0.1E-16
    LIMIT = 50
-   λlm = 0.1E-5
+   μlm = rms + rms^2
+   λlm = μlm*rms/(1.0 + rms)
    Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
@@ -314,6 +316,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
+      λlm = μlm*rms/(1.0 + rms)
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
                   jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
@@ -335,14 +338,11 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(H^(-1/2))
          #println(params[perm])
          #λlm = 0.0
-         λlm /= 3000.0
-         if λlm ≤ 1.0E-24
-            λlm = 0.0
-         end
+         μlm /= 20.0
          stoit = 0
       else
          #params .= oparams
-         λlm = max(2.0*λlm,1.0E-24)
+         μlm = max(4.0*μlm,1.0E-24)
       end
       #ρlm = lbmq_gain(β,λlm,jtw*omc,rms,nrms)
       #if ρlm ≥ 0.75
