@@ -193,7 +193,7 @@ function □rt(x)::Float64
    end
 end
 function θ(j,n,s)
-   if s==zero(s)
+   if s==zero(s)#||n==zero(n)
       out = 0.0
    elseif s==0.5
       out = (n-j)/(j+0.5)
@@ -206,14 +206,14 @@ function θ(j,n,s)
    return out
 end
 function ϕ(j,n,s)
-   if s==zero(s)
+   if s==zero(s)||n==zero(n)
       out = 0.0
    elseif s==0.5
       out = -1.0/(j+0.5)
    else
       out = (n-j+s)*(n+j+s+1)*(s+j-n+1)*(n+j-s)
       out *= 1.0/((2.0*n-1.0)*(2.0*n+1.0))
-      out = -sqrt(out)/n
+      out = -□rt(out)/n
    end
    return out
 end
@@ -225,7 +225,6 @@ end
 δi(x::Int,y::Int)::Int = x==y
 
 T(l::Int,q::Int)::Int = l*(l+1) + q + 1
-Tμ(q::Int)::Int = q + 2
 Tq(q::Int)::Int = abs(q) + 1 #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
 
@@ -305,6 +304,9 @@ function σtype(nfold,σ)
    end
 end
 function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+   if nfold==0
+      return [1.]
+   else
    σt = σtype(nfold,σ)
    lim = mcalc*nfold
    if σt==0
@@ -316,6 +318,7 @@ function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
       marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end
    return marray
+   end
 end
 msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
 mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,1,2*mc+1))
@@ -623,7 +626,7 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    else
       out = szep(j,s,nb,kb,nk,kk)
       out += transpose(out)
-      out += szen(j,s,nb,kb,nk,kk)
+      out += szem(j,s,nb,kb,nk,kk)
    return out
    end
 end
@@ -661,9 +664,21 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    #the above all commute!
+   if true ∈ isnan.(op)
+      println("FUCK!!! j=$j, error from diag ops")
+   end
    op *= sparse(npmp(c,nb,kb,nk,kk))
+   if true ∈ isnan.(op)
+      println("FUCK!!! j=$j, error from n+ + n-")
+   end
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
+   if true ∈ isnan.(op)
+      println("FUCK!!! j=$j, error from ny")
+   end
    op *= sparse(szop(e,j,s,nb,kb,nk,kk))
+   if true ∈ isnan.(op)
+      println("FUCK!!! j=$j, error from sz")
+   end
    return 0.25 * (op + transpose(op))
 end
 
@@ -684,6 +699,9 @@ function torop(pr::Float64,p::Int,c::Int,s::Int,
    op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
+   if true ∈ isnan.(op)
+      println("FUCK!!! error from torop")
+   end
    return (pr*0.5) * op
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
@@ -780,15 +798,25 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    #scale up tormat & add -2ρF
    hout = kron(tormat,eye(size(nk,1))) 
    hout -= kron(sof[13] * Diagonal(mk), Diagonal(kk))
+   if true ∈ isnan.(hout)
+      println("FUCK!!! j=$j, error from Htor")
+   end
    #tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #add 2nd order ro, spi, qua
    hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #println("hout type = $(typeof(hout))")
+   if true ∈ isnan.(hout)
+      println("FUCK!!! j=$j, error from Hr-sr-hyp")
+   end
+
    #if s != zero(s)#add η
    #hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #end
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
+   end
+   if true ∈ isnan.(hout)
+      println("FUCK!!! j=$j, error from H-cd")
    end
    return hout
 end
@@ -810,6 +838,9 @@ end=#
 function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
+   if true ∈ isnan.(H)
+      println("FUCK!!! j=$j, σ=$σ, error from H")
+   end
    #println("H type = $(typeof(H))")
    if σtype(nf,σ) != 1
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
@@ -819,8 +850,11 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
    H = (U*H*U)
    perm = kperm(j,s,mcalc)
    H = permute!(H,perm,perm)
-   #H, rvecs = SparseSweep(H)
-   H, rvecs = limsparsweep(H,3)
+   @time H, rvecs = SparseSweep(H)
+   #@time H, rvecs = limsparsweep(H,3)
+   if true ∈ isnan.(H)
+      println("FUCK!!! j=$j, σ=$σ, error from Jacobi")
+   end
    rvecs = U*rvecs
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    perm = assignperm(vecs)
@@ -862,10 +896,11 @@ end
 function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    s = ctrl["S"]
    mcalc = ctrl["mcalc"]
+   vtm = ctrl["vtmax"]
    sd = Int(2*s + 1)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
-   vtd = Int(ctrl["vtmax"]+1)
+   vtd = Int(vtm+1)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end,1]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
@@ -887,12 +922,12 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       for j in jsublist
          jd = Int(2.0*j) + 1
-         pull = indpuller(ctrl["vtmax"],mcalc,σt,Int(jd*sd))
-         sind, find = jvdest(j,s,ctrl["vtmax"]) 
+         pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
+         sind, find = jvdest(j,s,vtm) 
          tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
          fvls[sind:find,sc] = tvals[pull]
          fvcs[1:jd*msd,sind:find,sc] = tvecs[:,pull]
-         fqns[sind:find,:,sc] = qngenv(j,s,nf,ctrl["vtmax"],σ)
+         fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)
       end
    end
    return fvls, fvcs, fqns
