@@ -274,6 +274,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    println(perm)
    println(params)
    println(omc)
+   println(inds)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))

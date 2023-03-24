@@ -3,7 +3,7 @@ molnam
 NFOLD = 3
 S = 1.5
 TK = 25.0
-RUNmode = F
+RUNmode = E
 mcalc = 3
 vtmax = 0
 Jmax = 6.5

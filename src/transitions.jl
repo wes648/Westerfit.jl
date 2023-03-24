@@ -1,4 +1,5 @@
 
+Tμ(q::Int)::Int = q + 2
 
 function μproc(μf,μo)
    len = maximum(μo)+1
