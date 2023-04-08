@@ -220,7 +220,7 @@ end
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo,ctrl)
    if rms > 3000.
-      tdncount = 1
+      tdncount = 3
    else
       tdncount = 3
    end
@@ -271,15 +271,15 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    oparams = params
    rms, omc = rmscalc(vals, inds, ofreqs)
    perm,n = findnz(sparse(scales))
-   println(perm)
-   println(params)
+   #println(perm)
+   #println(params)
    println(omc)
    println(inds)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
    #RHOTHRES = -1.0E-6
-   ϵ0 = 0.1E-12
+   ϵ0 = 0.1E-20
    ϵ1 = 0.1E-16
    LIMIT = 50
    μlm = rms + rms^2
@@ -357,6 +357,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
          uncs = paramunc!(uncs,H,perm,omc)
+         println(omc)
          println(uncs)
          break
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)

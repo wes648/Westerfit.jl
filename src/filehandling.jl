@@ -46,7 +46,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    prd[1] += prd[12]*prd[13]^2              # Aeff = A + Fρ²
    out[2] = 0.5*(prd[2] + prd[3])                 #BJ
-   out[1] = prd[1] - out[2]                       #BK
+   out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
    out[5] = -(prd[5] + prd[6] + prd[7]) / √3.0    #T⁰₀(ϵ)
@@ -57,7 +57,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[10] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
    out[11] = prd[10] / √6.0                       #T²₂(χ)
    out[12] = prd[12]*csl                          #F
-   out[13] = 2.0*prd[13]*prd[12]                  #ρF
+   out[13] = -2.0*prd[13]*prd[12]*csl             #ρF
    out[14] = prd[14]*0.5*csl                      #V3/2
    out[15] = prd[15]                              #η
    return out
@@ -135,155 +135,61 @@ function prmsetter(prm::Array{Float64},stg::Array{Int})::Array{Float64}
    end
    return out
 end
-#=
-function hstager(nams::Array,vals::Array,errs::Array,oprs::Array)
-   len = length(val)
-   stg = opr[:,end]
-   prm1 = collect(1:len)[isequal.(stgs,1)]
-   prm2 = collect(1:len)[isequal.(stgs,2)]
-   prm3 = collect(1:len)[isequal.(stgs,3)]
-   onam = (nothing, nothing, nothing)
-   oval = (nothing, nothing, nothing)
-   oerr = (nothing, nothing, nothing)
-   oopr = (nothing, nothing, nothing)
-   if length(prm1) != 0
-      onam[1] = nams[prm1]
-      oval[1] = vals[prm1]
-      oerr[1] = errs[prm1]
-      oopr[1] = oprs[prm1]
-   end
-   if length(prm2) != 0
-      onam[2] = nams[prm2]
-      oval[2] = vals[prm2]
-      oerr[2] = errs[prm2]
-      oopr[2] = oprs[prm2]
-   end
-   if length(prm3) != 0
-      onam[3] = nams[prm3]
-      oval[3] = vals[prm3]
-      oerr[3] = errs[prm3]
-      oopr[3] = oprs[prm3]
-   end
-   return onam, oval, oerr, oopr
-end
-function hstager(nams::Nothing,vals::Nothing,errs::Nothing,oprs::Nothing)
-   out = (nothing, nothing, nothing)
-   return out, out, out, out
-end
-
-function hstager_sim(vals::Array,oprs::Array)
-   len = length(vals)
-   stg = oprs[end,:]
-   prm1 = collect(1:len)[isequal.(stg,1)]
-   prm2 = collect(1:len)[isequal.(stg,2)]
-   prm3 = collect(1:len)[isequal.(stg,3)]
-   v1 = nothing
-   p1 = nothing
-   v2 = nothing
-   p2 = nothing
-   v3 = nothing
-   p3 = nothing
-   if length(prm1) != 0
-      v1 = vals[prm1]
-      p1 = oprs[:,prm1]
-   end
-   if length(prm2) != 0
-      v2 = vals[prm2]
-      p2 = oprs[:,prm2]
-   end
-   if length(prm3) != 0
-      v3 = vals[prm3]
-      p3 = oprs[:,prm3]
-   end
-   oval = (v1, v2, v3)
-   oopr = (p1, p2, p3)
-   return oval, oopr
-end
-function hstager_sim(vals::Nothing,oprs::Nothing)
-   out = (nothing, nothing, nothing)
-   return out, out, out, out
-end
-=#
-function paraminit()
-   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "F" => 5, "ρ" => 6,
-      "V3" => 7, "ϵzz" => 8, "ϵxx" => 9, "ϵyy" => 10, "ϵxz" => 11, "η" => 12,
-      "χzz" => 13, "χxmy" => 14, "χxz" => 15, "ΔN" => 16, "ΔNK" => 17, "ΔK" => 18,
-      "δN" => 19, "δK" => 20, "Fm" => 21, "V6" => 22, "V3m" => 23, "ρm" => 24,
-      "ρ3" => 25, "FN" => 26, "FK" => 27, "Fbc" => 28, "Fab" => 29, "V3N" => 30,
-      "V3K" => 31, "V3ab" => 32, "V3bc" => 33, "ρN" => 34, "ρK" => 35, "ρab" => 36,
-      "ρbN" => 37, "ΔsN" => 38, "ΔsNK" => 39, "ΔsKN" => 40, "ΔsK" => 41, "δsN" => 42,
-      "δsK" => 43, "ΦJ" => 44, "ΦJK" => 45, "ΦKJ" => 46, "ΦK" => 47, "ϕJ" => 48,
-      "ϕJK" => 49, "ϕK" => 50, "μa" => 51, "μb" => 52, "μc" => 53)
-   return prd
-end
-function rotfix!(prm)
-   BJ = 0.5*(prm[2]+prm[3])
-   BK = prm[1] - BJ
-   Bp = 0.5*(prm[2]-prm[3])
-   prm[1] = BK
-   prm[2] = BJ
-   prm[3] = Bp
-   return prm
-end
-function spifix!(prm)
-   ao = -(prm[8] + prm[9] + prm[10])/√3.0
-   a = -(2.0*prm[8] - prm[9] - prm[10])/√6.0
-   d = -prm[11]*0.5
-   b = (prm[9] - prm[11])*0.5
-   χ2 = √(1.0/6.0)*prm[14]
-   χ1 = -√(2.0/3.0)*prm[15]
-   prm[8] = ao
-   prm[9] = a
-   prm[10] = b
-   prm[11] = d
-   prm[14] = χ2
-   prm[15] = χ1
-   return prm
-end
-function paraminp(molnam::String)
-   findstr = `grep -n PARAMS $molnam.inp`
-   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   inds = paraminit()
-   prms = zeros(53)
-   errs = zeros(53)
-   file = readdlm(pwd()*"/"*molnam*".inp",',', skipstart=strln)
-   for i in 1:size(file,1)
-      ind = inds[file[i,1]]
-      val = file[i,2]
-      err = file[i,3]
-      prms[ind] = val
-      errs[ind] = err
-   end
-   prms = rotfix!(prms)
-   prms[6] *= prms[5]
-   prms = spifix!(prms)
-   μs = [prms[end-2:end] errs[end-2:end]]
-   prms = prms[1:end-3]
-   errs = errs[1:end-3]
-   return prms, errs, μs
-end
 
 
-function lineprep(lns,nf,s,mcalc)#THIS NEEDS TO BE REWORKED
-   #           1  2  3   4   5  6  7  8  9   10 11 12  13   14
-   #input  = [ju nu kau kcu mu σu jl nl kal kcl ml σl freq unc]
+function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
    #converts the input file into a more code friendly format
    #           1  2  3   4   5  6  7  8   9  10  11   12
    #input  = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
    #           1  2   3   4  5   6
    #output = [ju σu indu jl σl indl]
+if nf != zero(nf)
    qunus = lns[:,1:10]
    freqs = lns[:,11]
    uncs = lns[:,12]
    inds = zeros(Int,size(lns,1),6)
    inds[:,1] = Int.(2 .* qunus[:,1])
    inds[:,2] = Int.(mod.(qunus[:,5],nf))
-   inds[:,3] = qn2ind.(nf,mcalc,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
    inds[:,4] = Int.(2 .* qunus[:,6])
    inds[:,5] = Int.(mod.(qunus[:,10],nf))
-   inds[:,6] = qn2ind.(nf,mcalc,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
-   #inds = vcat(inds[:,1:2], inds[:,3:4])
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+else
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] .= 0
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] .= 0
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+end
    return inds, freqs, uncs
+end
+
+
+function pred2lne(sim,s)
+"""
+Converts the transitions output from westersim into the line format for
+   westerfit. Allows for quick test scripting
+"""
+   if s != zero(s)
+      out = zeros(Float64,size(sim)[1],12)
+      out[:,1:10] = sim[:,1:10]
+      out[:,11] = sim[:,11]
+      out[:,12] = fill(0.08,size(sim)[1])
+   else#this should be though
+      out = zeros(Float64,size(sim)[1],12)
+      out[:,1] = sim[:,1]
+      out[:,2:5] = sim[:,1:4]
+      out[:,6] = sim[:,5]
+      out[:,7:10] = sim[:,5:8]
+      out[:,11] = sim[:,9]
+      out[:,12] = fill(0.08,size(sim)[1])
+   end
+   return out
 end
 
 

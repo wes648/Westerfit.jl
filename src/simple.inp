@@ -1,14 +1,15 @@
 molnam
 %CNTRLS
-NFOLD = 3
+NFOLD = 0
 S = 0.0
+RUNmode = EST
 TK = 25.0
 mcalc = 0
 vtmax = 0
-Jmax = 15
+Jmax = 3
 νmax = 40.0
-νmin = 26.5
-INTthres = 1.0E-06
+νmin = 0.0
+INTthres = 0.0E-06
 
 %2NDORDER
 A;    82756.97;   0.0

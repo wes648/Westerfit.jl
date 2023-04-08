@@ -69,7 +69,7 @@ This function determines the signed Kₐ values that correspond to the A₁ and 
    return A1, A2
 end
 
-function qngen(n,m,σ)
+#=function qngen(n,m,σ)
 """
 This generates a list of all the torsion-rotation quantum numbers across a
    -m:m range for a given N and σ pair. Be aware that this uses the signed Kₐ
@@ -111,7 +111,7 @@ This generates a list of all the spin-torsion-rotation quantum numbers across a
    marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,jsd))
    out = hcat(fill(j,size(out)[1]),out,marray,fill(σ,jsd*md))
    return out
-end
+end=#
 
 function k2kc(n,k)
 """
@@ -156,12 +156,29 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    ind = convert(Int,ind)
    return ind
 end
-function qn2ind(nf,mcalc,m,j,s,n,ka,kc)
+function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
+"""
+This determines the specific index of a J, S, N, Ka, Kc state in the large array.
+   Ka is assumed to not be signed for better compatibility with literature.
+   This is the old version based on the torsional
+"""
+   if nf!=zero(nf)
+   #ka = abs(ka)
+   ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
+   ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
+   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
+   ind = convert(Int,ind)
+   return ind
+   else
+   return qn2ind(j,s,n,ka,kc)
+   end
+end
+function qn2ind(nf,vtm,m,j,s,n,ka,kc)
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
-   if nf!=zero(nf)
+   if (nf!=zero(nf))&&(vtm != 0)
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
    ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)

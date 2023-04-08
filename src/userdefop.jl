@@ -7,27 +7,28 @@ using LinearAlgebra, SparseArrays, Base.Threads, .WIGXJPF, LinearAlgebra.BLAS
 include("@__DIR__./userdefop.jl")
 =#
 
-indmax(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
+vt2m(vtm)::Int = ceil(vtm/2)*cospi(vtm)
+vt2m(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
 function vtlist(vtm,σt) 
    if vtm == zero(vtm)
-      return [indmax(vtm,σt)]
+      return [vt2m(vtm,σt)]
    else
-      return sort([indmax(vtm,σt); indmax(vtm-1,σt)])
+      return sort([vt2m(vtm,σt); vt2m(vtm-1,σt)])
    end
 end
 function vtcoll(vtm,σt) 
    if vtm == zero(vtm)
-      return [indmax(vtm,σt)]
+      return [vt2m(vtm,σt)]
    else
-      a = indmax(vtm,σt)
-      b = indmax(vtm-1,σt)
+      a = vt2m(vtm,σt)
+      b = vt2m(vtm-1,σt)
       ref = sort([a; b])
       return collect(ref[1]:ref[2])
    end
 end
 function indpuller(vtm,mc,σt,jsd)
-   a = indmax(vtm,σt)
-   b = indmax(vtm-1,σt)
+   a = vt2m(vtm,σt)
+   b = vt2m(vtm-1,σt)
    ref = sort([a; b])
    if σt != 2
       c = jsd*(mc + ref[1]) + 1
@@ -160,11 +161,16 @@ function qngenv(j,s,nf,vtm,σ)
    return out
 end
 function k2kc(n,k)
+"""
+Determines the value of Kc based on the value of N and |Kₐ|
+"""
    ka = abs(k)
    if k < 0
-      kc = n - ka + 1
+      kc = n - ka + 1 - isodd(n + k)
+   elseif k == zero(k)
+      kc = n
    else
-      kc = n - ka
+      kc = n - ka + isodd(n + k)
    end
    return kc
 end
@@ -406,6 +412,13 @@ function hrtest(n)::SparseMatrixCSC{Float64, Int64}
    kb = Matrix(transpose(kk))
    return hrot2v2(pr,nb,kb,nk,kk)
 end
+function hrttest(n,mc,nf,σ)::SparseMatrixCSC{Float64, Int64}
+   hout = kron(httest(nf,mc,σ),eye(2*n+1)) 
+   hout -= kron(3.0 * diagm(collect(-mc:mc)), diagm(collect(-n:n)))
+   hout += kron(eye(2*mc+1), hrtest(n))
+   return hout
+end
+
 
 function hrlpart(out,pr,l::Int,nb,kb,nk,kk)::Array{Float64,2}
    @simd for q in -l:l
@@ -785,6 +798,13 @@ function htor(sof,nf,mcalc,σ) #this is the current one being called by the code
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,nf,mb,mk)
    return out, mk, mb
 end
+function httest(nf,mcalc,σ) #this is the current one being called by the code
+   mk = mgen(nf,mcalc,σ)
+   mb = Matrix(transpose(mk))
+   out = torop(150.0,2,0,mb,mk)
+   out += 6000.0*eye(size(out,1)) - torop(6000.0,0,nf,mb,mk)
+   return out
+end
 function htorq(sof,nf,mb,mk)
    out = torop(sof[1],2,0,mb,mk)
    out += sof[3]*eye(size(out,1)) - torop(sof[3],0,nf,mb,mk)
@@ -797,21 +817,14 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    kb = Matrix(transpose(kk))
    #scale up tormat & add -2ρF
    hout = kron(tormat,eye(size(nk,1))) 
-   hout -= kron(sof[13] * Diagonal(mk), Diagonal(kk))
-   if true ∈ isnan.(hout)
-      println("FUCK!!! j=$j, error from Htor")
-   end
+   hout += kron(sof[13] * Diagonal(mk), Diagonal(kk))
    #tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    #add 2nd order ro, spi, qua
    hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #println("hout type = $(typeof(hout))")
-   if true ∈ isnan.(hout)
-      println("FUCK!!! j=$j, error from Hr-sr-hyp")
+   if s != zero(s)#add η
+      hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    end
-
-   #if s != zero(s)#add η
-   #hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
-   #end
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
    end
@@ -835,32 +848,31 @@ end
    return hout
 end=#
 
-function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
+function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
    if true ∈ isnan.(H)
       println("FUCK!!! j=$j, σ=$σ, error from H")
    end
-   #println("H type = $(typeof(H))")
    if σtype(nf,σ) != 1
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
    else
       U = ur(j,s,mcalc,σt)
    end
    H = (U*H*U)
-   perm = kperm(j,s,mcalc)
-   H = permute!(H,perm,perm)
-   @time H, rvecs = SparseSweep(H)
-   #@time H, rvecs = limsparsweep(H,3)
-   if true ∈ isnan.(H)
-      println("FUCK!!! j=$j, σ=$σ, error from Jacobi")
-   end
-   rvecs = U*rvecs
+   ### All lines commented with ### are for the Jacobi routine
+   ###perm = kperm(j,s,mcalc)
+   ###H = permute!(H,perm,perm)
+   ###H, rvecs = jacobisparse(H, 3)#Int(j+s)+mcalc)
+   ###rvecs = U*rvecs
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
-   perm = assignperm(vecs)
+   #println(vals)
+   ###perm = assignperm(vecs)
+   perm = ramassign(vecs,j,s,mcalc,σt,vtm)
    vals = vals[perm]
-   vecs = vecs[perm,:]
-   vecs = rvecs*vecs 
+   vecs = vecs[:,perm]
+   ###vecs = rvecs*vecs 
+   vecs = U*vecs
    return vals, vecs
 end
 
@@ -868,7 +880,6 @@ function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
    tormat, mk, mb = htor(sof,nf,mcalc,σ)
-   #sd = Int(2.0*s+1.0)
    mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
    vtd = Int(vtm+1)
    σt = σtype(nf,σ)
@@ -880,15 +891,16 @@ function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    outvals = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int(sd*(2*jmax+1)*mcd),jfd*vtd)
-#   for j in jlist #thread removed for troubleshooting purposes
-   @threads for j in jlist
+   for j in jlist #thread removed for troubleshooting purposes
+#   @threads for j in jlist
       jd = Int(2.0*j) + 1
-      pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
+      ###pull behavior should be move into TSRDIAG moving forward
+      ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
-      outvals[sind:find] = tvals[pull]
+      tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+      outvals[sind:find] = tvals###[pull]
       outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
-      outvecs[1:jd*msd,sind:find] = tvecs[:,pull]
+      outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
    end
    return outvals, outvecs, outquns
 end
@@ -920,13 +932,13 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
-         pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
+         #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt)
-         fvls[sind:find,sc] = tvals[pull]
-         fvcs[1:jd*msd,sind:find,sc] = tvecs[:,pull]
+         tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+         fvls[sind:find,sc] = tvals#[pull]
+         fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
          fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)
       end
    end

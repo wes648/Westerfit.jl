@@ -173,17 +173,25 @@ function SparseSweep(A,V=Matrix{Float64}(I,size(A)))
    end
    return A,V
 end
-function SparseSweepF(A)
+function SparseSweepF(A,V = eye(size(A,1)), f=0)
    r, c, = findnz(A)
-   V = eye(size(A,1))
-   rf = r[c .< r]
-   cf = c[c .< r]
+   #perm = [c .< (r .- f)]
+   rf = r[c .< (r .- f)]
+   cf = c[c .< (r .- f)]
    for i in 1:length(rf)
       A, G = RotateFaster(A,rf[i],cf[i])
       V = G*V
    end
    return A,V
 end
+function jacobisparse(A,cnt=1,f=0)
+   V = eye(size(A,1))
+   for i in 1:cnt 
+      A,V = SparseSweepF(A,V,f)
+   end
+   return A, V
+end
+
 function SparseList(A)
    r, c, = findnz(A)
    rf = r[c .< r]
@@ -192,6 +200,7 @@ function SparseList(A)
       println([rf[i] cf[i]])
    end
 end
+
 function limsparsweep(A,cnt=1)
    V = eye(size(A,1))
    for m in 1:cnt
