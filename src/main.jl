@@ -8,6 +8,7 @@ using StaticArrays
 using Base.Threads
 include("@__DIR__/../WIGXJPF.jl")
 using .WIGXJPF
+include("@__DIR__/../assign.jl")
 include("@__DIR__/../common.jl")
 include("@__DIR__/../filehandling.jl")
 include("@__DIR__/../jacobi.jl")
@@ -84,12 +85,16 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)
-   lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
+   if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check
+      lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
+   else # Self-consistency check
+      lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
+      lines = pred2lne(lines,ctrl["S"])
+   end
    #determine the states
    linds, ofreqs, uncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
-   #println(linds)
    jlist = jlister(linds)
-   #global nmax = S + 0.5*maximum(jlist[:,1])
+   println(linds)
    #opt
 #   println("Beginning optimization")
    tsrp, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)
@@ -110,10 +115,9 @@ function westerfit(molnam::String)
    if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
       westersim(molnam, ctrl)
    end
-   if occursin("F",ctrl["RUNmode"])
+   if occursin("F",ctrl["RUNmode"])||occursin("T",ctrl["RUNmode"])
       westerfit(molnam, ctrl)
    end
-
 end
 
 
