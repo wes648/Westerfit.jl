@@ -749,7 +749,7 @@ function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
    end
    return dropzeros!(out)
 end
-function tsrop(pr::Float64,op::Array,j::Float64,s::Float64,
+function tsrop(pr,op::Array,j::Float64,s::Float64,
                nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
                mk::Array{Int,2})#::Array{Float64,2}
@@ -912,6 +912,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    sd = Int(2*s + 1)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
+   #println(cdf)
    vtd = Int(vtm+1)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end,1]
