@@ -17,45 +17,103 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    #@simd for i in 1:length(mind)
    #   mind[i] = ovrlp[i][1]
    #end
-   for v in 0:vtmax #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+   for v in 0:(vtmax+2) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
       mg = mcalc + vt2m(v) + 1
-      perm = sort(sortperm(ovrlp[mg,:], rev=true))
+      perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:jsd])
       mind[perm] .= mg
+   end
+   #println(mind)
+   return mind
+end
+#4/9 11:30pm Something is fucked up for spin+low barrier. FUCK QNS
+function mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
+   mind = zeros(Int,size(svcs,1))
+   for ng in 1:length(ns)
+      n = ns[ng]
+      mind = mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
    end
    return mind
 end
-function nfinder(svcs,jd,sd)
-   ovrlp = zeros(sd,size(svcs,1))
-   @simd for i in 1:sd 
-      frst = 1 + (jd-sd-1)*(i-1)
-      last = (jd+1)*(i-1) + jd - sd + 1
-      ovrlp[i,:] = sum(svcs[frst:last, :], dims=1)
+function mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
+   list = collect(1:size(svcs,1))[nind .== ng]
+   tvcs = svcs[:,list]
+   ovrlp = zeros(md,size(tvcs,2))
+   @simd for i in 1:md
+      ovrlp[i,:] = sum(tvcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
    end
+   part = zeros(Int,length(list))
+   nd = 2*n+1
+   for v in 0:vtmax
+      mg = mcalc + vt2m(v) + 1
+      perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:nd])
+      ovrlp[mg,:] .= 0.0 #prevents reassigning
+      ovrlp[:,perm] .= 0.0 #prevents reassigning
+      #println(perm)
+      part[perm] .= mg
+   end
+   #println(size(part))
+   #println(size(mind[list]))
+   mind[list] .= part
+   return mind
+end
+
+function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+#this needs to be fully reworked it is only looking at the top part of the vector
+   jsd = jd*sd
+   ovrlp = zeros(length(ns),size(svcs,1))
+   for i in 1:length(ns) 
+      nd = 2*ns[i]+1
+   for m in 1:md
+      frst = ni[i,1] + jsd*(m-1)
+      last = ni[i,2] + jsd*(m-1)
+      ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1)/nd)
+   end
+   end
+   #println(ovrlp)
    ovrlp = argmax(ovrlp,dims=1)
+   #println(ovrlp)
    nind = zeros(Int,size(svcs,1))
-   @simd for i in 1:length(nind)
+   #sortperm to grab the theoretical maximum states per n
+   #sort the perm to grab the lowest vts worth of states
+   for i in 1:length(nind)
       nind[i] = ovrlp[i][1]
    end
+   #for i in 1:length(ns)
+   #nd = (2*ns[i]+1)
+   #count = nd*(vtmax+3)
+   ##for v in 0:(vtmax+3)
+   #   perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:count]
+   #   nind[perm] .= i
+   #   #println(perm)
+   #   ovrlp[i,:] .= 0.0
+   #   ovrlp[:,perm] .+ 0.0 
+   ##end
+   #end
+   #println(nind)
    return nind
 end
 keperm(n) = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
-   svcs = vecs .* vecs
+   svcs = abs.(vecs .* vecs)
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
+   ns, nd, ni, jsd = srprep(j,s)
+   #println(ns)
+   #println(ni)
    md = 2*mcalc + 1 + 1*(σt==2)
-   mind = mfinder(svcs,jd*sd,md,mcalc,vtmax)
-   nind = nfinder(svcs,jd,sd)
-   ns = Δlist(j,s)
+   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
-   for v in 0:vtmax
-      mg = mcalc + vt2m(v) + 1
-      filter = (mind .== mg)
-      for ng in 1:sd
-         filter .*= (nind .== ng)
-         frst = jd*sd*(mg-1) + 1 + (jd-sd-1)*(ng-1)
-         last = jd*sd*(mg-1) + (jd+1)*(ng-1) + jd - sd + 1
+   for ng in 1:length(ns)
+      filter = (nind .== ng)
+      for v in 0:vtmax
+         mg = mcalc + vt2m(v) + 1
+         filter .*= (mind .== mg)
+         frst = jsd*(mg-1) + ni[ng,1]
+         last = jsd*(mg-1) + ni[ng,2]
+         #println("first = $frst, last = $last")
+         #println(col[filter])
          perm[frst:last] = col[filter][keperm(ns[ng])]
       end
    end

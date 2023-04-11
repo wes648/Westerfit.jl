@@ -94,7 +94,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #determine the states
    linds, ofreqs, uncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
    jlist = jlister(linds)
-   println(linds)
+   #println(linds)
    #opt
 #   println("Beginning optimization")
    tsrp, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)

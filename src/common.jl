@@ -244,7 +244,7 @@ This calculates a lot of values helpful for the spin-rotation matrix structure:
       out[i,1] = out[i-1,2] + 1
       out[i,2] = out[i,1] + nd[i] - 1
    end
-   jd = Int((2*S+1)*(2*J+1))
+   jd = Int((2.0*S+1.0)*(2.0*J+1.0))
    return ns, nd, out, jd
 end
 function srprep(J,S,md)

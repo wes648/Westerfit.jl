@@ -86,6 +86,7 @@ end
 parsetuple(T::Type,s::AbstractString) = Tuple(parse.(T, split(s, ',')))
 parsetuple(T::Type,s::Int) = s
 parsetuple(s::Int) = s
+parsetuple(T::Type,s::Float64) = s
 function opinp(molnam::String)
    findstr = `grep -n PARAMS $molnam.inp`
    strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`))) + 1
@@ -98,14 +99,16 @@ function opinp(molnam::String)
    if len !=zero(len) #normal behavior for added parameters
    nams = fill("nam",len)
    vals = zeros(Float64,len)
+   #vals = Array{Any}(nothing,len)
    errs = zeros(Float64,len)
+   #oprs = Array{Any}(nothing,8,len)
    oprs = zeros(Int,8,len)
    stgs = zeros(Int,len)
    col = collect(1:len)
    for i in col
       nams[i] = file[i,1]
-      vals[i] = file[i,2]
-      oprs[:,i] = file[i,4:end-1]
+      vals[i] = parsetuple(Float64,file[i,2])
+      oprs[:,i] = parsetuple.(Int,file[i,4:end-1])
       errs[i] = file[i,3]
       stgs[i] = file[i,end]
    end
@@ -126,7 +129,7 @@ function opinp(molnam::String)
    end
 end
 
-function prmsetter(prm::Array{Float64},stg::Array{Int})::Array{Float64}
+function prmsetter(prm,stg::Array{Int})
    out = copy(prm)
    inds = collect(1:length(prm))[isless.(stg,0)]
    for i in inds

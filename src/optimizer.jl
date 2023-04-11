@@ -219,11 +219,7 @@ end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo,ctrl)
-   if rms > 3000.
-      tdncount = 3
-   else
-      tdncount = 3
-   end
+   tdncount = 1
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
@@ -273,8 +269,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    perm,n = findnz(sparse(scales))
    #println(perm)
    #println(params)
-   println(omc)
-   println(inds)
+   #println(omc)
+   #println(inds)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
@@ -283,7 +279,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    ϵ1 = 0.1E-16
    LIMIT = 50
    μlm = rms + rms^2
-   λlm = μlm*rms/(1.0 + rms)
+   λlm = μlm*rms/(1.0 + rms) 
    Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
@@ -317,16 +313,16 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
-      λlm = μlm*rms/(1.0 + rms)
+      λlm = μlm*rms/(1.0 + rms) 
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
                   jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       if nrms < rms
-         println(βf)
+         #println(βf)
          rms = nrms
          omc .= nomc
          params .= nparams
-         println(params)
+         #println(params)
          #vecs .= nvecs
          J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
@@ -339,7 +335,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(H^(-1/2))
          #println(params[perm])
          #λlm = 0.0
-         μlm /= 20.0
+         μlm /= 100.0
          stoit = 0
       else
          #params .= oparams
