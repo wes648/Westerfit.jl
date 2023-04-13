@@ -529,26 +529,23 @@ function wigdiv(x::Array,s::Number)::Array
    end
 end
 function qured(j,s,nb,nk)
-   @. return 0.25*jnred(nb,nk)*wig6j(j,s,nb,2,nk,s)
+   @. return 0.25*jnred(j,j)*wig6j(j,s,nb,2,nk,s)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
-             wig3j(nb,2,nk,-kb,q,kk)*(-1.0)^(nk+nb-kk+s+j+1+δ(-1,q))
+             wig3j(nb,2,nk,kb,q,-kk)*(-1.0)^(nk+nb-kb+s+j+1+δ(q,-1))
 end
 function qulpart(out,pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @simd for q in -2:2
-      out += quelem(pr[Tq(q)],q,j,s,nb,kb,nk,kk)
+      out += quelem(pr[Tq(-q)],q,j,s,nb,kb,nk,kk)
    end
    out = wigdiv(out,s)
    return out
 end
 
-function jnred(j::Float64,n::Int)::Float64
-   return √((2.0*j+1.0)*(2*n+1))
-end
-function jnred(j::Int,n::Int)::Float64
-   return √((2*j+1)*(2*n+1))
-end
+jnred(j::Float64,n::Float64)::Float64 = √((2.0*j+1.0)*(2.0*n+1.0))
+jnred(j::Float64,n::Int)::Float64 = √((2.0*j+1.0)*(2*n+1))
+jnred(j::Int,n::Int)::Float64 = √((2*j+1)*(2*n+1))
 
 function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
    out = zeros(9)
@@ -924,7 +921,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
    @time @simd for sc in 1:σcnt
       σ = sc - 1
-      mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+      #mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       tormat, mk, mb = htor(sof,nf,mcalc,σ)
       mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       σt = σtype(nf,σ)
