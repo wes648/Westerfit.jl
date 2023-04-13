@@ -22,15 +22,16 @@ function ctrlinp(molnam::String)
       val = file[i,2]
       ctrl[nam] = val
    end
+   #trl["S"] = Float64(ctrl["S"])
    if ctrl["apology"] == true
       println("Sorry about the name...")
    end
    if iseven(2*ctrl["Jmax"])&&isodd(2*ctrl["S"])
-      ctrl["Jmax"] -= 0.5
-      println("Jmax must be half integer for half interger S. Subtracting 1/2")
+      ctrl["Jmax"] += 0.5
+      println("Jmax must be half integer for half interger S. Adding 1/2")
    elseif isodd(2*ctrl["Jmax"])&&iseven(2*ctrl["S"])
-      ctrl["Jmax"] -= 0.5
-      println("Jmax must be integer for interger S. Subtracting 1/2")
+      ctrl["Jmax"] += 0.5
+      println("Jmax must be integer for interger S. Adding 1/2")
    end
    #println(ctrl)
    return ctrl

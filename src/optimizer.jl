@@ -18,7 +18,7 @@ end
 
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
-   @threads for i in 1:size(cfreqs)[1]
+   @threads for i in 1:size(cfreqs,1)
       cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
    end
    #println(cfreqs)
@@ -87,6 +87,57 @@ function anaderiv(prm,scl,rpid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec)
    mat = derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
    out = transpose(vec)*mat*vec
    return out
+end
+
+function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
+   sd = Int(2*s+1)
+   mcalc = ctrl["mcalc"]
+   jmin = 0.5*iseven(sd)
+   jmax = jlist[end,1]
+   jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   vtd = Int(ctrl["vtmax"]+1)
+   σcnt = σcount(nf)
+   derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
+   @time @simd for sc in 1:σcnt
+      σ = sc - 1
+      mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+      σt = σtype(nf,σ)
+      msd = sd*mcd
+      mstrt, mstop = mslimit(nf,mcalc,σ)
+      jmsd = Int(mcd*sd*(2*jmax+1))
+      jsvd = Int(jfd*vtd)
+      jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
+      @threads for j in jsublist
+         jd = Int(2.0*j) + 1
+         sind, find = jvdest(j,s,ctrl["vtmax"]) 
+         nk = ngen(j,s)
+         kk = kgen(j,s)
+         mk = mgen(nf,mcalc,σ)
+         nb = Matrix(transpose(nk))
+         kb = Matrix(transpose(kk))
+         mb = Matrix(transpose(mk))
+         vec = vecs[1:jd*msd,sind:find,sc]
+         for i in 1:length(perm)
+            ders = diag(anaderiv(prm,scl,i,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
+            derivs[sind:find,sc,i] = ders
+         end#perm loop
+      end #j loop
+   end#σ loop
+   return derivs
+end#function
+
+function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals)
+   nf = ctrl["NFOLD"]
+   mcalc = ctrl["mcalc"]
+   #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
+   jcbn = zero(jcbn)
+   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals)
+   @threads for p in 1:length(perm)
+   for a in 1:size(inds,1)
+      jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
+   end
+   end
+   return jcbn
 end
 
 function lbmq_gain(β,λ,g,rms,nrms)
@@ -275,10 +326,10 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
    #RHOTHRES = -1.0E-6
-   ϵ0 = 0.1E-20
+   ϵ0 = 0.1E-16
    ϵ1 = 0.1E-16
    LIMIT = 50
-   μlm = rms + rms^2
+   μlm = (rms + rms^2)#*0.0
    λlm = μlm*rms/(1.0 + rms) 
    Δlm = 1.0E+2
    Δlm *= length(perm)
@@ -294,6 +345,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #H = zeros(Float64,length(perm),length(perm)) #Hessian
    #D = zero(H) #Elliptical Trust Region
    J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
+#   J = build_jcbn2!(J,cdo,inds,nlist,S,ctrl,vecs,params,perm,scales)
    H, jtw = build_hess(jtw,J,W)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK")
@@ -324,7 +376,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          params .= nparams
          #println(params)
          #vecs .= nvecs
-         J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
+         @time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
+         #@time J = build_jcbn2!(J,cdo,inds,nlist,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))

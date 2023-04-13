@@ -21,7 +21,7 @@ function μred(s::Float64,jb::Float64,nb::Int,jk::Float64,nk::Int)::Float64
    return wig6j(nk,jk,s,jb,nb,1)*jnred(jb,nb)*jnred(jk,nk)#*√(2*nb+1)
 end
 function μelem(pr::Float64,q,s::Float64,jb::Float64,nb,kb,jk::Float64,nk,kk)::Array{Float64,2}
-   @. return pr*wig3j(nb,1,nk,-kb,q,kk)*μred(s,jb,nb,jk,nk)
+   @. return pr*wig3j(nb,1,nk,-kb,q,kk)*μred(s,jb,nb,jk,nk)*(-1)^(s+jb-kb+δ(q,-1))
 end
 function μmat(μs,s,jb,jk)
    lb = Int((2.0*s+1.0)*(2.0*jb+1.0))
@@ -106,6 +106,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    vtm = ctrl["vtmax"]
    nf = ctrl["NFOLD"]
    mΔj = 1
+   #println(μ)
    if σr == σc
       jbjk = jbjklister(0.5*iseven(Int(2*s+1)),jmax,mΔj)
    else
@@ -147,7 +148,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       r = rinds[i]
       c = cinds[i]
       ν = rvals[r] - cvals[c]
-      frqs[r,c] = ν*(ctrl["νmin"]<abs(ν*0.001)≤ctrl["νmax"])
+      frqs[r,c] = ν*(ctrl["νmin"]≤abs(ν*0.001)≤ctrl["νmax"])
    end
    dropzeros!(frqs)
    #assign Elow & qns plus sign correction
@@ -162,14 +163,14 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
-         thermfact = (-exp(cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
+         thermfact = (exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]#*thermfact
          outqns[i,1:6] = rqns[r,:]
          outqns[i,7:12] = cqns[c,:]
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
-         thermfact = (-exp(rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
+         thermfact = (exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]#*thermfact
          outqns[i,1:6] = cqns[c,:]
          outqns[i,7:12] = rqns[r,:]

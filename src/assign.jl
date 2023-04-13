@@ -66,33 +66,37 @@ function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    for m in 1:md
       frst = ni[i,1] + jsd*(m-1)
       last = ni[i,2] + jsd*(m-1)
-      ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1)/nd)
+      ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1))
    end
    end
-   #println(ovrlp)
-   ovrlp = argmax(ovrlp,dims=1)
-   #println(ovrlp)
    nind = zeros(Int,size(svcs,1))
+   #println(ovrlp)
+   #ovrlp = argmax(ovrlp,dims=1)
+   #println(ovrlp)
    #sortperm to grab the theoretical maximum states per n
    #sort the perm to grab the lowest vts worth of states
-   for i in 1:length(nind)
-      nind[i] = ovrlp[i][1]
-   end
-   #for i in 1:length(ns)
-   #nd = (2*ns[i]+1)
-   #count = nd*(vtmax+3)
-   ##for v in 0:(vtmax+3)
-   #   perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:count]
-   #   nind[perm] .= i
-   #   #println(perm)
-   #   ovrlp[i,:] .= 0.0
-   #   ovrlp[:,perm] .+ 0.0 
-   ##end
+   #for i in 1:length(nind)
+   #   nind[i] = ovrlp[i][1]
    #end
+   for i in 1:length(ns)
+   nd = (2*ns[i]+1)
+   count = min(nd*(vtmax+3),nd*(md))
+   vlimit = min(vtmax+3,md-1) 
+   for v in 0:vlimit
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:count]
+      nind[perm] .= i
+      #println(perm)
+      ovrlp[i,:] .= 0.0
+      ovrlp[:,perm] .= 0.0 
+   end
+   end
    #println(nind)
    return nind
 end
-keperm(n) = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
+
+kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
+
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    svcs = abs.(vecs .* vecs)
    jd = Int(2.0*j) + 1
@@ -102,7 +106,11 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    #println(ni)
    md = 2*mcalc + 1 + 1*(σt==2)
    nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
+   if mcalc > 0
+      mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
+   else
+      mind = ones(size(nind))
+   end
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
    for ng in 1:length(ns)
@@ -114,7 +122,10 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
          last = jsd*(mg-1) + ni[ng,2]
          #println("first = $frst, last = $last")
          #println(col[filter])
-         perm[frst:last] = col[filter][keperm(ns[ng])]
+         #println("J = $j, ng = $ng")
+         part = col[filter]
+         part = part[keperm(ns[ng])]
+         perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end
    end
    perm = perm[perm .!= 0]
@@ -124,9 +135,6 @@ end
 
 ### JACOBI
 #Reorganize matrix to better match my conception of the quantum numbers
-function kperm(n::Int)::Array{Int}
-   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-end
 function kperm(j,s)::Array{Int}
    perm = zeros(Int,Int((2*j+1)*(2*s+1)))
    shift = 0
