@@ -467,7 +467,8 @@ function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*wig3j(nb,l,nk,-kb,q,kk)*√(2.0*l+1.0)*
              nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb+δ(-1,q))
 end
-function srlpart(out,pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
+function srlpart(pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
+   out = spzeros(size(nk))
    @simd for q in -l:l
       out += srelem(pr[Tsr(l,q)],l,q,j,s,nb,kb,nk,kk)
    end
@@ -481,7 +482,7 @@ function hsr(pr,j,s)
    kbs = transpose(kks)
    out = zeros(size(kks))
    @simd for l in 0:2:2
-      out .= srlpart(out,pr,l,j,s,nbs,kbs,nks,kks)
+      out .= srlpart(pr,l,j,s,nbs,kbs,nks,kks)
    end
    return out
 end
@@ -494,34 +495,34 @@ function hrsr(rpr,spr,j,s)
    out = zeros(size(kks))
    @simd for l in 0:2:2
       out .= hrlpart(out,rpr,l,nbs,kbs,nks,kks)
-      out .= srlpart(out,spr,l,j,s,nbs,kbs,nks,kks)
+      out .= srlpart(spr,l,j,s,nbs,kbs,nks,kks)
    end
    return out
 end
 function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
    out = hrot2v2(rpr,nb,kb,nk,kk)
    if s == zero(s)
-   elseif s < one(s)
+   elseif zero(s) < s < one(s)
       @simd for l in 0:2:2
-         out .= srlpart(out,spr,l,j,s,nb,kb,nk,kk)
+         out += srlpart(spr,l,j,s,nb,kb,nk,kk)
       end
    else
       @simd for l in 0:2:2
-         out .= srlpart(out,spr,l,j,s,nb,kb,nk,kk)
-         out .= qulpart(out,qpr,j,s,nb,kb,nk,kk)
-      end
+         out += srlpart(spr,l,j,s,nb,kb,nk,kk)
+      end#sr for loop
+      out += qulpart(qpr,j,s,nb,kb,nk,kk)
    end
    return out
 end
 function hsrq(out,spr,qpr,j,s,nb,kb,nk,kk)
    @simd for l in 0:2:2
-      out .= srlpart(out,spr,l,j,s,nb,kb,nk,kk)
-      out .= qulpart(out,qpr,j,s,nb,kb,nk,kk)
+      out += srlpart(spr,l,j,s,nb,kb,nk,kk)
    end
+   out += qulpart(qpr,j,s,nb,kb,nk,kk)
    return out
 end
 
-function wigdiv(x::Array,s::Number)::Array
+function wigdiv(x,s::Number)
    if s<one(s)
       return zero(x)
    else
@@ -529,15 +530,16 @@ function wigdiv(x::Array,s::Number)::Array
    end
 end
 function qured(j,s,nb,nk)
-   @. return 0.25*jnred(j,j)*wig6j(j,s,nb,2,nk,s)
+   @. return 0.25*jnred(nb,nk)*wig6j(j,s,nb,2,nk,s)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
-             wig3j(nb,2,nk,kb,q,-kk)*(-1.0)^(nk+nb-kb+s+j+1+δ(q,-1))
+             wig3j(nb,2,nk,-kb,q,kk)*(-1.0)^(nk+nb-kb+s+j+1+δ(q,-1))
 end
-function qulpart(out,pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
-   @simd for q in -2:2
-      out += quelem(pr[Tq(-q)],q,j,s,nb,kb,nk,kk)
+function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
+   out = spzeros(size(nb))
+   for q in -2:2
+      out += quelem(pr[Tq(q)],q,j,s,nb,kb,nk,kk)
    end
    out = wigdiv(out,s)
    return out
@@ -545,6 +547,7 @@ end
 
 jnred(j::Float64,n::Float64)::Float64 = √((2.0*j+1.0)*(2.0*n+1.0))
 jnred(j::Float64,n::Int)::Float64 = √((2.0*j+1.0)*(2*n+1))
+jnred(n::Int,j::Float64)::Float64 = √((2.0*j+1.0)*(2*n+1))
 jnred(j::Int,n::Int)::Float64 = √((2*j+1)*(2*n+1))
 
 function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}

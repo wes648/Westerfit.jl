@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
-      "λ"=>0.0, "RUNmode"=>"ESF")
+      "λ"=>0.0, "RUNmode"=>"ESF", "turducken"=>1)
    return ctrl
 end
 function ctrlinp(molnam::String)
@@ -56,7 +56,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
    out[9] = prd[9]                                #T²₀(χ)
    out[10] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
-   out[11] = prd[10] / √6.0                       #T²₂(χ)
+   out[11] = prd[10] / √(6.0)                     #T²₂(χ)
    out[12] = prd[12]*csl                          #F
    out[13] = -2.0*prd[13]*prd[12]*csl             #ρF
    out[14] = prd[14]*0.5*csl                      #V3/2

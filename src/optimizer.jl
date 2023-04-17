@@ -270,7 +270,7 @@ end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo,ctrl)
-   tdncount = 1
+   tdncount = ctrl["turducken"]
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
