@@ -93,12 +93,14 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
    sd = Int(2*s+1)
    mcalc = ctrl["mcalc"]
    jmin = 0.5*iseven(sd)
+   #println(jlist)
    jmax = jlist[end,1]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
    vtd = Int(ctrl["vtmax"]+1)
    σcnt = σcount(nf)
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
-   @time @simd for sc in 1:σcnt
+   for sc in 1:σcnt
+      #println(sc)
       σ = sc - 1
       mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       σt = σtype(nf,σ)
@@ -106,19 +108,21 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
       mstrt, mstop = mslimit(nf,mcalc,σ)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
+      mk = mgen(nf,mcalc,σ)
+      mb = Matrix(transpose(mk))
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       @threads for j in jsublist
+         #println(j)
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,ctrl["vtmax"]) 
          nk = ngen(j,s)
          kk = kgen(j,s)
-         mk = mgen(nf,mcalc,σ)
          nb = Matrix(transpose(nk))
          kb = Matrix(transpose(kk))
-         mb = Matrix(transpose(mk))
          vec = vecs[1:jd*msd,sind:find,sc]
-         for i in 1:length(perm)
-            ders = diag(anaderiv(prm,scl,i,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
+         @simd for i in 1:length(perm)
+            pid = perm[i]
+            ders = diag(anaderiv(prm,scl,pid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
             derivs[sind:find,sc,i] = ders
          end#perm loop
       end #j loop
@@ -133,7 +137,7 @@ function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals)
    jcbn = zero(jcbn)
    deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals)
    @threads for p in 1:length(perm)
-   for a in 1:size(inds,1)
+   @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -274,7 +278,7 @@ function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
-      println(λ)
+      #println(λ)
       A = Hermitian(H + λ*Diagonal(H))
    end
    if isinf(λ)
@@ -312,7 +316,7 @@ end
 function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #vals,vecs = limeigcalc(nlist, inds, params)
    S = ctrl["S"]
-   #println(inds)
+   println(inds)
    sd = Int(2*S+1)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    oparams = params
@@ -320,8 +324,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    perm,n = findnz(sparse(scales))
    #println(perm)
    #println(params)
-   #println(omc)
-   #println(inds)
+   println(omc)
+   #println(nlist)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
@@ -344,8 +348,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    K = zero(omc) #acceleration correction
    #H = zeros(Float64,length(perm),length(perm)) #Hessian
    #D = zero(H) #Elliptical Trust Region
-   J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-#   J = build_jcbn2!(J,cdo,inds,nlist,S,ctrl,vecs,params,perm,scales)
+   #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
+   J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
    H, jtw = build_hess(jtw,J,W)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK")
@@ -376,8 +380,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          params .= nparams
          #println(params)
          #vecs .= nvecs
-         @time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         #@time J = build_jcbn2!(J,cdo,inds,nlist,S,ctrl,vecs,params,perm,scales)
+         #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
+         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
