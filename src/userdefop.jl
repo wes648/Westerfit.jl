@@ -231,7 +231,7 @@ end
 δi(x::Int,y::Int)::Int = x==y
 
 T(l::Int,q::Int)::Int = l*(l+1) + q + 1
-Tq(q::Int)::Int = abs(q) + 1 #quadrupole variant (only has 2nd rank components)
+Tq(q::Int)::Int = 3 + q #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
 
 function kgen(n::Int)::Array{Int,2}
@@ -515,7 +515,7 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
    return out
 end
 function hsrq(out,spr,qpr,j,s,nb,kb,nk,kk)
-   @simd for l in 0:2:2
+   for l in 0:2:2
       out += srlpart(spr,l,j,s,nb,kb,nk,kk)
    end
    out += qulpart(qpr,j,s,nb,kb,nk,kk)
@@ -534,12 +534,22 @@ function qured(j,s,nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
-             wig3j(nb,2,nk,-kb,q,kk)*(-1.0)^(nk+nb-kb+s+j+1+δ(q,-1))
+             wig3j(nb,2,nk,-kb,-q,kk)*(-1.0)^(nk+nb-kb+s+j+1)
+end
+function qutensor(pr)
+   out = zeros(5)
+   out[1] =  pr[3] #-2
+   out[2] = -pr[2] #-1
+   out[3] =  pr[1] # 0
+   out[4] =  pr[2] #+1
+   out[5] =  pr[3] #+2
+   return out
 end
 function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nb))
-   for q in -2:2
-      out += quelem(pr[Tq(q)],q,j,s,nb,kb,nk,kk)
+   ten = qutensor(pr)
+   @simd for q in -2:2
+      out += quelem(ten[Tq(-q)],q,j,s,nb,kb,nk,kk)
    end
    out = wigdiv(out,s)
    return out
@@ -798,7 +808,7 @@ function htor(sof,nf,mcalc,σ) #this is the current one being called by the code
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,nf,mb,mk)
    return out, mk, mb
 end
-function httest(nf,mcalc,σ) #this is the current one being called by the code
+function httest(nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
    mb = Matrix(transpose(mk))
    out = torop(150.0,2,0,mb,mk)
