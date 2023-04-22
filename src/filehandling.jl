@@ -202,7 +202,8 @@ function englin(s,eng,qunl)
    if s==zero(s)
       part = lpad(qunl[2],4)*","
    else
-      part = lpad(qunl[1],4)*"/2,"
+     # part = lpad(qunl[1],4)*"/2,"
+      part = lpad(qunl[1],4)*","
       part *= lpad(qunl[2],4)*","
    end
    part *= lpad(qunl[3],4)*","
