@@ -23,10 +23,11 @@
 #rm test.*
 
 using DelimitedFiles
+using LinearAlgebra
 
-sd = 3
+qns = ["J", "N", "Ka", "Kc", "E"]
 
-function setvars(nams,vals,s)
+function setvars(nams,vals,s) #sets all the variables to the values in nams and vals
 	run(`cp spfit.ref test.var`)
 	run(`cp ref.inp spfit.inp`)
 	run(`sed -i "s/sv/$s/g" spfit.inp`)
@@ -45,18 +46,32 @@ end
 
 #run spfit
 function runspfit()
-	run(`spcat test.var`)
-	#run(`gawk -i '$1=$1' FIELDWIDTHS='13 8 8 2 10 3 7 6 2 4 6 2' OFS=, test.cat`)
-	run(`sed -i "s/://g" test.egy`)
-	run(`gawk -i '$1=$1' FIELDWIDTHS='6 5 18 18 11 5 3 3 3' OFS=, test.egy`)
+	run(`spcat test.var`) #runs spcat
+	#run(`gawk -i inplace '$1=$1' FIELDWIDTHS='13 8 8 2 10 3 7 6 2 4 6 2' OFS=, test.cat`)
+	run(`sed -i "s/://g" test.egy`) #gets rid of any colons in test.egy
+	run(`gawk -i inplace '$1=$1' FIELDWIDTHS='6 5 18 18 11 5 3 3 3' OFS=, test.egy`) #comma delimited
+end
+
+function runwesterfit()
+	run(`julia -t4 ../../src/run.jl spfit`) #runs westerfit
 end
 
 function procspfit()
-	spfit = readdlm("spfit.output",',')
-	perm = [7, 8, 9, 3, 1, 2, 4, 5, 6]
+	spfit = readdlm("test.egy",',')
+	perm = [9, 6, 7, 8, 3, 1, 2, 4, 5]
 	spfit = spfit[:,perm]
-	spfit = spfit[sortperm(belg[:,end]), :]
+	spfit = spfit[sortperm(spfit[:,end]), :]
 	return spfit
+end
+
+function procwesterfit()
+	west = readdlm("spfit.eng", ',')
+	perm = [1, 2, 3, 4, 7, 5, 6]
+	west = west[:,perm]
+	west = west[sortperm(west[:,5]), :]
+	west[:,1] = west[:,1]*0.5
+	west[:,3] = abs.(west[:,3])
+	return west
 end
 
 function rms(a::Array,b::Array)::Float64
@@ -64,11 +79,9 @@ function rms(a::Array,b::Array)::Float64
    return BLAS.nrm2(c) / √(length(c))
 end
 
-function westvcfour(spfit,west)
-	perm = [1, 2, 3, 6, 4, 5]
-	west = west[:,perm]
-	west = west[sortperm(west[:,end]),:]
-	for i in 1:4
+function westvspfit(spfit,west)
+	# J N Ka Kc E
+	for i in 1:5
 		err = rms(spfit[:,i], west[:,i])
 		println("RMS of $(qns[i]) = $err")
 	end
@@ -77,13 +90,13 @@ end
 function runtest()
 	nams = ["Av"; "Bv"; "Cv"; "DK"; "DNK"; "DN"; "dN"; "dK"; "chizz"; "chixmy"; "chixz"]
 	vals = [3000.0; 1500.0; 1000.0; .3; .15; .2; .1; .08; 20.; 10.; 5.]
-	s = 1
+	s = 1.0
 	setvars(nams, vals, s)
-	runspfit()
-	#westerfit("spfit")
-	#spfit = procspfit()
-	#west = readlm("spfit.eng",',')
-	#westvcfour(spfit,west)
+	#runspfit()
+	#runwesterfit()
+	west = procwesterfit()
+	spfit = procspfit()
+	westvspfit(spfit,west)
 end
 
 runtest()
