@@ -1,4 +1,4 @@
-test                                                    Fri Apr 21 22:08:35 2023
+test                                                    Sun Apr 23 20:23:34 2023
 ID=     8 QSPINROT=      3048.1982 MIN, MAX QN=   0  12
 MIN.LOG.STR=    -9.000 MIN.LOG.STR(FRQ/300GHZ)**2=    -6.000 MAX FREQ       18.0 GHZ, TEMP=     8.00
      1    001   2.331
@@ -13,9 +13,9 @@ MIN.LOG.STR=    -9.000 MIN.LOG.STR(FRQ/300GHZ)**2=    -6.000 MAX FREQ       18.0
      6      6          2000   3.0000000000000E-01    1.000000E-36 -DelK
      7      7         40100   1.0000000000000E-01    1.000000E-36 -delJ
      8      8         41000   8.0000000000000E-02    1.000000E-36 -delK
-     9      9     110040000   1.0000000000000E+01    1.000000E-36 chi(b-c)/4
+     9      9     110040000   2.5000000000000E+00    1.000000E-36 chi(b-c)/4
     10     10     110610000   5.0000000000000E+00    1.000000E-36 chiab
-    11     11     110010000   2.0000000000000E+01    1.000000E-36 chiaa
+    11     11     110010000   3.0000000000000E+01    1.000000E-36 chiaa
 11 parameters read, 11 independent parameters
 IQNFMT = 304
 ENERGY SORT OF WANG SUB-BLOCKS
