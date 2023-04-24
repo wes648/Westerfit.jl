@@ -1,0 +1,53 @@
+
+\documentclass{article}
+
+
+\begin{document}
+	
+\section{File Structure}
+
+\subsection{.inp}
+
+Inp files contain the input values for westersim.
+
+The first line contains a string for the name of the molecule.
+
+The first section, after the molecule name, is Controls. This section sets global variables for westersim.
+
+\begin{tabular}{c c c}
+	NFOLD & integer & The fold value for the rotor \\
+	S & float & Total spin value \\
+	TK & float & Temperature in Kelvin \\
+	RUNmode & flag & desc \\
+	mcalc & integer & desc \\
+	vtmax & integer & desc \\
+	Jmax & float & maximum value of J \\
+	vmin & float & minimum frequency value in GHz \\
+	vmax & float & maximum frequency value in Ghz \\
+\end{tabular}
+
+The second section is the values of all the second order coefficients. It's in a pseudo-fixed-width format delimited by semicolons. The first column is the name of the coefficient. The second is its value in MHz. The third is ...
+
+
+
+\subsection{.eng}
+	
+Eng files contain the energy listings produced by westersim.
+	
+	\begin{tabular}{c c c c c c c}
+		1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+		J & N & K$_a$ & K$_c$ & m & $\sigma$ & E \\
+	\end{tabular}
+	
+\subsection{.lne}
+
+Lne files contain the line lists used by westerfit.
+
+
+	\begin{tabular}{c c c c c c c c c c c c}
+		1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\
+		J$_u$ & N$_u$ & K$_{au}$ & K$_{cu}$ & m$_u$ & J$_l$ & N$_l$ & K$_{al}$ & K$_{cl}$ & m$_l$ & freq & unc \\
+	\end{tabular}
+		
+	
+\end{document}
