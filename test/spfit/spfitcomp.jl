@@ -37,10 +37,16 @@ function setvars(nams,vals,s) #sets all the variables to the values in nams and 
 		nam = nams[i]
 		val = vals[i]
 		sedstr = "s/$nam/$val/g"
-		sp = `sed -i $sedstr test.var`
-		run(sp)
 		west = `sed -i $sedstr spfit.inp`
 		run(west)
+		if nam=="chizz"
+			val *= 1.5
+		elseif nam=="chixmy"
+			val *= 0.25
+		end
+		sedstr = "s/$nam/$val/g"
+		sp = `sed -i $sedstr test.var`
+		run(sp)
 	end
 end
 
@@ -52,24 +58,25 @@ function runspfit()
 	run(`gawk -i inplace '$1=$1' FIELDWIDTHS='6 5 18 18 11 5 3 3 3' OFS=, test.egy`) #comma delimited
 end
 
-function runwesterfit()
+function runwesterfit() #runs westerfit
 	run(`julia -t4 ../../src/run.jl spfit`) #runs westerfit
 end
 
 function procspfit()
 	spfit = readdlm("test.egy",',')
-	perm = [9, 6, 7, 8, 3, 1, 2, 4, 5]
+	perm = [6, 7, 8, 9, 3]
 	spfit = spfit[:,perm]
 	spfit = spfit[sortperm(spfit[:,end]), :]
+	spfit[:,1] = (spfit[:,1].-1)./2
 	return spfit
 end
 
 function procwesterfit()
 	west = readdlm("spfit.eng", ',')
-	perm = [1, 2, 3, 4, 7, 5, 6]
+	perm = [1, 2, 3, 4, 7]
 	west = west[:,perm]
-	west = west[sortperm(west[:,5]), :]
-	west[:,1] = west[:,1]*0.5
+	west = west[sortperm(west[:,end]), :]
+	west[:,1] = west[:,1].*0.5
 	west[:,3] = abs.(west[:,3])
 	return west
 end
@@ -92,8 +99,8 @@ function runtest()
 	vals = [3000.0; 1500.0; 1000.0; .3; .15; .2; .1; .08; 20.; 10.; 5.]
 	s = 1.0
 	setvars(nams, vals, s)
-	#runspfit()
-	#runwesterfit()
+	runspfit()
+	runwesterfit()
 	west = procwesterfit()
 	spfit = procspfit()
 	westvspfit(spfit,west)
