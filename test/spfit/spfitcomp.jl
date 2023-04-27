@@ -23,62 +23,67 @@
 #rm test.*
 
 using DelimitedFiles
+using Plots
 using LinearAlgebra
+include("@__DIR__/../../../src/main.jl")
 
 qns = ["J", "N", "Ka", "Kc", "E"]
 
 function setvars(nams,vals,s) #sets all the variables to the values in nams and vals
-	run(`cp spfit.ref test.var`)
-	run(`cp ref.inp spfit.inp`)
-	run(`sed -i "s/sv/$s/g" spfit.inp`)
-	sd = Int(2s+1)
-	run(`sed -i "s/sd/$sd/g" test.var`)
-	for i in 1:length(vals)
-		nam = nams[i]
-		val = vals[i]
-		sedstr = "s/$nam/$val/g"
-		west = `sed -i $sedstr spfit.inp`
-		run(west)
-		if nam=="chizz"
-			val *= 1.5
-		elseif nam=="chixmy"
-			val *= 0.25
-		end
-		sedstr = "s/$nam/$val/g"
-		sp = `sed -i $sedstr test.var`
-		run(sp)
-	end
+   run(`cp spfit.ref test.var`)
+   run(`cp ref.inp spfit.inp`)
+   run(`sed -i "s/sv/$s/g" spfit.inp`)
+   sd = Int(2s+1)
+   run(`sed -i "s/sd/$sd/g" test.var`)
+   for i in 1:length(vals)
+      nam = nams[i]
+      val = vals[i]
+      sedstr = "s/$nam/$val/g"
+      west = `sed -i $sedstr spfit.inp`
+      run(west)
+      if nam=="chizz"
+         val *= 1.5
+      elseif nam=="chixmy"
+         val *= 0.25
+      elseif nam=="chixz"
+         val *= 1.0
+      end
+      sedstr = "s/$nam/$val/g"
+      sp = `sed -i $sedstr test.var`
+      run(sp)
+   end
 end
 
 #run spfit
 function runspfit()
-	run(`spcat test.var`) #runs spcat
-	#run(`gawk -i inplace '$1=$1' FIELDWIDTHS='13 8 8 2 10 3 7 6 2 4 6 2' OFS=, test.cat`)
-	run(`sed -i "s/://g" test.egy`) #gets rid of any colons in test.egy
-	run(`gawk -i inplace '$1=$1' FIELDWIDTHS='6 5 18 18 11 5 3 3 3' OFS=, test.egy`) #comma delimited
+   run(`spcat test.var`) #runs spcat
+   #run(`gawk -i inplace '$1=$1' FIELDWIDTHS='13 8 8 2 10 3 7 6 2 4 6 2' OFS=, test.cat`)
+   run(`sed -i "s/://g" test.egy`) #gets rid of any colons in test.egy
+   run(`gawk -i inplace '$1=$1' FIELDWIDTHS='6 5 18 18 11 5 3 3 3' OFS=, test.egy`) #comma delimited
 end
 
 function runwesterfit() #runs westerfit
-	run(`julia -t4 ../../src/run.jl spfit`) #runs westerfit
+   #run(`julia -t4 ../../src/run.jl spfit`) #runs westerfit
+   westerfit("spfit")
 end
 
 function procspfit()
-	spfit = readdlm("test.egy",',')
-	perm = [6, 7, 8, 9, 3]
-	spfit = spfit[:,perm]
-	spfit = spfit[sortperm(spfit[:,end]), :]
-	spfit[:,1] = (spfit[:,1].-1)./2
-	return spfit
+   spfit = readdlm("test.egy",',')
+   perm = [6, 7, 8, 9, 3]
+   spfit = spfit[:,perm]
+   spfit = spfit[sortperm(spfit[:,end], by=abs), :]
+   spfit[:,1] = (spfit[:,1].-1)./2
+   return spfit
 end
 
 function procwesterfit()
-	west = readdlm("spfit.eng", ',')
-	perm = [1, 2, 3, 4, 7]
-	west = west[:,perm]
-	west = west[sortperm(west[:,end]), :]
-	west[:,1] = west[:,1].*0.5
-	west[:,3] = abs.(west[:,3])
-	return west
+   west = readdlm("spfit.eng", ',')
+   perm = [1, 2, 3, 4, 7]
+   west = west[:,perm]
+   west = west[sortperm(west[:,end], by=abs), :]
+   west[:,1] = west[:,1].*0.5
+   west[:,3] = abs.(west[:,3])
+   return west
 end
 
 function rms(a::Array,b::Array)::Float64
@@ -87,23 +92,65 @@ function rms(a::Array,b::Array)::Float64
 end
 
 function westvspfit(spfit,west)
-	# J N Ka Kc E
-	for i in 1:5
-		err = rms(spfit[:,i], west[:,i])
-		println("RMS of $(qns[i]) = $err")
-	end
+   # J N Ka Kc E
+   for i in 1:5
+      err = rms(spfit[:,i], west[:,i])
+      println("RMS of $(qns[i]) = $err")
+   end
 end
 
 function runtest()
-	nams = ["Av"; "Bv"; "Cv"; "DK"; "DNK"; "DN"; "dN"; "dK"; "chizz"; "chixmy"; "chixz"]
-	vals = [3000.0; 1500.0; 1000.0; .3; .15; .2; .1; .08; 20.; 10.; 5.]
-	s = 1.0
-	setvars(nams, vals, s)
-	runspfit()
-	runwesterfit()
-	west = procwesterfit()
-	spfit = procspfit()
-	westvspfit(spfit,west)
+   nams = ["Av"; "Bv"; "Cv"; "Dabv"; "DK"; "DNK"; "DN"; "dN"; "dK"; "chizz"; "chixmy"; "chixz"]
+   #vals = [3000.0; 1500.0; 1000.0; .3; .15; .2; .1; .08; 20.; 10.; 5.]
+   vals = [3000.0; 1500.0; 1000.0; 50.0; .0; .0; .0; .0; .0; 0.; 10.; 0.]
+   s = 1.0
+   setvars(nams, vals, s)
+   runspfit()
+   runwesterfit()
+   west = procwesterfit()
+   spfit = procspfit()
+   westvspfit(spfit,west)
+   println([west[:,1] spfit[:,1]])
+end
+function stabdiv(a,b)
+   if b==zero(b)
+      return 0.0
+   else
+      return a ./ b
+   end
 end
 
-runtest()
+function χatest(χa)
+   nams = ["Av"; "Bv"; "Cv"; "Dabv"; "DK"; "DNK"; "DN"; "dN"; "dK"; "chizz"; "chixmy"; "chixz"]
+   #vals = [3000.0; 1500.0; 1000.0; .3; .15; .2; .1; .08; 20.; 10.; 5.]
+   vals = [3000.0; 1500.0; 1000.0; 00.0; .0; .0; .0; .0; .0; χa; 400.; 15.]
+   s = 1.0
+   setvars(nams, vals, s)
+   runspfit()
+   runwesterfit()
+   west = procwesterfit()
+   spfit = procspfit()
+   westvspfit(spfit,west)
+   omc = spfit[:,end] .- west[:,end]
+   println("when χaa = $χa, sum(omc) = $(sum(omc))")
+   omc = stabdiv(omc, χa)
+   return omc
+end
+
+function runχatest()
+   χas = 15.0 .* (10.0 .^collect(-2:2))
+   χas = vcat([0.0], χas)
+   len = length(χas)
+   omcs = zeros(Float64,75,len) 
+   for i in 1:len
+      omcs[:,i] .= χatest(χas[i])
+   end
+   x = collect(1:75)
+   plot(x, omcs[:,1], seriestype=:scatter)
+   for i in 2:len
+      plot!(x, omcs[:,i], seriestype=:scatter)
+   end
+   savefig("chia.png")
+end
+
+runχatest()

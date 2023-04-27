@@ -316,7 +316,7 @@ end
 function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #vals,vecs = limeigcalc(nlist, inds, params)
    S = ctrl["S"]
-   println(inds)
+   #println(inds)
    sd = Int(2*S+1)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    oparams = params
@@ -324,7 +324,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    perm,n = findnz(sparse(scales))
    #println(perm)
    #println(params)
-   println(omc)
+   #println(omc)
    #println(nlist)
    println("Initial RMS = $rms")
    goal = sum(uncs)/length(uncs)*0.00000
@@ -351,6 +351,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
    J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
    H, jtw = build_hess(jtw,J,W)
+   println(H)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK")
    end
@@ -375,6 +376,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       check = abs(nrms-rms)/rms
       if nrms < rms
          #println(βf)
+	 #μlm *= (nrms/rms)^2
          rms = nrms
          omc .= nomc
          params .= nparams

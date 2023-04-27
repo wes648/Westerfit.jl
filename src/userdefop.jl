@@ -526,15 +526,18 @@ function wigdiv(x,s::Number)
    if s<one(s)
       return zero(x)
    else
-      return x ./ wig3j(s,2,s,-s,0,s)
+      return x ./ wig3j( s,2,s,
+                        -s,0,s)
    end
 end
 function qured(j,s,nb,nk)
-   @. return 0.25*jnred(nb,nk)*wig6j(j,s,nb,2,nk,s)
+   @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
+                                     2,nk, s)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
-   @. return pr*qured(j,s,nb,nk)*
-             wig3j(nb,2,nk,-kb,-q,kk)*(-1.0)^(nk+nb-kb+s+j+1)
+   @. return pr*#qured(j,s,nb,nk)*
+             wig3j( nb, 2,nk,
+                   -kb,q,kk)*(-1.0)^(nb+nk-kb+s+j)
 end
 function qutensor(pr)
    out = zeros(5)
@@ -549,8 +552,9 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nb))
    ten = qutensor(pr)
    @simd for q in -2:2
-      out += quelem(ten[Tq(-q)],q,j,s,nb,kb,nk,kk)
+      out += quelem(ten[Tq(q)],q,j,s,nb,kb,nk,kk)
    end
+   out .*= qured(j,s,nb,nk)
    out = wigdiv(out,s)
    return out
 end
