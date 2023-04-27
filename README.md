@@ -45,12 +45,14 @@ Below are control settings, their meanings, and default values::Type
 ### Second Order Parameters
 The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occure upon initializing the code.
 
-$A$, $B$, and $C$ are the rotational constants corresponding to the $z$, $x$, and $y$ molecule fixed axes respectively. $Dab$ is the off-diagonal rotational constant for the Rho Axis Method. When it is included, $A$ and $B$ refer to their RAM meanings not their PAM meanings. These are all in MHz
+$A$, $B$, and $C$ are the rotational constants corresponding to the $z$, $x$, and $y$ molecule fixed axes respectively. 
+$D_{ab}$ is the off-diagonal rotational constant for the Rho Axis Method. 
+When it is included, $A$ and $B$ refer to their RAM meanings not their PAM meanings. These are all in MHz
 
 $F$ is the internal rotor constant. It is the reduced value as is used in RAM36. 
 $\rho$ is the coupling term between the methyl rotation and the $z$-axis angular momentum. 
 It engages in the Hamiltonian as $-2\rho FP_{\alpha}N_{z}$ and $(A-F\rho^{2})N_{z}^{2}$. 
-$Vn$ is the first term in the potential expansion as determined by NFOLD.
+The $Vn$ is the first term in the potential expansion as determined by NFOLD.
 
 The $\epsilon$ terms are the spin-rotation coupling terms referring to axes in their subscripts. 
 $\epsilon$xz is the average of the xz and zx terms as they do not have seperable matrix elements. 
@@ -63,9 +65,19 @@ They are also transformed into spherical tensor form upon initializaiton.
 Lastly is the spin-torsion coupling term $\eta$.
 
 ### Higher order operators
+These are manual coded in operators that are implemented as the anti-commutator of what the user codes in.
+These lines can also be commented out but do not remove the lines opening with %.
+The first column is a name string for the operators.
+Here are some unicode characters for easier name: Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ.
+The second & third columns are Float64 and are the parameter value and step scale factor, respectively. Currently the step scale factor just acts as a binary of 0 meaning don't fit or non-zero meaning do fit. Will be expanded later.
+The next 8 columns are Int referring to the powers of the various operators as described in the line beginign that block of the input file.
+There are no checks of symmetry like in RAM36 so go wild. 
+One could also code in inverse powers but I'm not sure why one would. Let me know if you do and how it helped!
+The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
 
 
+### A remark of inspiration:
 
 >I don't have any idea whether we will ever need spectroscopy again in 40 years. 
 >As for spectroscopy, people who want to do spectroscopy seem to be born that way.... 
@@ -74,10 +86,11 @@ Lastly is the spin-torsion coupling term $\eta$.
 >They're only 25 years old, I mean, they should be drinking beer and doing whatever, they want to talk about this and they love it. 
 >So, those people are going to continue to do this, in the backwater universities, not heavily funded, but they are going to preserve the skills, because they can't help themselves. 
 >They're born that way.
-
+>
 >And they simply don't want to sell cars. 
 >They don't want to broad-brush the future of American science. 
 >They want to do something that has eight digit numbers and a theory and obs minus calcs, and you're born that way. 
 >You can see it in them.
+
 -Jon T. Hougen
 
