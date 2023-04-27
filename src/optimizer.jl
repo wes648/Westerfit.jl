@@ -333,7 +333,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    ϵ0 = 0.1E-16
    ϵ1 = 0.1E-16
    LIMIT = 50
-   μlm = (rms + rms^2)#*0.0
+   μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = μlm*rms/(1.0 + rms) 
    Δlm = 1.0E+2
    Δlm *= length(perm)

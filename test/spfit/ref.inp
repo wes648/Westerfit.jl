@@ -15,10 +15,10 @@ A;                      Av;   1.0
 B;                      Bv;   1.0
 C;                      Cv;   1.0
 Dab;                  Dabv;   0.0
-ϵzz;                   0.0;   0.0
-ϵxx;                   0.0;   0.0
-ϵyy;                   0.0;   0.0
-ϵxz;                   0.0;   0.0
+ϵzz;                   epzz;   0.0
+ϵxx;                   epxx;   0.0
+ϵyy;                   epyy;   0.0
+ϵxz;                   epxz;   0.0
 χzz;                 chizz;   1.0
 χxmy;               chixmy;   1.0
 χxz;                 chixz;   1.0
