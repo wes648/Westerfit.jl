@@ -1,0 +1,77 @@
+
+\documentclass{article}
+
+
+\begin{document}
+	
+\section{File Structure}
+
+\subsection{.inp}
+
+Inp files contain the input values for westersim.
+
+The first line contains a string for the name of the molecule.
+
+The first section, after the molecule name, is Controls. This section sets global variables for westersim.
+
+\begin{tabular}{c c c}
+	NFOLD & integer & The fold value for the rotor \\
+	S & float & Total spin value \\
+	TK & float & Temperature in Kelvin \\
+	RUNmode & flag & ESF for energy, simulation, and fit. Defines which westerfit programs will run. \\
+	mcalc & integer & defines the size of the torsional basis \\
+	vtmax & integer & maximum value of vt \\
+	Jmax & float & maximum value of J \\
+	vmin & float & minimum frequency value in GHz \\
+	vmax & float & maximum frequency value in Ghz \\
+\end{tabular}
+
+The second section is the values of all the second order coefficients. It's in a pseudo-fixed-width format delimited by semicolons. The first column is the name of the coefficient. The second is its value in MHz (except F, V$_3$, and $\rho$, which are in wavenumbers, wavenumbers, and unitless, respectively). The third is currently an on/off flag that can be 0.0 or 1.0, but in the future should have scaling factors for fitting.
+
+\begin{tabular}{c c}
+	A & MHz \\
+	B & MHz \\
+	C & MHz \\
+	Dab & MHz \\
+	$\epsilon$zz & MHz \\
+	$\epsilon$xx & MHz \\
+	$\epsilon$zz & MHz \\
+	$\epsilon$xz & MHz \\
+	$\chi$zz & MHz \\
+	$\chi$xmy & MHz \\
+	$\chi$xz & MHz \\
+	F & cm$^{-1}$ \\
+	$\rho$ & dimensionless \\
+	V$_n$ & cm$^{-1}$ \\
+	$\eta$ & MHz \\
+\end{tabular}
+
+The third section is the operators. They are defined by a value, a scaling factor (again, currently functioning as an on/off flag), values a-h, and stg (stage).
+
+A-h are the values to be substituted into the parameters listed above the operator section.
+
+Stage is set to 0 for dipole operators and 1 for Hamiltonian operators. -n indicates that the parameter value is the product of the parameter value in that line and the line n lines above, and uses the same stage as the above line.
+
+
+\subsection{.eng}
+	
+Eng files contain the energy listings produced by westersim.
+	
+	\begin{tabular}{c c c c c c c}
+		1 & 2 & 3 & 4 & 5 & 6 & 7 \\
+		J & N & K$_a$ & K$_c$ & m & $\sigma$ & E \\
+	\end{tabular}
+	
+\subsection{.lne and .cat}
+
+Lne files contain the line lists used by westerfit. Cat files contain the line lists produced by westersim.
+
+
+	\begin{tabular}{c c c c c c c c c c c c}
+		1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9 & 10 & 11 & 12 \\
+		J$_u$ & N$_u$ & K$_{au}$ & K$_{cu}$ & m$_u$ & J$_l$ & N$_l$ & K$_{al}$ & K$_{cl}$ & m$_l$ & freq & unc \\
+	\end{tabular}
+
+
+	
+\end{document}
