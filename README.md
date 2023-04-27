@@ -3,7 +3,7 @@ A new program for the simulating and fitting of molecular rotational spectra for
 
 Description of current status:
 Torsion-Rotation tested against BELGI & RAM36. See test/belgi and example/2ba
-Hyper-fine tested against SPFTI. see test/spfit
+Hyper-fine tested against SPFIT. see test/spfit
 SR undergoing testing. see test/spfit
 
 The westerfit input file is divided into three sections each with a designated header. The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
