@@ -91,6 +91,6 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 >They don't want to broad-brush the future of American science. 
 >They want to do something that has eight digit numbers and a theory and obs minus calcs, and you're born that way. 
 >You can see it in them.
-
--Jon T. Hougen
+>
+>-Jon T. Hougen
 
