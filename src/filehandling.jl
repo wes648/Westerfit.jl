@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
-      "λ"=>0.0, "RUNmode"=>"ESF", "turducken"=>1)
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1)
    return ctrl
 end
 function ctrlinp(molnam::String)
