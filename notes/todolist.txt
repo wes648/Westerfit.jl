@@ -1,0 +1,13 @@
+For Both
+-- read 2.1-2.3 of S+O
+
+For Wes
+-- send paper flow to sophie
+
+For Sophie
+-- uncertainty recovery function
+-- write code that allows fixed-width comparison of spfitcomp output
+-- work on documentation
+-- make sure that the input parameters match with the standard ones
+-- check for equal and opposite omcs
+-- combination difference checker
