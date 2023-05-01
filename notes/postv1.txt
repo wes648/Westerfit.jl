@@ -1,0 +1,9 @@
+adaptive scale factor for LM parameter
+vibrational support
+multiple rotors
+multiple spins
+muliple everything spinspinspinspinspinspin
+new operator and basis set type
+different optimization routine (options)
+jacobi assignment routine
+full resorter of assignments

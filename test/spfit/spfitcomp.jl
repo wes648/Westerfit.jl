@@ -107,12 +107,12 @@ function runtest()
    vals = [000.0; 00.0; 000.0; 0.0; .0; .0; .0; .0; .0; 0.; 0.; 0.; 3000.; 00.; 0.; 00.]
    s = 1.0
    setvars(nams, vals, s)
-   runspfit()
+#   runspfit()
    runwesterfit()
-   west = procwesterfit()
-   spfit = procspfit()
-   westvspfit(spfit,west)
-   println([west[:,1] spfit[:,1]])
+#   west = procwesterfit()
+#   spfit = procspfit()
+#   westvspfit(spfit,west)
+#   println([west[:,1] spfit[:,1]])
 end
 function stabdiv(a,b)
    if b==zero(b)
@@ -156,4 +156,4 @@ function runeatest()
    savefig("parm.png")
 end
 
-runeatest()
+runtest()
