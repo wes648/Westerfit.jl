@@ -294,8 +294,8 @@ function turducken_acc(λ::Float64,β::Array{Float64},h)::Float64
 end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
-function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo,ctrl)
-   tdncount = 2#ctrl["turducken"]
+function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
+   tdncount = ctrl["turducken"]
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
@@ -309,13 +309,13 @@ function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo
    end
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
-   β[:,1] .= ldiv!(β[:,1], A, jtw*omc)
+   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
    for i in 2:tdncount
       nparams[perm] .+= β[:,i-1]
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
       vals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, omc, = rmscalc(vals,inds,ofreqs)
-      β[:,i] .= ldiv!(β[:,i], A, jtw*omc)
+      β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
       β[:,i] *= turducken_acc(λ,β[:,i],H)
    end
    βf = sum(β,dims=2)
@@ -356,6 +356,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    LIMIT = ctrl["maxiter"]
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
+   println("Initial λ = $λlm")
    Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
@@ -393,7 +394,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       #oparams = copy(params)
       λlm = λgen(μlm, rms) 
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
-                  jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs,rms,stg,cdo,ctrl)
+                  jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       if nrms < rms
          #println(βf)

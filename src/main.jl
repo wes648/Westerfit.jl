@@ -100,7 +100,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    tsrp, uncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)
    println(tsrp)
    println(uncs)
-   fitwritter(molnam,lines,omcs,cfrqs)
+   reswritter(molnam,lines,omcs,cfrqs)
    #println("New Parameter Vector:")
    #println("New Energy levels")
    #for n in 1:Nmax
