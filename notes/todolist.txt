@@ -6,7 +6,6 @@ For Wes
 
 For Sophie
 -- uncertainty recovery function
--- write code that allows fixed-width comparison of spfitcomp output (not needed due to recent testing success -W)
 -- work on documentation
 -- make sure that the input parameters match with the standard ones (this is second order vs user define)
 -- check for equal and opposite omcs
