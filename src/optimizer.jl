@@ -1,4 +1,12 @@
 
+function λgen(μ::Float64,er::Float64)::Float64
+   ρ = 0.5
+   er /= 1000.0 #convert err to GHz
+   λ = ρ*μ*er #λF
+   λ += (1.0 - ρ)*μ*er/(1+er) #λARC
+   return λ
+end
+
 function jlister(inds)
    #finds all the unique J & σ pairs
    js = vcat(inds[:,1],inds[:,4])
@@ -25,8 +33,15 @@ function rmscalc(vals,inds,ofreqs)
    omc = ofreqs - cfreqs
    rms = BLAS.nrm2(omc)/√length(omc)
    #rms = norm(omc)/length(omc)
-   return rms, omc
+   return rms, omc, cfreqs
 end
+#function quickfreqs(vals,inds,ofreqs)
+#   cfreqs = zero(ofreqs)
+#   @threads for i in 1:size(cfreqs,1)
+#      cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
+#   end
+#   return cfreqs
+#end
 #construct jacobian
 function anaderiv(j,s,σ,vec,rp,rpid)
    rp = zero(rp)
@@ -209,7 +224,7 @@ function approx2dirdrv!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs)
    params[perm] += h*β
    #pvals,pvecs = limeigcalc(nlist, inds, params)
    pvals,pvecs, = tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
-   prms, pomc = rmscalc(pvals, inds, ofreqs)
+   prms, pomc, = rmscalc(pvals, inds, ofreqs)
    K = (2/h)*((pomc-omc)/h - jcbn*β)
    return K
 end
@@ -272,9 +287,15 @@ function wellcon_acc()
    return γ
 end
 
+function turducken_acc(λ::Float64,β::Array{Float64},h)::Float64
+   βt = transpose(β)
+   out = 1.0 + λ*βt*β/(βt*h*β)
+   return out
+end
+
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo,ctrl)
-   tdncount = ctrl["turducken"]
+   tdncount = 2#ctrl["turducken"]
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
       λ = max(2.0*λ,1.0E-24)
@@ -293,18 +314,18 @@ function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs,rms,stg,cdo
       nparams[perm] .+= β[:,i-1]
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
       vals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-      nrms, omc = rmscalc(vals,inds,ofreqs)
+      nrms, omc, = rmscalc(vals,inds,ofreqs)
       β[:,i] .= ldiv!(β[:,i], A, jtw*omc)
+      β[:,i] *= turducken_acc(λ,β[:,i],H)
    end
-   #δβ = aitkenδ(β)
-   βf = sum(β,dims=2) #.+ δβ
-   nparams[perm] .+= β[:,end] #.+ δβ
+   βf = sum(β,dims=2)
+   nparams[perm] .+= β[:,end]
    vals, nvecs = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   nrms, omc = rmscalc(vals,inds,ofreqs)
+   nrms, omc, = rmscalc(vals,inds,ofreqs)
    return βf,λ,omc,nrms,vals,nvecs, nparams
 end
 
-function aitkenδ(γ)#the fuck is this like literally what is this for
+function aitkenδ(γ)#this was a weird accelerator idea
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
 
@@ -320,7 +341,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    sd = Int(2*S+1)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    oparams = params
-   rms, omc = rmscalc(vals, inds, ofreqs)
+   rms, omc, = rmscalc(vals, inds, ofreqs)
    perm,n = findnz(sparse(scales))
    #println(perm)
    #println(params)
@@ -330,11 +351,11 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    goal = sum(uncs)/length(uncs)*0.00000
    W = diagm(0=>(uncs .^ -1))
    #RHOTHRES = -1.0E-6
-   ϵ0 = 0.1E-16
+   ϵ0 = 0.1E-6
    ϵ1 = 0.1E-16
-   LIMIT = 50
+   LIMIT = ctrl["maxiter"]
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
-   λlm = μlm*rms/(1.0 + rms) 
+   λlm = λgen(μlm, rms) 
    Δlm = 1.0E+2
    Δlm *= length(perm)
    counter = 0
@@ -351,7 +372,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
    J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
    H, jtw = build_hess(jtw,J,W)
-   println(H)
+   #println(H)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK")
    end
@@ -370,7 +391,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       vals, nvecs = limeigcalc(nlist, inds, nparams)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
-      λlm = μlm*rms/(1.0 + rms) 
+      λlm = λgen(μlm, rms) 
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
                   jtw,omc,λlm,nlist,inds,copy(params),perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
@@ -383,7 +404,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+         J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
@@ -394,7 +415,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(H^(-1/2))
          #println(params[perm])
          #λlm = 0.0
-         μlm /= 100.0
+         μlm /= 20.0
          stoit = 0
       else
          #params .= oparams
@@ -429,5 +450,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #write update to file
       end #check if
    end#while
-   return params, vals
+   frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
+   params[1:15] .= paramrecov(params[1:15])
+   return params, uncs, omc, vals
 end

@@ -54,7 +54,7 @@ function westersim(molnam::String, ctrl)
    println("yay energy levels are calculated!")
    #write energies to file
    if occursin("E",ctrl["RUNmode"])
-      EngWriter(molnam,ctrl,fvls,fqns)
+      engwriter(molnam,ctrl,fvls,fqns)
    end
    #calculate transitions
    if occursin("S",ctrl["RUNmode"])
