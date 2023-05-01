@@ -65,8 +65,12 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
 end
 function paramrecov(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
-   out[13] = prd[13]/(-2.0*prd[12]*csl)          #ρ
-   out[1] = prd[1]+prd[2] + out[13]*prd[12]      #A
+   if prd[12] != zero(prd[12])
+      out[13] = prd[13]/(-2.0*prd[12]*csl)       #ρ
+   else
+      out[13] = 0.0
+   end
+   out[1] = prd[1] + prd[2] + out[13]*prd[12]    #A
    out[2] = prd[2] + 2.0*prd[3]                  #B
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
@@ -218,6 +222,35 @@ end
 
 
 #####OUTPUTS
+function fitlin(line,omc,cfrq)
+   part  = lpad(line[ 1],4)*";"
+   part *= lpad(line[ 2],4)*";"
+   part *= lpad(line[ 3],4)*";"
+   part *= lpad(line[ 4],4)*";"
+   part *= lpad(line[ 5],4)*";"
+   part *= lpad(line[ 6],4)*";"
+   part *= lpad(line[ 7],4)*";"
+   part *= lpad(line[ 8],4)*";"
+   part *= lpad(line[ 9],4)*";"
+   part *= lpad(line[10],4)*";"
+   part *= " "*lpad(@sprintf("%0.5f", line[11]), 16)*";"
+   part *= " "*lpad(@sprintf("%0.6f", omc), 16)*";"
+   part *= " "*lpad(@sprintf("%0.5f", cfrq), 16)
+end
+
+function fitwritter(molnam,lines,omcs,cfrqs)
+   len = size(omcs,1)
+   out = fill("0", len)
+   @simd for i in 1:len
+      out[i] = fitlin(lines[i,:],omcs[i],cfrqs[i])
+   end
+   io = open("$molnam.res", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+end
+
 function englin(s,eng,qunl)
    if s==zero(s)
       part = lpad(qunl[2],4)*","
@@ -233,7 +266,6 @@ function englin(s,eng,qunl)
    part *= " "*lpad(@sprintf("%0.10f", eng), 16)
    return part
 end
-
 function engwriter(molnam,ctrl,energies,qunus)
 """
 Outputs energy levels with state assignments to a csv-like file

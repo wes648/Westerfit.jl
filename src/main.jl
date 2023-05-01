@@ -97,9 +97,11 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #println(linds)
    #opt
 #   println("Beginning optimization")
-   tsrp, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)
-   #println("New Parameter Vector:")
+   tsrp, uncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)
    println(tsrp)
+   println(uncs)
+   fitwritter(molnam,lines,omcs,cfrqs)
+   #println("New Parameter Vector:")
    #println("New Energy levels")
    #for n in 1:Nmax
    #   vals, vecs = rotdiag(Nmax,n,rotparams)
@@ -112,11 +114,16 @@ function westerfit(molnam::String)
    molnam = replace(molnam, r".inp"=>"")
    #read input file
    ctrl = ctrlinp(molnam)
-   if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
+   if occursin("T",ctrl["RUNmode"])
       westersim(molnam, ctrl)
-   end
-   if occursin("F",ctrl["RUNmode"])||occursin("T",ctrl["RUNmode"])
       westerfit(molnam, ctrl)
+   else
+      if occursin("F",ctrl["RUNmode"])
+         westerfit(molnam, ctrl)
+      end
+      if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
+         westersim(molnam, ctrl)
+      end
    end
 end
 

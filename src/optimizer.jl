@@ -352,7 +352,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    W = diagm(0=>(uncs .^ -1))
    #RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-6
-   ϵ1 = 0.1E-16
+   ϵ1 = 0.1E-6
    LIMIT = ctrl["maxiter"]
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
@@ -433,14 +433,14 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
          uncs = paramunc!(uncs,H,perm,omc)
-         println(omc)
-         println(uncs)
+         #println(omc)
+         #println(uncs)
          break
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
          uncs = paramunc!(uncs,H,perm,omc)
-         println(uncs)
+         #println(uncs)
          break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
@@ -452,5 +452,5 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    params[1:15] .= paramrecov(params[1:15])
-   return params, uncs, omc, vals
+   return params, uncs, fomc, fcfrqs, vals
 end
