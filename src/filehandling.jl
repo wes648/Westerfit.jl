@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
-      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1)
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60)
    return ctrl
 end
 function ctrlinp(molnam::String)
@@ -63,6 +63,26 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[15] = prd[15]                              #η
    return out
 end
+function paramrecov(prd::Array{Float64})::Array{Float64}
+   out = zeros(15)
+   out[13] = prd[13]/(-2.0*prd[12]*csl)          #ρ
+   out[1] = prd[1]+prd[2] + out[13]*prd[12]      #A
+   out[2] = prd[2] + 2.0*prd[3]                  #B
+   out[3] = prd[2] - 2.0*prd[3]                  #C
+   out[4] = prd[4]                               #Dab
+   out[5] = (prd[5]/√3 - prd[6]/√6)/3.0          #ϵzz
+   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[8] #ϵxx
+   out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
+   out[8] = -prd[7]                              #ϵxz
+   out[9] = prd[9]                               #χzz
+   out[11] = -√(3/2)*prd[10]                     #χxz
+   out[10] = √6*prd[11]                          #χxx-χyy
+   out[12] = prd[12]/csl                         #F (MHz)
+   out[14] = 2.0*prd[14] / csl                   #V3
+   out[15] = prd[15]                             #η
+   return out
+end
+
 function secordinp(molnam::String)
    findstr = `grep -n 2NDORDER $molnam.inp`
    strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
@@ -214,7 +234,7 @@ function englin(s,eng,qunl)
    return part
 end
 
-function EngWriter(molnam,ctrl,energies,qunus)
+function engwriter(molnam,ctrl,energies,qunus)
 """
 Outputs energy levels with state assignments to a csv-like file
 """
