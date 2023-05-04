@@ -45,7 +45,7 @@ function mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
    nd = 2*n+1
    for v in 0:vtmax
       mg = mcalc + vt2m(v) + 1
-      perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:nd])
+      perm = sort(sortperm(ovrlp[mg,1:nd*(vtmax+3)], rev=true)[1:nd])
       ovrlp[mg,:] .= 0.0 #prevents reassigning
       ovrlp[:,perm] .= 0.0 #prevents reassigning
       #println(perm)
@@ -83,10 +83,10 @@ function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    count = min(nd*(vtmax+3),nd*(md))
    vlimit = min(vtmax+3,md-1) 
    for v in 0:vlimit
-      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:count]
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:nd]
       nind[perm] .= i
       #println(perm)
-      ovrlp[i,:] .= 0.0
+      #ovrlp[i,:] .= 0.0
       ovrlp[:,perm] .= 0.0 
    end
    end
@@ -105,11 +105,15 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    #println(ns)
    #println(ni)
    md = 2*mcalc + 1 + 1*(σt==2)
-   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   if length(ns)==1
+      nind = ones(Int,size(svcs,1))
+   else
+      nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   end
    if mcalc > 0
       mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
    else
-      mind = ones(size(nind))
+      mind = ones(Int,size(nind))
    end
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
