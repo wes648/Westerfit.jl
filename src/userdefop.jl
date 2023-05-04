@@ -905,8 +905,8 @@ function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    outvals = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int(sd*(2*jmax+1)*mcd),jfd*vtd)
-   for j in jlist #thread removed for troubleshooting purposes
-#   @threads for j in jlist
+#   for j in jlist #thread removed for troubleshooting purposes
+   @threads for j in jlist
       jd = Int(2.0*j) + 1
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
@@ -947,13 +947,14 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      @threads for j in jsublist
+      for j in jsublist
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
-         fvls[sind:find,sc] = tvals#[pull]
-         fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(sof,
+            cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+         #fvls[sind:find,sc] = tvals#[pull]
+         #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
          fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)
       end
    end

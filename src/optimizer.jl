@@ -394,8 +394,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       #oparams = copy(params)
       λlm = λgen(μlm, rms) 
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
-                  jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
+            jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
+      #println(βf)
       if nrms < rms
          #println(βf)
 	 #μlm *= (nrms/rms)^2
@@ -405,7 +406,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
          counter += 1
          srms = (@sprintf("%0.4f", rms))
@@ -433,14 +434,14 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          break
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
-         uncs = paramunc!(uncs,H,perm,omc)
+         #uncs = paramunc!(uncs,H,perm,omc)
          #println(omc)
          #println(uncs)
          break
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
-         uncs = paramunc!(uncs,H,perm,omc)
+         #uncs = paramunc!(uncs,H,perm,omc)
          #println(uncs)
          break
       elseif counter ≥ LIMIT
@@ -452,6 +453,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
+   uncs = paramunc!(uncs,H,perm,omc)
    params[1:15] .= paramrecov(params[1:15])
    return params, uncs, fomc, fcfrqs, vals
 end
