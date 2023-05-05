@@ -69,7 +69,8 @@ function sumder(out,j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
 end
 
 function derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
-   if rpid ≤ 4 #pure rot
+   if scl[rpid] < 0
+   elseif rpid ≤ 4 #pure rot
       pr = zeros(4)
       pr[rpid] = 1.0
       out = hrsr(pr,zeros(4),zeros(3),j,s,nb,kb,nk,kk)

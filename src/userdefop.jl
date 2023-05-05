@@ -947,7 +947,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
