@@ -329,10 +329,12 @@ end
 function aitkenδ(γ)#this was a weird accelerator idea
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
-
 function paramunc!(uncs,H,perm,omc)
    uncs = □rt.(diag(inv(Symmetric(H)))) .* (sum(omc .^2))/(length(omc)-length(perm))
    return uncs
+end
+function permdeterm(scls,stgs)
+   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(15),stgs) .> 0)]
 end
 
 function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
@@ -343,9 +345,10 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    oparams = params
    rms, omc, = rmscalc(vals, inds, ofreqs)
-   perm,n = findnz(sparse(scales))
+   #perm,n = findnz(sparse(scales))
+   perm = permdeterm(scales,stg)
    #println(perm)
-   #println(params)
+   println(params)
    #println(omc)
    #println(nlist)
    println("Initial RMS = $rms")
@@ -397,7 +400,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
             jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
-      #println(βf)
+      println(βf)
       if nrms < rms
          #println(βf)
 	 #μlm *= (nrms/rms)^2

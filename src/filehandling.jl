@@ -132,8 +132,8 @@ function opinp(molnam::String)
    col = collect(1:len)
    for i in col
       nams[i] = file[i,1]
-      vals[i] = parsetuple(Float64,file[i,2])
-      oprs[:,i] = parsetuple.(Int,file[i,4:end-1])
+      vals[i] = file[i,2] #parsetuple(Float64,file[i,2])
+      oprs[:,i] = file[i,4:end-1] #parsetuple.(Int,file[i,4:end-1])
       errs[i] = file[i,3]
       stgs[i] = file[i,end]
    end
@@ -155,6 +155,7 @@ function opinp(molnam::String)
 end
 
 function prmsetter(prm,stg::Array{Int})
+   #This function runs inside the TSRCALC functions
    out = copy(prm)
    inds = collect(1:length(prm))[isless.(stg,0)]
    for i in inds
