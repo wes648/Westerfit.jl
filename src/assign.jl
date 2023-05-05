@@ -17,7 +17,7 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    #@simd for i in 1:length(mind)
    #   mind[i] = ovrlp[i][1]
    #end
-   for v in 0:(vtmax+2) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+   for v in 0:min(vtmax+3,md) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
       mg = mcalc + vt2m(v) + 1
       perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:jsd])
       mind[perm] .= mg
@@ -98,23 +98,30 @@ kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* co
 keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
-   svcs = abs.(vecs .* vecs)
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
    #println(ns)
    #println(ni)
    md = 2*mcalc + 1 + 1*(σt==2)
-   if length(ns)==1
-      nind = ones(Int,size(svcs,1))
-   else
-      nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-   end
-   if mcalc > 0
-      mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
-   else
-      mind = ones(Int,size(nind))
-   end
+   count = min(vtmax+3,md)
+   svcs = abs.(vecs[:,1:jsd*count]).^2
+
+
+   #if length(ns)==1
+   #   nind = ones(Int,size(svcs,1))
+   #else
+   #   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   #end
+   #if mcalc > 0
+   #   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
+   #else
+   #   mind = ones(Int,size(nind))
+   #end
+
+   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
+   println(nind)
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
    for ng in 1:length(ns)

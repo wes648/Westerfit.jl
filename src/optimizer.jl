@@ -348,7 +348,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #perm,n = findnz(sparse(scales))
    perm = permdeterm(scales,stg)
    #println(perm)
-   println(params)
+   #println(params)
    #println(omc)
    #println(nlist)
    println("Initial RMS = $rms")
@@ -400,7 +400,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
             jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
-      println(βf)
+      #println(βf)
       if nrms < rms
          #println(βf)
 	 #μlm *= (nrms/rms)^2

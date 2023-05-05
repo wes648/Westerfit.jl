@@ -70,7 +70,7 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    else
       out[13] = 0.0
    end
-   out[1] = prd[1] + prd[2] + out[13]*prd[12]    #A
+   out[1] = prd[1] + prd[2] - prd[12]*out[13]^2  #A
    out[2] = prd[2] + 2.0*prd[3]                  #B
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
