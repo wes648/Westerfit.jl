@@ -45,7 +45,7 @@ function mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
    nd = 2*n+1
    for v in 0:vtmax
       mg = mcalc + vt2m(v) + 1
-      perm = sort(sortperm(ovrlp[mg,1:nd*(vtmax+3)], rev=true)[1:nd])
+      perm = sort(sortperm(ovrlp[mg,1:nd*(vtmax+2)], rev=true)[1:nd])
       ovrlp[mg,:] .= 0.0 #prevents reassigning
       ovrlp[:,perm] .= 0.0 #prevents reassigning
       #println(perm)
