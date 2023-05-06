@@ -17,9 +17,10 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    #@simd for i in 1:length(mind)
    #   mind[i] = ovrlp[i][1]
    #end
-   for v in 0:min(vtmax+3,md) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+   for v in 0:min(vtmax+4,md) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
       mg = mcalc + vt2m(v) + 1
       perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:jsd])
+      ovrlp[:,perm] .= 0.0
       mind[perm] .= mg
    end
    #println(mind)
