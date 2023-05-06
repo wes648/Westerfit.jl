@@ -7,7 +7,7 @@ This is where the assignment routines are located for westerfit.
 ### SIMPLE
 #sum across each m to find dominate torsional state
 function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
-   ovrlp = zeros(md,size(svcs,1))
+   ovrlp = zeros(md,size(svcs,2))
    @simd for i in 1:md 
       ovrlp[i,:] = sum(svcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
    end
@@ -17,10 +17,12 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    #@simd for i in 1:length(mind)
    #   mind[i] = ovrlp[i][1]
    #end
-   for v in 0:min(vtmax+4,md) #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+   cap = min(vtmax+4,md)
+   for v in 0:vtmax#cap #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
       mg = mcalc + vt2m(v) + 1
       perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:jsd])
       ovrlp[:,perm] .= 0.0
+      ovrlp[mg,:] .= 0.0
       mind[perm] .= mg
    end
    #println(mind)
@@ -61,37 +63,27 @@ end
 function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
 #this needs to be fully reworked it is only looking at the top part of the vector
    jsd = jd*sd
-   ovrlp = zeros(length(ns),size(svcs,1))
+   ovrlp = zeros(length(ns),size(svcs,2))
    for i in 1:length(ns) 
       nd = 2*ns[i]+1
-   for m in 1:md
-      frst = ni[i,1] + jsd*(m-1)
-      last = ni[i,2] + jsd*(m-1)
-      ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1))
-   end
+      for m in 1:md
+         frst = ni[i,1] + jsd*(m-1)
+         last = ni[i,2] + jsd*(m-1)
+         ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1))
+      end
    end
    nind = zeros(Int,size(svcs,1))
-   #println(ovrlp)
-   #ovrlp = argmax(ovrlp,dims=1)
-   #println(ovrlp)
-   #sortperm to grab the theoretical maximum states per n
-   #sort the perm to grab the lowest vts worth of states
-   #for i in 1:length(nind)
-   #   nind[i] = ovrlp[i][1]
-   #end
    for i in 1:length(ns)
-   nd = (2*ns[i]+1)
-   count = min(nd*(vtmax+3),nd*(md))
-   vlimit = min(vtmax+3,md-1) 
-   for v in 0:vlimit
-      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])[1:nd]
-      nind[perm] .= i
-      #println(perm)
-      #ovrlp[i,:] .= 0.0
-      ovrlp[:,perm] .= 0.0 
+      nd = (2*ns[i]+1)
+      count = min(nd*(vtmax+4),nd*(md))
+      #vlimit = min(vtmax+3,md) 
+      #for v in 0:vlimit
+         perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])#[1:nd]
+         nind[perm] .= i
+         ovrlp[:,perm] .= 0.0 
+      #end
    end
-   end
-   #println(nind)
+   println(nind)
    return nind
 end
 
@@ -105,37 +97,27 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    #println(ns)
    #println(ni)
    md = 2*mcalc + 1 + 1*(σt==2)
-   count = min(vtmax+3,md)
+   count = min(vtmax+4,md)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
-
-   #if length(ns)==1
-   #   nind = ones(Int,size(svcs,1))
-   #else
-   #   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-   #end
-   #if mcalc > 0
-   #   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
-   #else
-   #   mind = ones(Int,size(nind))
-   #end
-
+   mind = mfinder(svcs,jsd,md,mcalc,vtmax)
    nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-   mind = mfinderv2(svcs,nind,ns,jsd,md,mcalc,vtmax)
-   println(nind)
+   #println(mind)
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
    for ng in 1:length(ns)
-      filter = (nind .== ng)
+      nfilter = (nind .== ng)
       for v in 0:vtmax
          mg = mcalc + vt2m(v) + 1
-         filter .*= (mind .== mg)
+         filter = nfilter .* (mind .== mg)
          frst = jsd*(mg-1) + ni[ng,1]
          last = jsd*(mg-1) + ni[ng,2]
          #println("first = $frst, last = $last")
-         #println(col[filter])
+         println("n = $(ns[ng])")
+         println(sum(filter))
          #println("J = $j, ng = $ng")
          part = col[filter]
+         println(part)
          part = part[keperm(ns[ng])]
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end
