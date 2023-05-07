@@ -4,6 +4,7 @@ NFOLD = 0
 S = 1.5
 TK = 25.0
 RUNmode = ESF
+turducken = 1
 mcalc = 0
 vtmax = 0
 Jmax = 12.5

@@ -59,6 +59,43 @@ function mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
    mind[list] .= part
    return mind
 end
+function nfinderform(svcs,mind,mg,vtmax,md,jd,sd,ns,ni)
+#this needs to be fully reworked it is only looking at the top part of the vector
+   jsd = jd*sd
+   list = collect(1:size(svcs,1))[mind .== mg]
+   tvcs = svcs[:,list]
+   ovrlp = zeros(length(ns),size(tvcs,2))
+   for i in 1:length(ns) 
+      nd = 2*ns[i]+1
+      for m in 1:md
+         frst = ni[i,1] + jsd*(m-1)
+         last = ni[i,2] + jsd*(m-1)
+         ovrlp[i,:] += transpose(sum(tvcs[frst:last, :], dims=1))
+      end
+   end
+   nind = zeros(Int,size(svcs,1))
+   part = zeros(Int,length(list))
+   for i in 1:length(ns)
+      nd = (2*ns[i]+1)
+      #count = min(nd*(vtmax+1),nd*(md))
+      #vlimit = min(vtmax+3,md) 
+      #for v in 0:vlimit
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])#[1:nd]
+      nind[perm] .= i
+      ovrlp[:,perm] .= 0.0 
+      #end
+   end
+   #println(nind)
+   return nind
+end
+function nfinderv2(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
+   nind = zeros(Int,size(svcs,1))
+   for v in 0:vtmax
+      mg = mc + vt2m(v) + 1
+      nind = nfinderform(svcs,mind,mg,vtmax,md,jd,sd,ns,ni)
+   end
+   return nind
+end
 
 function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
 #this needs to be fully reworked it is only looking at the top part of the vector
@@ -81,9 +118,10 @@ function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
          perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])#[1:nd]
          nind[perm] .= i
          ovrlp[:,perm] .= 0.0 
+         ovrlp[i,:] .= 0.0
       #end
    end
-   println(nind)
+   #println(nind)
    return nind
 end
 
@@ -101,7 +139,8 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
    mind = mfinder(svcs,jsd,md,mcalc,vtmax)
-   nind = nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+   nind = nfinderv2(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
+   #nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    #println(mind)
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
@@ -109,15 +148,15 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
       nfilter = (nind .== ng)
       for v in 0:vtmax
          mg = mcalc + vt2m(v) + 1
-         filter = nfilter .* (mind .== mg)
+         #filter = nfilter .* (mind .== mg)
          frst = jsd*(mg-1) + ni[ng,1]
          last = jsd*(mg-1) + ni[ng,2]
          #println("first = $frst, last = $last")
-         println("n = $(ns[ng])")
-         println(sum(filter))
+         #println("n = $(ns[ng])")
+         #println(sum(filter))
          #println("J = $j, ng = $ng")
-         part = col[filter]
-         println(part)
+         part = col[nfilter]
+         #println(part)
          part = part[keperm(ns[ng])]
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end
