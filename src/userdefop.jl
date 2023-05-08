@@ -507,10 +507,11 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
          out += srlpart(spr,l,j,s,nb,kb,nk,kk)
       end
    else
+      f = abs.(kb-kk) .≤ 2
       @simd for l in 0:2:2
-         out += srlpart(spr,l,j,s,nb,kb,nk,kk)
+         out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
       end#sr for loop
-      out += qulpart(qpr,j,s,nb,kb,nk,kk)
+      out[f] += qulpart(qpr,j,s,nb[f],kb[f],nk[f],kk[f])
    end
    return out
 end
