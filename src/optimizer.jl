@@ -160,9 +160,9 @@ function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals)
    return jcbn
 end
 
-function lbmq_gain(β,λ,g,rms,nrms)
-   out = 0.5*transpose(β)*(λ*β-g)
-   out = (rms-nrms)/out
+function lbmq_gain(β,λ::Float64,g,omc,nomc)::Float64
+   out = (0.5*transpose(β)*(λ*β + g))[1]
+   out = (sum(omc .^2)-sum(nomc .^2)) / out
    return out
 end
 
@@ -294,6 +294,17 @@ function turducken_acc(λ::Float64,β::Array{Float64},h)::Float64
    return out
 end
 
+function harshfilt(β,rms,param,scl,perm)
+   tol = 1.0e-3
+   for i in 1:length(perm)
+      test = param[perm[i]]*tol
+      if abs(β[i]) > test
+         β[i] = sign(β[i])*test
+      end
+   end
+   return β
+end
+
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
 function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
    tdncount = ctrl["turducken"]
@@ -311,12 +322,14 @@ function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,st
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
    β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
+   #β[:,1] = harshfilt(β[:,1],nparams,scls,perm)
    for i in 2:tdncount
       nparams[perm] .+= β[:,i-1]
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
       vals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, omc, = rmscalc(vals,inds,ofreqs)
       β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
+      #β[:,i] = harshfilt(β[:,i],nparams,scls,perm)
       β[:,i] *= turducken_acc(λ,β[:,i],H)
    end
    βf = sum(β,dims=2)
@@ -347,7 +360,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    rms, omc, = rmscalc(vals, inds, ofreqs)
    #perm,n = findnz(sparse(scales))
    perm = permdeterm(scales,stg)
-   #println(perm)
+   println(perm)
    #println(params)
    #println(omc)
    #println(nlist)
@@ -379,7 +392,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    H, jtw = build_hess(jtw,J,W)
    #println(H)
    if true ∈ isnan.(H)
-      println("FUCKING FUCKING FUCK")
+      println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
    #uncs = paramunc!(uncs,H,perm,omc)
    converged=false
@@ -401,7 +414,12 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
             jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       #println(βf)
-      if nrms < rms
+      ρlm = lbmq_gain(βf,λlm,jtw*omc,omc,nomc)
+   println()
+   println(ρlm)
+   println()
+   #   if nrms < rms #
+      if ρlm > 0.0#-1.0e-7 #
          #println(βf)
 	 #μlm *= (nrms/rms)^2
          rms = nrms
@@ -413,16 +431,18 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
          counter += 1
+         #sρlm = (@sprintf("%0.4f", ρlm))
          srms = (@sprintf("%0.4f", rms))
          slλ = (@sprintf("%0.4f", log10(λlm)))
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ")#, Δₖ = $sΔ")
+         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, ρlm = $ρlm")
          #println(H^(-1/2))
-         #println(params[perm])
+         println(params)
          #λlm = 0.0
-         μlm /= 20.0
-         stoit = 0
+         if ρlm > 1e-6
+            μlm /= 4.0
+         end
       else
          #params .= oparams
          μlm = max(4.0*μlm,1.0E-24)

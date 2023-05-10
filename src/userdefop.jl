@@ -533,7 +533,7 @@ function wigdiv(x,s::Number)
 end
 function qured(j,s,nb,nk)
    @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
-                                     2,nk, s)
+                                     2,nk, s)*δ(nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*#qured(j,s,nb,nk)*
@@ -843,9 +843,9 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
    end
-   if true ∈ isnan.(hout)
-      println("FUCK!!! j=$j, error from H-cd")
-   end
+   #if true ∈ isnan.(hout)
+   #   println("FUCK!!! j=$j, error from H-cd")
+   #end
    return hout
 end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
@@ -867,7 +867,7 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
    if true ∈ isnan.(H)
-      println("FUCK!!! j=$j, σ=$σ, error from H")
+      println("FUCK!!! j=$j, σ=$σ, NaN in H")
    end
    if σtype(nf,σ) != 1
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
@@ -886,6 +886,7 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    perm = ramassign(vecs,j,s,mcalc,σt,vtm)
    vals = vals[perm]
    vecs = vecs[:,perm]
+   #vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
    ###vecs = rvecs*vecs 
    vecs = U*vecs
    return vals, vecs
@@ -948,7 +949,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
