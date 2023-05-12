@@ -507,7 +507,7 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
          out += srlpart(spr,l,j,s,nb,kb,nk,kk)
       end
    else
-      f = abs.(kb-kk) .≤ 2
+      f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
       @simd for l in 0:2:2
          out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
       end#sr for loop
@@ -690,24 +690,13 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
                nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+   #the below all commute!
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
-   #the above all commute!
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from diag ops")
-   end
    op *= sparse(npmp(c,nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from n+ + n-")
-   end
+   #op += transpose(op)
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from ny")
-   end
    op *= sparse(szop(e,j,s,nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from sz")
-   end
-   return 0.25 * (op + transpose(op))
+   return 0.25 * op
 end
 
 function paop(p::Int,mb::Array{Int,2},
@@ -724,12 +713,12 @@ function torop(pr::Float64,p::Int,c::Int,s::Int,
                mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    op = paop(p,mb,mk)
    op *= sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
-   op .+= transpose(op)
+   #op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
-   if true ∈ isnan.(op)
-      println("FUCK!!! error from torop")
-   end
+   #if true ∈ isnan.(op)
+   #   println("FUCK!!! error from torop")
+   #end
    return (pr*0.5) * op
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
@@ -867,9 +856,9 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
    if true ∈ isnan.(H)
-      println("FUCK!!! j=$j, σ=$σ, NaN in H")
+      @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   if σtype(nf,σ) != 1
+   if σtype(nf,σ) != 1 #A & B states have more symmetry
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
    else
       U = ur(j,s,mcalc,σt)
