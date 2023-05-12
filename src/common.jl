@@ -238,14 +238,14 @@ This calculates a lot of values helpful for the spin-rotation matrix structure:
 """
    ns = Δlist(J,S)
    nd = 2 .* Int.(ns) .+ 1
-   out = ones(Int, length(ns),2)
-   out[1,2] = nd[1]
+   ni = ones(Int, length(ns),2)
+   ni[1,2] = nd[1]
    for i in 2:length(ns)
-      out[i,1] = out[i-1,2] + 1
-      out[i,2] = out[i,1] + nd[i] - 1
+      ni[i,1] = ni[i-1,2] + 1
+      ni[i,2] = ni[i,1] + nd[i] - 1
    end
    jd = Int((2.0*S+1.0)*(2.0*J+1.0))
-   return ns, nd, out, jd
+   return ns, nd, ni, jd
 end
 function srprep(J,S,md)
 """
@@ -388,12 +388,10 @@ end
 function eyr(x::Int)::Array{Float64,2}
    diagm(ones(x))
 end
-function ur(n)::SparseMatrixCSC{Float64, Int64}
-   md = 1
+function ur(n::Int)::SparseMatrixCSC{Float64, Int64}
    out = (1.0/sqrt(2.0)) * [-eye(n) spzeros(n) rotl90(eye(n)); 
                         spzeros(1,n) sqrt(2) spzeros(1,n);
                         rotl90(eye(n)) spzeros(n) eye(n)]
-   out = kron(eye(md),out)
    return out
 end
 function ur(j,s,m::Int,σt::Int)::SparseMatrixCSC{Float64, Int64}
@@ -402,15 +400,12 @@ This builds the rotational Wang Transformation matrix for every n in Δlist(j,s)
    This will be kronecker producted with an identy matrix of size 2*m+1 for the
    torsional-rotational nature. A purely rotational form can be built using m=0
 """
-   nlist = Δlist(j,s)
-   out = spzeros(0,0)
-   for n in nlist
-      part = (1/sqrt(2)) .* [-eye(n) spzeros(n) rotl90(eye(n)); spzeros(1,n) sqrt(2) spzeros(1,n);
-         rotl90(eye(n)) spzeros(n) eye(n)]
-      out = cat(out,part,dims=(1,2))
+   ns, nd, ni, jsd = srprep(j,s)
+   out = spzeros(jsd,jsd)
+   for i in 1:length(ns)
+      out[ni[i,1]:ni[i,2], ni[i,1]:ni[i,2]] = ur(ns[i])
    end
-   md = 2*m + 1 + (σt==2)
-   out = kron(eye(md),out)
+   out = kron(eye(2*m + 1 + (σt==2)),out)
    return out
 end
 
