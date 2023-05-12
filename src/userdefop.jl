@@ -654,7 +654,7 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    else
       out = szep(j,s,nb,kb,nk,kk)
       out += transpose(out)
-      out += szem(j,s,nb,kb,nk,kk)
+      out += szen(j,s,nb,kb,nk,kk)
    return out
    end
 end
@@ -693,9 +693,9 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
    #the below all commute!
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    op *= sparse(npmp(c,nb,kb,nk,kk))
-   #op += transpose(op)
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
    op *= sparse(szop(e,j,s,nb,kb,nk,kk))
+   op += transpose(op)
    return 0.25 * op
 end
 
@@ -713,7 +713,7 @@ function torop(pr::Float64,p::Int,c::Int,s::Int,
                mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    op = paop(p,mb,mk)
    op *= sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
-   #op .+= transpose(op)
+   op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
    #if true ∈ isnan.(op)
