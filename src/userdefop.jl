@@ -58,8 +58,10 @@ function jinds(j,s,m,σt)
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
-   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
    return snd,fnd
 end
 function jlinds(j,s,m,σt)
@@ -67,8 +69,10 @@ function jlinds(j,s,m,σt)
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
-   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
    return collect(snd:fnd)
 end
 
@@ -533,12 +537,12 @@ function wigdiv(x,s::Number)
 end
 function qured(j,s,nb,nk)
    @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
-                                     2,nk, s)*δ(nb,nk)
+                                     2,nk, s)#*δ(nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
-   @. return pr*#qured(j,s,nb,nk)*
+   @. return pr*qured(j,s,nb,nk)*
              wig3j( nb, 2,nk,
-                   -kb,q,kk)*(-1.0)^(nb+nk-kb+s+j)
+                   -kb,-q,kk)*(-1.0)^(nb+nk-kb+s+j+1)
 end
 function qutensor(pr)
    out = zeros(5)
@@ -594,16 +598,22 @@ function nzop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return Diagonal(kk) ^ p
 end
+function nzop(p::Int,kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+   return Diagonal(kk) ^ p
+end
 function ntop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return eh.(Diagonal(nk)) ^ p
 end
+function ntop(p::Int,nk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+   return eh.(Diagonal(nk)) ^ p
+end
 function nyel(nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. δ(nb,nk)*(δ(kb-1,kk)*fh(nk,kk) - δ(kb+1,kk)*fh(nk,kk-1))
 end
 function nyop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return nyel(nb,kb,nk,kk)^p
 end
 function nmel(nb::Array{Int,2},kb::Array{Int,2},
@@ -669,11 +679,13 @@ function szop2(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    return szelem(j,s,nb,kb,nk,kk)^p
 end
 function szelem3(j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+                 )::SparseMatrixCSC{Float64, Int64}
    return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*nred(s)*(-1)^(s+j-kb+1)
 end
 function szop3(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+               )::SparseMatrixCSC{Float64, Int64}
    return szelem3(j,s,nb,kb,nk,kk)^p
 end
 
@@ -852,7 +864,7 @@ end
    return hout
 end=#
 
-function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
    if true ∈ isnan.(H)
@@ -871,17 +883,23 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ###rvecs = U*rvecs
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    #println(vals)
+   #nk = kron(I(size(tormat,1)),ngen(j,s,))
+   #nb = Matrix(transpose(nk))
+   #println(diag(vecs' * ntop(2,nb,nb,nk,nk) * vecs))
    ###perm = assignperm(vecs)
-   perm = ramassign(vecs,j,s,mcalc,σt,vtm)
-   vals = vals[perm]
-   vecs = vecs[:,perm]
-   #vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
+   if ctrl["assign"]=="RAM36"
+      perm = ramassign(vecs,j,s,mcalc,σt,vtm)
+      vals = vals[perm]
+      vecs = vecs[:,perm]
+   else
+      vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
+   end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
    return vals, vecs
 end
 
-function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
+function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
    tormat, mk, mb = htor(sof,nf,mcalc,σ)
@@ -902,7 +920,7 @@ function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
       outvals[sind:find] = tvals###[pull]
       outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
@@ -942,8 +960,8 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(sof,
-            cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,
+            sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
          #fvls[sind:find,sc] = tvals#[pull]
          #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
          fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)

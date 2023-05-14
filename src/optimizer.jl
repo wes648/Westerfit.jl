@@ -415,11 +415,11 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       check = abs(nrms-rms)/rms
       #println(βf)
       ρlm = lbmq_gain(βf,λlm,jtw*omc,omc,nomc)
-   println()
-   println(ρlm)
-   println()
-   #   if nrms < rms #
-      if ρlm > 0.0#-1.0e-7 #
+   #println()
+   #println(ρlm)
+   #println()
+      if nrms < rms #
+   #    if ρlm > 0.0#-1.0e-7 #
          #println(βf)
 	 #μlm *= (nrms/rms)^2
          rms = nrms
@@ -430,6 +430,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
+         println(diag(H))
          counter += 1
          #sρlm = (@sprintf("%0.4f", ρlm))
          srms = (@sprintf("%0.4f", rms))
@@ -440,9 +441,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(H^(-1/2))
          println(params)
          #λlm = 0.0
-         if ρlm > 1e-6
-            μlm /= 4.0
-         end
+         #if ρlm > 1e-6
+            μlm /= 20.0
+         #end
       else
          #params .= oparams
          μlm = max(4.0*μlm,1.0E-24)

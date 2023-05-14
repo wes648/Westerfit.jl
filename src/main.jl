@@ -45,7 +45,7 @@ function westersim(molnam::String, ctrl)
 	   jmsd = Int(mcd*sd*(2*jmax+1))
 	   jsvd = Int(jfd*vtd)
 #       fvls[1:jvsd,σ], fvcs[1:jmsd,1:jsvd,σ], fqns[:,1:jvsd,σ] = tsrcalc(sof,cdf,cdo,
-      tempa, tempe, tempq = tsrcalc(prm,stg, cdo,
+      tempa, tempe, tempq = tsrcalc(ctrl,prm,stg, cdo,
       	        ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],jlist,ctrl["S"],sd,σ)
       fvls[1:jsvd,sc] = tempa
       fvcs[1:jmsd,1:jsvd,sc] = tempe
