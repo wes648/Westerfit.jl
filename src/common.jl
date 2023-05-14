@@ -210,8 +210,11 @@ function σtype(σ,nfold)
    end
 end
 
-function msbuilder(T::Type,mcalc::Number,σ::Number,nfold::Number)
-   σt = σtype(σ,nfold)
+function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+   if nfold==0
+      return [1.]
+   else
+   σt = σtype(nfold,σ)
    lim = mcalc*nfold
    if σt==0
       marray = collect(T,-lim:nfold:lim)
@@ -222,6 +225,7 @@ function msbuilder(T::Type,mcalc::Number,σ::Number,nfold::Number)
       marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end
    return marray
+   end
 end
 function msbuilder(mcalc,σ,nfold)
    marray = msbuilder(Int,mcalc,σ,nfold)
