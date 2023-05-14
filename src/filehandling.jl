@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
-      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60)
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "assign"=>"expect")
    return ctrl
 end
 function ctrlinp(molnam::String)
@@ -79,7 +79,7 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
    out[8] = -prd[7]                              #ϵxz
    out[9] = prd[9]                               #χzz
-   out[10] = -√(3/2)*prd[10]                     #χxz
+   out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
    out[12] = prd[12]/csl                         #F (MHz)
    out[14] = 2.0*prd[14] / csl                   #V3

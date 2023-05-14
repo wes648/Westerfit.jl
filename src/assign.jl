@@ -13,19 +13,20 @@ function mexpect(vecs,jsd,nf,mc,σ)
    mlist = sort(sortperm(mlist, by=abs)[1:jsd])
    return mlist
 end
-function ntq(ns,nd,ni)
-   n = zeros(Float64,sum(nd))
-   @simd for i in 1:length(ns)
-      n[ni[i,1]:ni[i,2]] = fill(eh(ns[i])^2,nd[i])
-   end
-   return Diagonal(n)
+function kexpect(vecs,mcd,n,nd,j,s)
+   nz = diag(vecs' * kron(I(mcd),nzop(2,ngen(j,s))) * vecs)
+   perm = sortperm(nz, by=abs)[1:nd]
+   perm = perm[keperm(n)]
+   return perm
 end
-function nexpect(vecs,mcd,jsd,ns,nd,ni)
-   n2 = diag(vecs' * kron(I(mcd),ntq(ns,nd,ni)) * vecs)
+function nexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
+   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
    nlist = zeros(Int,jsd)
    for i in 1:length(ns)
-      part = sort(sortperm(n2 .- eh(ns[i])^2, by=abs)[1:nd[i]])
-      nlist[ni[i,1]:ni[i,2]] = part
+      n = ns[i]
+      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      #part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
+      nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
       n2[part] .= 0.0
    end
    return nlist
@@ -37,7 +38,7 @@ function expectassign!(vals,vecs,j,s,nf,mc,σ)
    md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
    vals = vals[list]
    vecs = vecs[:,list]
-   list = nexpect(vecs,md,jsd,ns,nd,ni)
+   list = nexpect(vecs,md,j,s,jsd,ns,nd,ni)
    vals = vals[list]
    vecs = vecs[:,list]   
    return vals, vecs
