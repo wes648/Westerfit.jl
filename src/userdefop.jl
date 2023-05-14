@@ -76,45 +76,45 @@ This returns the first and final indices for a certain J value for a given S.
    return collect(snd:fnd)
 end
 
-function Δlist(J,S)
-   max = Int(J+S)
-   min = Int(abs(J-S))
-   return collect(min:max)
-end
+#function Δlist(J,S)
+#   max = Int(J+S)
+#   min = Int(abs(J-S))
+#   return collect(min:max)
+#end
 
-function kperm(n::Int)::Array{Int}
-   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-end
-function kperm(j,s)::Array{Int}
-   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
-   shift = 0
-   for n in Δlist(j,s)
-      nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-      shift += nd
-   end
-   return perm
-end
-function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
-   #perm = zeros(Int,jsd)
-   for n in Δl
-      nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-      shift += nd
-   end
-   return perm#, shift
-end
-function kperm(j,s,m)
-   jsd = Int((2*j+1)*(2*s+1))
-   Δlst = Δlist(j,s)
-   shift = 0
-   perm = zeros(Int,jsd*(2*m+1))
-   for i in 0:(2*m)
-      perm = kperm(j,s,shift,jsd,Δlst,perm)
-      shift += jsd
-   end
-   return perm
-end
+#function kperm(n::Int)::Array{Int}
+#   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+#end
+#function kperm(j,s)::Array{Int}
+#   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
+#   shift = 0
+#   for n in Δlist(j,s)
+#      nd = 2*n+1
+#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
+#      shift += nd
+#   end
+#   return perm
+#end
+#function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
+#   #perm = zeros(Int,jsd)
+#   for n in Δl
+#      nd = 2*n+1
+#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
+#      shift += nd
+#   end
+#   return perm#, shift
+#end
+#function kperm(j,s,m)
+#   jsd = Int((2*j+1)*(2*s+1))
+#   Δlst = Δlist(j,s)
+#   shift = 0
+#   perm = zeros(Int,jsd*(2*m+1))
+#   for i in 0:(2*m)
+#      perm = kperm(j,s,shift,jsd,Δlst,perm)
+#      shift += jsd
+#   end
+#   return perm
+#end
 
 
 function qngen(n,nf,m,σ)
@@ -164,24 +164,24 @@ function qngenv(j,s,nf,vtm,σ)
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
    return out
 end
-function k2kc(n,k)
-"""
-Determines the value of Kc based on the value of N and |Kₐ|
-"""
-   ka = abs(k)
-   if k < 0
-      kc = n - ka + 1 - isodd(n + k)
-   elseif k == zero(k)
-      kc = n
-   else
-      kc = n - ka + isodd(n + k)
-   end
-   return kc
-end
+#function k2kc(n,k)
+#"""
+#Determines the value of Kc based on the value of N and |Kₐ|
+#"""
+#   ka = abs(k)
+#   if k < 0
+#      kc = n - ka + 1 - isodd(n + k)
+#   elseif k == zero(k)
+#      kc = n
+#   else
+#      kc = n - ka + isodd(n + k)
+#   end
+#   return kc
+#end
 
 eh(x::Int)::Float64 = √(x*(x+1))
 eh(x::Float64)::Float64 = √(x*(x+1.0))
-assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
+#assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
 
 function fh(x::Int,y::Int)::Float64
    out = □rt((x-y)*(x+y+1))
@@ -304,32 +304,32 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-function σtype(nfold,σ)
-   if σ==zero(σ) # A state
-      return 0
-   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
-      return 2
-   else # E state
-      return 1
-   end
-end
-function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
-   if nfold==0
-      return [1.]
-   else
-   σt = σtype(nfold,σ)
-   lim = mcalc*nfold
-   if σt==0
-      marray = collect(T,-lim:nfold:lim)
-   elseif σt==2
-      lim += σ
-      marray = collect(T,-lim:nfold:lim)
-   else
-      marray = collect(T,(-lim+σ):nfold:(lim+σ))
-   end
-   return marray
-   end
-end
+#function σtype(nfold,σ)
+#   if σ==zero(σ) # A state
+#      return 0
+#   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+#      return 2
+#   else # E state
+#      return 1
+#   end
+#end
+#function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+#   if nfold==0
+#      return [1.]
+#   else
+#   σt = σtype(nfold,σ)
+#   lim = mcalc*nfold
+#   if σt==0
+#      marray = collect(T,-lim:nfold:lim)
+#   elseif σt==2
+#      lim += σ
+#      marray = collect(T,-lim:nfold:lim)
+#   else
+#      marray = collect(T,(-lim+σ):nfold:(lim+σ))
+#   end
+#   return marray
+#   end
+#end
 msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
 mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,1,2*mc+1))
 
@@ -547,9 +547,9 @@ end
 function qutensor(pr)
    out = zeros(5)
    out[1] =  pr[3] #-2
-   out[2] = -pr[2] #-1
+   out[2] =  pr[2] #-1
    out[3] =  pr[1] # 0
-   out[4] =  pr[2] #+1
+   out[4] = -pr[2] #+1
    out[5] =  pr[3] #+2
    return out
 end
