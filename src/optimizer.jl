@@ -430,7 +430,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
          H, jtw = build_hess(jtw,J,W)
-         println(diag(H))
+         #println(diag(H))
          counter += 1
          #sρlm = (@sprintf("%0.4f", ρlm))
          srms = (@sprintf("%0.4f", rms))
