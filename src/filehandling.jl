@@ -324,6 +324,42 @@ function linestrng(s,frql,qunl)
    return part
 end
 
+"""START CODE FOR UNCERTAINTY PRINTER THINGY"""
+
+ function num_to_string(x,fmt="%.1f")
+           Printf.format(Printf.Format(fmt), x)
+ end
+
+uncr = round.(unc, sigdigits = 3)
+uncstr = zeros(Float64, length(uncr))
+uncstr = string.(uncstr)
+
+for i in 1:length(uncr)
+	number = -1*floor(Int, log10(unc[i])) + 2
+	words = string("%0.",number,"f")
+	uncstr[i] = num_to_string(uncr[i],words)
+end
+
+valstr = zeros(Float64, length(values))
+valstr = string.(valstr)
+
+for i in 1:length(values)
+	number = -1*floor(Int, log10(unc[i])) + 2
+	words = string("%0.",number,"f")
+	valstr[i] = num_to_string(values[i],words)
+end
+
+uncstr1 = string.(uncstr,'!')
+uncstr1 = Base.strip.(uncstr1, '0')
+uncstr1 = Base.strip.(uncstr1, '.')
+uncstr1 = Base.strip.(uncstr1, '0')
+uncstr1 = Base.strip.(uncstr1, '!')
+
+valunc = string.(valstr, "(", uncstr1, ")")
+
+"""END CODE FOR UNCERTAINTY PRINTER THINGY"""
+
+
 function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
    c = 29979.2458
    p = sortperm(freqs[:,1])
