@@ -462,14 +462,18 @@ function hrot(pr,j,s)
 end
 
 function nsred(l::Int,nb,nk)
-   @. return 0.5*(nred(nk)*wig6j(1,1,l,nb,nk,nk) + nred(nb)*wig6j(1,1,l,nk,nb,nb))
+   @. return 0.5*(nred(nk)*wig6j( 1, 1, l,
+                                 nb,nk,nk) + 
+                  nred(nb)*wig6j( 1, 1, l,
+                                 nk,nb,nb))
 end
 function jsred(j,s,nb,nk)
-   @. return wig6j(nk,s,j,s,nb,1)*jnred(nb,nk)*nnred(s)
+   @. return wig6j(nk, s, j,
+                    s,nb, 1)*jnred(nb,nk)*nred(s)
 end
 function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*wig3j(nb,l,nk,-kb,q,kk)*√(2.0*l+1.0)*
-             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb+δ(-1,q))
+             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb)
 end
 function srlpart(pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nk))
@@ -537,7 +541,7 @@ function wigdiv(x,s::Number)
 end
 function qured(j,s,nb,nk)
    @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
-                                     2,nk, s)*δ(nb,nk)
+                                     2,nk, s)#*δ(nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
@@ -566,7 +570,7 @@ end
 
 jnred(j::Float64,n::Float64)::Float64 = √((2.0*j+1.0)*(2.0*n+1.0))
 jnred(j::Float64,n::Int)::Float64 = √((2.0*j+1.0)*(2*n+1))
-jnred(n::Int,j::Float64)::Float64 = √((2.0*j+1.0)*(2*n+1))
+jnred(j::Int,n::Float64)::Float64 = √((2*j+1)*(2.0*n+1.0))
 jnred(j::Int,n::Int)::Float64 = √((2*j+1)*(2*n+1))
 
 function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
