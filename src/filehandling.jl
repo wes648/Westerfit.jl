@@ -331,12 +331,13 @@ end
  end
 
 function uncrformatter(values,unc)
-   uncr = round.(unc, sigdigits = 3)
+   uncertainty_digits = 3
+   uncr = round.(unc, sigdigits = uncertainty_digits)
    uncstr = zeros(Float64, length(uncr))
    uncstr = string.(uncstr)
 
    for i in 1:length(uncr)
-      number = -1*floor(Int, log10(unc[i])) + 2
+      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
       words = string("%0.",number,"f")
       uncstr[i] = num_to_string(uncr[i],words)
    end
@@ -345,16 +346,14 @@ function uncrformatter(values,unc)
    valstr = string.(valstr)
 
    for i in 1:length(values)
-      number = -1*floor(Int, log10(unc[i])) + 2
+      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
       words = string("%0.",number,"f")
       valstr[i] = num_to_string(values[i],words)
    end
 
-   uncstr1 = string.(uncstr,'!')
-   uncstr1 = Base.strip.(uncstr1, '0')
-   uncstr1 = Base.strip.(uncstr1, '.')
-   uncstr1 = Base.strip.(uncstr1, '0')
-   uncstr1 = Base.strip.(uncstr1, '!')
+   uncstr1 = Base.lstrip.(uncstr1, '0')
+   uncstr1 = Base.lstrip.(uncstr1, '.')
+   uncstr1 = Base.lstrip.(uncstr1, '0')
 
    valunc = string.(valstr, "(", uncstr1, ")")
    return valunc
