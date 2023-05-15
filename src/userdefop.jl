@@ -58,8 +58,10 @@ function jinds(j,s,m,σt)
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
-   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
    return snd,fnd
 end
 function jlinds(j,s,m,σt)
@@ -67,50 +69,52 @@ function jlinds(j,s,m,σt)
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
-   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   snd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (2*m+1+δ(σt,2))*(2*s+1)*
+                       sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
    return collect(snd:fnd)
 end
 
-function Δlist(J,S)
-   max = Int(J+S)
-   min = Int(abs(J-S))
-   return collect(min:max)
-end
+#function Δlist(J,S)
+#   max = Int(J+S)
+#   min = Int(abs(J-S))
+#   return collect(min:max)
+#end
 
-function kperm(n::Int)::Array{Int}
-   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-end
-function kperm(j,s)::Array{Int}
-   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
-   shift = 0
-   for n in Δlist(j,s)
-      nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-      shift += nd
-   end
-   return perm
-end
-function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
-   #perm = zeros(Int,jsd)
-   for n in Δl
-      nd = 2*n+1
-      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-      shift += nd
-   end
-   return perm#, shift
-end
-function kperm(j,s,m)
-   jsd = Int((2*j+1)*(2*s+1))
-   Δlst = Δlist(j,s)
-   shift = 0
-   perm = zeros(Int,jsd*(2*m+1))
-   for i in 0:(2*m)
-      perm = kperm(j,s,shift,jsd,Δlst,perm)
-      shift += jsd
-   end
-   return perm
-end
+#function kperm(n::Int)::Array{Int}
+#   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+#end
+#function kperm(j,s)::Array{Int}
+#   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
+#   shift = 0
+#   for n in Δlist(j,s)
+#      nd = 2*n+1
+#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
+#      shift += nd
+#   end
+#   return perm
+#end
+#function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
+#   #perm = zeros(Int,jsd)
+#   for n in Δl
+#      nd = 2*n+1
+#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
+#      shift += nd
+#   end
+#   return perm#, shift
+#end
+#function kperm(j,s,m)
+#   jsd = Int((2*j+1)*(2*s+1))
+#   Δlst = Δlist(j,s)
+#   shift = 0
+#   perm = zeros(Int,jsd*(2*m+1))
+#   for i in 0:(2*m)
+#      perm = kperm(j,s,shift,jsd,Δlst,perm)
+#      shift += jsd
+#   end
+#   return perm
+#end
 
 
 function qngen(n,nf,m,σ)
@@ -160,24 +164,24 @@ function qngenv(j,s,nf,vtm,σ)
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
    return out
 end
-function k2kc(n,k)
-"""
-Determines the value of Kc based on the value of N and |Kₐ|
-"""
-   ka = abs(k)
-   if k < 0
-      kc = n - ka + 1 - isodd(n + k)
-   elseif k == zero(k)
-      kc = n
-   else
-      kc = n - ka + isodd(n + k)
-   end
-   return kc
-end
+#function k2kc(n,k)
+#"""
+#Determines the value of Kc based on the value of N and |Kₐ|
+#"""
+#   ka = abs(k)
+#   if k < 0
+#      kc = n - ka + 1 - isodd(n + k)
+#   elseif k == zero(k)
+#      kc = n
+#   else
+#      kc = n - ka + isodd(n + k)
+#   end
+#   return kc
+#end
 
 eh(x::Int)::Float64 = √(x*(x+1))
 eh(x::Float64)::Float64 = √(x*(x+1.0))
-assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
+#assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
 
 function fh(x::Int,y::Int)::Float64
    out = □rt((x-y)*(x+y+1))
@@ -300,32 +304,32 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-function σtype(nfold,σ)
-   if σ==zero(σ) # A state
-      return 0
-   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
-      return 2
-   else # E state
-      return 1
-   end
-end
-function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
-   if nfold==0
-      return [1.]
-   else
-   σt = σtype(nfold,σ)
-   lim = mcalc*nfold
-   if σt==0
-      marray = collect(T,-lim:nfold:lim)
-   elseif σt==2
-      lim += σ
-      marray = collect(T,-lim:nfold:lim)
-   else
-      marray = collect(T,(-lim+σ):nfold:(lim+σ))
-   end
-   return marray
-   end
-end
+#function σtype(nfold,σ)
+#   if σ==zero(σ) # A state
+#      return 0
+#   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+#      return 2
+#   else # E state
+#      return 1
+#   end
+#end
+#function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+#   if nfold==0
+#      return [1.]
+#   else
+#   σt = σtype(nfold,σ)
+#   lim = mcalc*nfold
+#   if σt==0
+#      marray = collect(T,-lim:nfold:lim)
+#   elseif σt==2
+#      lim += σ
+#      marray = collect(T,-lim:nfold:lim)
+#   else
+#      marray = collect(T,(-lim+σ):nfold:(lim+σ))
+#   end
+#   return marray
+#   end
+#end
 msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
 mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,1,2*mc+1))
 
@@ -507,10 +511,11 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
          out += srlpart(spr,l,j,s,nb,kb,nk,kk)
       end
    else
+      f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
       @simd for l in 0:2:2
-         out += srlpart(spr,l,j,s,nb,kb,nk,kk)
+         out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
       end#sr for loop
-      out += qulpart(qpr,j,s,nb,kb,nk,kk)
+      out[f] += qulpart(qpr,j,s,nb[f],kb[f],nk[f],kk[f])
    end
    return out
 end
@@ -532,12 +537,12 @@ function wigdiv(x,s::Number)
 end
 function qured(j,s,nb,nk)
    @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
-                                     2,nk, s)
+                                     2,nk, s)*δ(nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
-   @. return pr*#qured(j,s,nb,nk)*
+   @. return pr*qured(j,s,nb,nk)*
              wig3j( nb, 2,nk,
-                   -kb,q,kk)*(-1.0)^(nb+nk-kb+s+j)
+                   -kb, q,kk)*(-1.0)^(nb+nk-kb+s+j+1)
 end
 function qutensor(pr)
    out = zeros(5)
@@ -554,7 +559,7 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @simd for q in -2:2
       out += quelem(ten[Tq(q)],q,j,s,nb,kb,nk,kk)
    end
-   out .*= qured(j,s,nb,nk)
+   #out .*= qured(j,s,nb,nk)
    out = wigdiv(out,s)
    return out
 end
@@ -593,16 +598,22 @@ function nzop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return Diagonal(kk) ^ p
 end
+function nzop(p::Int,kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+   return Diagonal(kk) ^ p
+end
 function ntop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return eh.(Diagonal(nk)) ^ p
 end
+function ntop(p::Int,nk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+   return eh.(Diagonal(nk)) ^ p
+end
 function nyel(nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. δ(nb,nk)*(δ(kb-1,kk)*fh(nk,kk) - δ(kb+1,kk)*fh(nk,kk-1))
 end
 function nyop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
-              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+              nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return nyel(nb,kb,nk,kk)^p
 end
 function nmel(nb::Array{Int,2},kb::Array{Int,2},
@@ -653,7 +664,7 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    else
       out = szep(j,s,nb,kb,nk,kk)
       out += transpose(out)
-      out += szem(j,s,nb,kb,nk,kk)
+      out += szen(j,s,nb,kb,nk,kk)
    return out
    end
 end
@@ -668,11 +679,13 @@ function szop2(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    return szelem(j,s,nb,kb,nk,kk)^p
 end
 function szelem3(j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+                 )::SparseMatrixCSC{Float64, Int64}
    return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*nred(s)*(-1)^(s+j-kb+1)
 end
 function szop3(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+               )::SparseMatrixCSC{Float64, Int64}
    return szelem3(j,s,nb,kb,nk,kk)^p
 end
 
@@ -689,24 +702,13 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
                nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
+   #the below all commute!
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
-   #the above all commute!
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from diag ops")
-   end
    op *= sparse(npmp(c,nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from n+ + n-")
-   end
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from ny")
-   end
    op *= sparse(szop(e,j,s,nb,kb,nk,kk))
-   if true ∈ isnan.(op)
-      println("FUCK!!! j=$j, error from sz")
-   end
-   return 0.25 * (op + transpose(op))
+   op += transpose(op)
+   return 0.25 * op
 end
 
 function paop(p::Int,mb::Array{Int,2},
@@ -726,9 +728,9 @@ function torop(pr::Float64,p::Int,c::Int,s::Int,
    op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
-   if true ∈ isnan.(op)
-      println("FUCK!!! error from torop")
-   end
+   #if true ∈ isnan.(op)
+   #   println("FUCK!!! error from torop")
+   #end
    return (pr*0.5) * op
 end
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
@@ -842,9 +844,9 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
    end
-   if true ∈ isnan.(hout)
-      println("FUCK!!! j=$j, error from H-cd")
-   end
+   #if true ∈ isnan.(hout)
+   #   println("FUCK!!! j=$j, error from H-cd")
+   #end
    return hout
 end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
@@ -862,13 +864,13 @@ end
    return hout
 end=#
 
-function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    #fuse sof & cdf in tsdriag call 
    H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
    if true ∈ isnan.(H)
-      println("FUCK!!! j=$j, σ=$σ, error from H")
+      @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   if σtype(nf,σ) != 1
+   if σtype(nf,σ) != 1 #A & B states have more symmetry
       U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
    else
       U = ur(j,s,mcalc,σt)
@@ -881,16 +883,23 @@ function tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ###rvecs = U*rvecs
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    #println(vals)
+   #nk = kron(I(size(tormat,1)),ngen(j,s,))
+   #nb = Matrix(transpose(nk))
+   #println(diag(vecs' * ntop(2,nb,nb,nk,nk) * vecs))
    ###perm = assignperm(vecs)
-   perm = ramassign(vecs,j,s,mcalc,σt,vtm)
-   vals = vals[perm]
-   vecs = vecs[:,perm]
+   if ctrl["assign"]=="RAM36"
+      perm = ramassign(vecs,j,s,mcalc,σt,vtm)
+      vals = vals[perm]
+      vecs = vecs[:,perm]
+   else
+      vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
+   end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
    return vals, vecs
 end
 
-function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
+function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
    tormat, mk, mb = htor(sof,nf,mcalc,σ)
@@ -911,7 +920,7 @@ function tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs = tsrdiag(sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
       outvals[sind:find] = tvals###[pull]
       outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
@@ -947,12 +956,12 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(sof,
-            cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,
+            sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
          #fvls[sind:find,sc] = tvals#[pull]
          #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
          fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)

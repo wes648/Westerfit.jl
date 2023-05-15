@@ -2,11 +2,11 @@ For Both
 -- read 2.1-2.3 of S+O
 
 For Wes
--- send paper flow to sophie
+-- uncertainty recovery function
 
 For Sophie
--- uncertainty recovery function
 -- work on documentation
 -- make sure that the input parameters match with the standard ones (this is second order vs user define)
+-- adapt NMF linelist from RAM36HF to westerfit. Only need m=0&1 and F<= 20
 -- check for equal and opposite omcs
 -- combination difference checker

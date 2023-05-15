@@ -1,8 +1,55 @@
 """
 This is where the assignment routines are located for westerfit.
-   The first is a simple assigner based on RAM36. There are also the start of a 
+   The is a simple assigner based on RAM36. There are also the start of a 
    Jacobi eigenvalue routine based version. It is not done yet
 """
+
+
+### EXPECTATION
+function mexpect(vecs,jsd,nf,mc,σ)
+   m2 = kron(Diagonal(msbuilder(nf,mc,σ)) ^2, I(jsd))
+   mlist = diag(vecs' * m2 * vecs)
+   #println(mlist)
+   mlist = sort(sortperm(mlist, by=abs)[1:jsd])
+   return mlist
+end
+function kexpect(vecs,mcd,n,nd,j,s)
+   nz = diag(vecs' * kron(I(mcd),nzop(2,ngen(j,s))) * vecs)
+   perm = sortperm(nz, by=abs)[1:nd]
+   perm = perm[keperm(n)]
+   return perm
+end
+function nexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
+   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   nlist = zeros(Int,jsd)
+   for i in 1:length(ns)
+      n = ns[i]
+      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      #part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
+      nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
+      n2[part] .= 0.0
+   end
+   return nlist
+end
+function expectassign!(vals,vecs,j,s,nf,mc,σ)
+   ns, nd, ni, jsd = srprep(j,s)
+   list = mexpect(vecs,jsd,nf,mc,σ)
+   #println(list)
+   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   vals = vals[list]
+   vecs = vecs[:,list]
+   list = nexpect(vecs,md,j,s,jsd,ns,nd,ni)
+   vals = vals[list]
+   vecs = vecs[:,list]   
+   return vals, vecs
+end
+
+
+
+
+
+
+
 
 ### SIMPLE
 #sum across each m to find dominate torsional state
