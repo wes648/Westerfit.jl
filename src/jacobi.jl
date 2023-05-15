@@ -59,13 +59,13 @@ function lrgstoffd(A::Array)
    return out
 end
 
-function eye(x::Int)::SparseMatrixCSC{Float64, Int64}
-"""
-Returns a sparse identity matrix of size x. Mostly used for type consistency in
-   the Wang Transformations.
-"""
-   return sparse(I,x,x)
-end
+#function eye(x::Int)::SparseMatrixCSC{Float64, Int64}
+#"""
+#Returns a sparse identity matrix of size x. Mostly used for type consistency in
+#   the Wang Transformations.
+#"""
+#   return sparse(I,x,x)
+#end
 function givenS(A,p::Int,q::Int,θ::Float64)
    V = eye(size(A,1))
    V[p,p] = cos(θ)

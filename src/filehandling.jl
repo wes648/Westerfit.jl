@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
-      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60)
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "assign"=>"expect")
    return ctrl
 end
 function ctrlinp(molnam::String)
@@ -40,7 +40,7 @@ end
 function secordinit()
    prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "F" => 12, "ρ" => 13,
       "Vn" => 14, "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵxz" => 8, "η" => 15,
-      "χzz"=> 9, "χxmy"=> 10, "χxz"=> 11)
+      "χzz"=> 9, "χxmy"=> 11, "χxz"=> 10)
    return prd
 end
 function sod2prep(prd::Array{Float64})::Array{Float64}
@@ -55,8 +55,8 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[7] = -prd[8]                               #T²₁(ϵ)
    out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
    out[9] = prd[9]                                #T²₀(χ)
-   out[10] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
-   out[11] = prd[10] / √(6.0)                     #T²₂(χ)
+   out[10] = -√(2.0/3.0)*prd[10]                  #T²₁(χ)
+   out[11] = prd[11] / √(6.0)                     #T²₂(χ)
    out[12] = prd[12]*csl                          #F
    out[13] = -2.0*prd[13]*prd[12]*csl             #ρF
    out[14] = prd[14]*0.5*csl                      #V3/2
@@ -79,8 +79,8 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
    out[8] = -prd[7]                              #ϵxz
    out[9] = prd[9]                               #χzz
-   out[11] = -√(3/2)*prd[10]                     #χxz
-   out[10] = √6*prd[11]                          #χxx-χyy
+   out[10] = -√(1.5)*prd[10]                     #χxz
+   out[11] = √6*prd[11]                          #χxx-χyy
    out[12] = prd[12]/csl                         #F (MHz)
    out[14] = 2.0*prd[14] / csl                   #V3
    out[15] = prd[15]                             #η
