@@ -358,6 +358,69 @@ function uncrformatter(values,unc)
    valunc = string.(valstr, "(", uncstr1, ")")
    return valunc
 end
+
+function uncrformattersci(values,unc)
+   uncertainty_digits = 3
+
+   uncr = round.(unc, sigdigits = uncertainty_digits)
+   uncstr = fill("0", length(uncr))
+
+   for i in 1:length(uncr)
+      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
+      words = string("%0.",number,"f")
+      uncstr[i] = num_to_string(uncr[i],words)
+   end
+
+   uncstr1 = Base.lstrip.(uncstr, '0')
+   uncstr1 = Base.lstrip.(uncstr1, '.')
+   uncstr1 = Base.lstrip.(uncstr1, '0')
+
+   valstr = fill("0", length(values))
+
+   for i in 1:length(values)
+      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits + 2
+      words = string("%0.",number,"e")
+      valstr[i] = num_to_string(values[i],words)
+   end
+
+   valhalf = chop.(valstr, head = 0, tail = 4)
+
+   ehalf = fill("0", length(values))
+   for i in 1:length(valstr)
+      ehalf[i] = chop(valstr[i], head = (length(valstr[i]) -4), tail = 0)
+   end
+
+   valunc = fill("0", length(values))
+
+   finalval = fill("0", length(values))
+   for i in 1:length(valstr)
+      finalval[i] = chop(valstr[i], head = (length(valstr[i]) - 3), tail = 0)
+   end
+   finalval = parse.(Float64, finalval)
+   evalue = fill("0", length(values))
+
+   for i in 1:length(values)
+      if finalval[i] % 3 == 0
+         evalue[i] = num_to_string(finalval[i], "%.0f")
+         valunc[i] = string(valhalf[i], "(", uncstr1[i], ")e", evalue[i])
+      elseif (finalval[i] - 1) % 3 == 0
+         valhalfreal = parse(Float64, valhalf[i])
+         valhalfreal = valhalfreal*10
+         finalval[i] = finalval[i] - 1
+         evalue[i] = num_to_string(finalval[i], "%.0f")
+         valhalf[i] = string(valhalfreal)
+         valunc[i] = string(valhalf[i], "(", uncstr1[i], ")e", evalue[i])
+      else (finalval[i] + 1) % 3 == 0
+         valhalfreal = parse(Float64, valhalf[i])
+         valhalfreal = valhalfreal * 100
+         finalval[i] = finalval[i] - 2
+         evalue[i] = num_to_string(finalval[i], "%.0f")
+         valhalf[i] = string(valhalfreal)
+         valunc[i] = string(valhalf[i], "(", uncstr1[i], ")e", evalue[i])
+      end
+   end
+   return valunc
+end
 """END CODE FOR UNCERTAINTY PRINTER THINGY"""
 
 
