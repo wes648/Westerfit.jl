@@ -39,7 +39,7 @@ end
 
 function secordinit()
    prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "F" => 12, "ρ" => 13,
-      "Vn" => 14, "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵxz" => 8, "η" => 15,
+      "Vn" => 14, "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 8, "ϵxz" => 7, "η" => 15,
       "χzz"=> 9, "χxmy"=> 11, "χxz"=> 10)
    return prd
 end
@@ -50,10 +50,10 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
-   out[5] = -(prd[5] + prd[6] + prd[7]) / √3.0    #T⁰₀(ϵ)
-   out[6] = (2.0*prd[5] - prd[6] - prd[7]) / √6.0 #T²₀(ϵ)
-   out[7] = -prd[8]                               #T²₁(ϵ)
-   out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
+   out[5] = -(prd[5] + prd[6] + prd[8]) / √3.0    #T⁰₀(ϵ)
+   out[6] = (2.0*prd[5] - prd[6] - prd[8]) / √6.0 #T²₀(ϵ)
+   out[7] = -prd[7]                               #T²₁(ϵ)
+   out[8] = (prd[6] - prd[8])*0.5                 #T²₂(ϵ)
    out[9] = prd[9]                                #T²₀(χ)
    out[10] = -√(2.0/3.0)*prd[10]                  #T²₁(χ)
    out[11] = prd[11] / √(6.0)                     #T²₂(χ)
@@ -75,9 +75,9 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
    out[5] = (prd[5]/√3 - prd[6]/√6)/3.0          #ϵzz
-   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[8] #ϵxx
-   out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
-   out[8] = -prd[7]                              #ϵxz
+   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[7] #ϵxx
+   out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[7] #ϵyy
+   out[8] = -prd[8]                              #ϵxz
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
