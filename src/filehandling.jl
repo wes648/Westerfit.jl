@@ -172,6 +172,9 @@ function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
    #input  = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
    #           1  2   3   4  5   6
    #output = [ju σu indu jl σl indl]
+if length(lns[1,:]) != 12
+    println("Wrong number of columns in .lne file")
+end
 if nf != zero(nf)
    qunus = lns[:,1:10]
    freqs = lns[:,11]
