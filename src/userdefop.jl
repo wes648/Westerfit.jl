@@ -550,8 +550,9 @@ function wigdiv(x,s::Number)
    end
 end
 function qured(j,s,nb,nk)
-   @. return 0.25*jnred(nb,nk)*wig6j(j, s,nb,
-                                     2,nk, s)#*δ(nb,nk)
+   @. return 0.25*jnred(nb,nk)*
+                  wig6j(j, s,nb,
+                        2,nk, s)#*δ(nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
@@ -767,18 +768,18 @@ function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::I
                mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    return dropzeros!(kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk)))
 end
-function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
-               g::Tuple,h::Tuple,
-               j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
-               mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-               mk::Array{Int,2})#::Array{Float64,2}
-   out = tsrop(pr[1],a[1],b[1],c[1],d[1],e[1],f[1],g[1],h[1],j,s,nb,kb,mb,nk,kk,mk)
-   for i in 2:length(pr)
-      out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],
-                   j,s,nb,kb,mb,nk,kk,mk)
-   end
-   return dropzeros!(out)
-end
+#function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
+#               g::Tuple,h::Tuple,
+#               j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
+#               mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
+#               mk::Array{Int,2})#::Array{Float64,2}
+#   out = tsrop(pr[1],a[1],b[1],c[1],d[1],e[1],f[1],g[1],h[1],j,s,nb,kb,mb,nk,kk,mk)
+#   for i in 2:length(pr)
+#      out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],
+#                   j,s,nb,kb,mb,nk,kk,mk)
+#   end
+#   return dropzeros!(out)
+#end
 function tsrop(pr,op::Array,j::Float64,s::Float64,
                nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},

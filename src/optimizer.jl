@@ -485,7 +485,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    uncs = zeros(size(params))
    uncs[perm] = paramunc!(uncs,H,perm,omc)
-   params[1:15] .= paramrecov(params[1:15])
-   uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
+   #params[1:15] .= paramrecov(params[1:15])
+   #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
+   params[1:15], uncs[1:15] = fullrecov(params[1:15],uncs[1:15])
    return params, uncs, fomc, fcfrqs, vals
 end
