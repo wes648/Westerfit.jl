@@ -80,9 +80,14 @@ function derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
       pr[rpid-4] = 1.0
       out = hrsr(zeros(4),pr,zeros(3),j,s,nb,kb,nk,kk)
       out = kron(I(size(mk,1)),out)
-   elseif 9 ≤ rpid ≤ 11 #qua
+   elseif (rpid==9)||(rpid==11) #qua
       pr = zeros(3)
       pr[rpid-8] = 1.0
+      out = hrsr(zeros(4),zeros(4),pr,j,s,nb,kb,nk,kk)
+      out = kron(I(size(mk,1)),out)
+   elseif (rpid==10) #qua
+      pr = zeros(3)
+      pr[2] = -1.0
       out = hrsr(zeros(4),zeros(4),pr,j,s,nb,kb,nk,kk)
       out = kron(I(size(mk,1)),out)
    elseif (rpid==12)||(rpid==14) # F or Vnf
@@ -478,7 +483,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
-   uncs = paramunc!(uncs,H,perm,omc)
+   uncs = zeros(size(params))
+   uncs[perm] = paramunc!(uncs,H,perm,omc)
    params[1:15] .= paramrecov(params[1:15])
+   uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    return params, uncs, fomc, fcfrqs, vals
 end
