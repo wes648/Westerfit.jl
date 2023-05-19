@@ -82,14 +82,13 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
-   out[12] = prd[12]#/csl                         #F (MHz)
-   out[14] = 2.0*prd[14] #/ csl                   #V3
+   out[12] = prd[12]/csl                         #F (MHz)
+   out[14] = 2.0*prd[14] / csl                   #V3
    out[15] = prd[15]                             #η
    return out
 end
 function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out = zeros(15)
-
    if prd[12] != 0.0
       out[13] = (0.5*unc[13]/prd[12])^2 +
                 (prd[13]*unc[12]/prd[12])^2      #σρ
@@ -108,19 +107,11 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[9] = unc[9]^2                               #σχzz
    out[10] = 1.5*unc[10]^2                         #σχxz
    out[11] = 6.0*unc[11]^2                         #σχxx-χyy
-   out[12] = unc[12]^2 #/csl                         #σF
-   out[14] = 4.0*unc[14]^2 #/ csl                   #σV3
+   out[12] = (unc[12]/csl)^2                       #σF
+   out[14] = (2.0*unc[14]/csl)^2                   #σV3
    out[15] = unc[15]^2                             #ση
    return sqrt.(out)
 end
-function fullrecov(prd,unc)
-   oprd = paramrecov(prd)
-   ounc = uncrecov(unc,oprd)
-   oprd[[12,14]] ./= csl
-   ounc[[12,14]] ./= csl
-   return oprd, ounc
-end
-
 
 function secordinp(molnam::String)
    findstr = `grep -n 2NDORDER $molnam.inp`
@@ -207,9 +198,6 @@ function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
    #input  = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
    #           1  2   3   4  5   6
    #output = [ju σu indu jl σl indl]
-if length(lns[1,:]) != 12
-    println("Wrong number of columns in .lne file")
-end
 if nf != zero(nf)
    qunus = lns[:,1:10]
    freqs = lns[:,11]
