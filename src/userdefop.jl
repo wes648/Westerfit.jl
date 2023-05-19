@@ -523,6 +523,16 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
    end
    return out
 end
+function hrsrtest(pr,j,s)
+   nk = ngen(j,s)
+   kk = kgen(j,s)
+   nb = Matrix(transpose(nk))
+   kb = Matrix(transpose(kk))
+   out = hrsr(pr[1:4],pr[5:8],pr[9:11],j,s,nb,kb,nk,kk)
+   return out
+end
+
+
 function hsrq(out,spr,qpr,j,s,nb,kb,nk,kk)
    for l in 0:2:2
       out += srlpart(spr,l,j,s,nb,kb,nk,kk)
@@ -546,7 +556,7 @@ end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
              wig3j( nb, 2,nk,
-                   -kb, q,kk)*(-1.0)^(nb+nk-kb+s+j+1)
+                   -kb,-q,kk)*(-1.0)^(nb+nk-kb+s+j+1)
 end
 function qutensor(pr)
    out = zeros(5)
@@ -561,7 +571,7 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nb))
    ten = qutensor(pr)
    @simd for q in -2:2
-      out += quelem(ten[Tq(q)],q,j,s,nb,kb,nk,kk)
+      out += quelem(ten[Tq(-q)],q,j,s,nb,kb,nk,kk)
    end
    #out .*= qured(j,s,nb,nk)
    out = wigdiv(out,s)
@@ -895,6 +905,8 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
       perm = ramassign(vecs,j,s,mcalc,σt,vtm)
       vals = vals[perm]
       vecs = vecs[:,perm]
+   elseif ctrl["assign"]=="expectk"
+      vals, vecs = expectkassign!(vals,vecs,j,s,nf,mcalc,σ)      
    else
       vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
    end

@@ -33,6 +33,7 @@ function ctrlinp(molnam::String)
       ctrl["Jmax"] += 0.5
       println("Jmax must be integer for interger S. Adding 1/2")
    end
+   ctrl["assign"] = strip(ctrl["assign"])
    #println(ctrl)
    return ctrl
 end
@@ -46,7 +47,7 @@ end
 function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    prd[1] += prd[12]*prd[13]^2              # Aeff = A + Fρ²
-   out[2] = 0.5*(prd[2] + prd[3])                 #BJ
+   out[2] = 0.5*(prd[2] + prd[3])                 #BN
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
@@ -65,7 +66,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
 end
 function paramrecov(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
-   if prd[12] != zero(prd[12])
+   if prd[12] != 0.0
       out[13] = prd[13]/(-2.0*prd[12])       #ρ
    else
       out[13] = 0.0
@@ -75,9 +76,9 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
    out[5] = (prd[5]/√3 - prd[6]/√6)/3.0          #ϵzz
-   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[7] #ϵxx
-   out[7] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[7] #ϵyy
-   out[8] = -prd[8]                              #ϵxz
+   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[8] #ϵxx
+   out[7] = -prd[7]                              #ϵxz
+   out[8] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
@@ -85,6 +86,32 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[14] = 2.0*prd[14] / csl                   #V3
    out[15] = prd[15]                             #η
    return out
+end
+function uncrecov(unc,prd::Array{Float64})::Array{Float64}
+   out = zeros(15)
+
+   if prd[12] != 0.0
+      out[13] = (0.5*unc[13]/prd[12])^2 +
+                (prd[13]*unc[12]/prd[12])^2      #σρ
+   else
+      out[13] = 0.0
+   end
+   out[1] = unc[1]^2 + unc[2]^2 + (unc[12]*prd[13]^2)^2 +
+            (2*prd[12]*prd[13]*out[13])^2          #σA
+   out[2] = unc[2]^2 + 4.0*unc[3]^2                #σB
+   out[3] = unc[2]^2 + 4.0*unc[3]^2                #σC
+   out[4] = unc[4]^2                               #σDab
+   out[5] = unc[5]^2 /27.0 + unc[6]^2 /54.0        #σϵzz
+   out[6] = unc[5]^2 /108. + unc[6]^2 /54. + unc[8]^2 #σϵxx
+   out[7] = unc[7]^2                               #σϵxz
+   out[8] = out[6]                                 #σϵyy
+   out[9] = unc[9]^2                               #σχzz
+   out[10] = 1.5*unc[10]^2                         #σχxz
+   out[11] = 6.0*unc[11]^2                         #σχxx-χyy
+   out[12] = unc[12]^2 /csl                         #σF
+   out[14] = 4.0*unc[14]^2 / csl                   #σV3
+   out[15] = unc[15]^2                             #ση
+   return sqrt.(out)
 end
 
 function secordinp(molnam::String)
@@ -329,9 +356,9 @@ end
 
 """START CODE FOR UNCERTAINTY PRINTER THINGY"""
 
- function num_to_string(x,fmt="%.1f")
-           Printf.format(Printf.Format(fmt), x)
- end
+function num_to_string(x,fmt="%.1f")
+   Printf.format(Printf.Format(fmt), x)
+end
 
 function uncrformatter(values,unc)
    uncertainty_digits = 3

@@ -13,12 +13,7 @@ function mexpect(vecs,jsd,nf,mc,σ)
    mlist = sort(sortperm(mlist, by=abs)[1:jsd])
    return mlist
 end
-function kexpect(vecs,mcd,n,nd,j,s)
-   nz = diag(vecs' * kron(I(mcd),nzop(2,ngen(j,s))) * vecs)
-   perm = sortperm(nz, by=abs)[1:nd]
-   perm = perm[keperm(n)]
-   return perm
-end
+
 function nexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
    n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
    nlist = zeros(Int,jsd)
@@ -44,8 +39,41 @@ function expectassign!(vals,vecs,j,s,nf,mc,σ)
    return vals, vecs
 end
 
+### EXPECATION WITH K
+kperm2(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+iseven(n))) .* collect(-n:n))
+kaperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm2(n)]
 
+function kexpect(vecs,mcd,n,nd,j,s)
+   nz = diag(vecs' * kron(I(mcd),nzop(2,ngen(j,s))) * vecs)
+   perm = sortperm(nz, by=abs)[1:nd]
+   perm = perm[kaperm(n)]
+   return perm
+end
+function nkexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
+   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   nlist = zeros(Int,jsd)
+   for i in 1:length(ns)
+      n = ns[i]
+      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
+      nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
+      n2[part] .= 0.0
+   end
+   return nlist
+end
 
+function expectkassign!(vals,vecs,j,s,nf,mc,σ)
+   ns, nd, ni, jsd = srprep(j,s)
+   list = mexpect(vecs,jsd,nf,mc,σ)
+   #println(list)
+   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   vals = vals[list]
+   vecs = vecs[:,list]
+   list = nkexpect(vecs,md,j,s,jsd,ns,nd,ni)
+   vals = vals[list]
+   vecs = vecs[:,list]   
+   return vals, vecs
+end
 
 
 

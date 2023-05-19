@@ -412,6 +412,19 @@ This builds the rotational Wang Transformation matrix for every n in Δlist(j,s)
    out = kron(eye(2*m + 1 + (σt==2)),out)
    return out
 end
+function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
+"""
+This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
+   This will be kronecker producted with an identy matrix of size 2*m+1 for the
+   torsional-rotational nature. A purely rotational form can be built using m=0
+"""
+   ns, nd, ni, jsd = srprep(j,s)
+   out = spzeros(jsd,jsd)
+   for i in 1:length(ns)
+      out[ni[i,1]:ni[i,2], ni[i,1]:ni[i,2]] = ur(ns[i])
+   end
+   return out
+end
 
 ################################################################################
 # Parameter shifting functions
