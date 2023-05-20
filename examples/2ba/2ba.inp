@@ -9,7 +9,7 @@ assign = RAM36
 INTThresh = 0.0
 vtmax = 0
 Jmax = 11
-#turducken = 2
+turducken = 2
 νmax = 20.0
 νmin = 0.0
 

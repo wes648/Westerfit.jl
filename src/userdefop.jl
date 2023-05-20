@@ -620,7 +620,7 @@ function ntop(p::Int,nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
    return eh.(Diagonal(nk)) ^ p
 end
-function ntop(p::Int,nk::Array{Int,2})::Diagonal{Float64, Vector{Float64}}
+function ntop(p::Int,nk::Array{Int,2})#::Diagonal{Float64, Vector{Float64}}
    return eh.(Diagonal(nk)) ^ p
 end
 function nyel(nb::Array{Int,2},kb::Array{Int,2},
@@ -680,18 +680,21 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
       out = szep(j,s,nb,kb,nk,kk)
       out += transpose(out)
       out += szen(j,s,nb,kb,nk,kk)
-   return out
+   return out^p
    end
 end
 
-#These functions, those more beautiful, don't work
 function szelem(j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*nred(s)*(-1)^(s+j-kb+1)
 end
 function szop2(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
-   return szelem(j,s,nb,kb,nk,kk)^p
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+   if p==zero(p)||s==zero(s)
+      return eye(size(nb,1))
+   else
+      return szelem(j,s,nb,kb,nk,kk)^p
+   end
 end
 function szelem3(j::Float64,s::Float64,nb::Array{Int,2},
               kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
@@ -721,7 +724,7 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    op *= sparse(npmp(c,nb,kb,nk,kk))
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
-   op *= sparse(szop(e,j,s,nb,kb,nk,kk))
+   op *= sparse(szop2(e,j,s,nb,kb,nk,kk))
    op += transpose(op)
    return 0.25 * op
 end
