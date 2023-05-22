@@ -5,7 +5,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 #####INPUTS
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
-      "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.0000, 
+      "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
       "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60,
       "assign"=>"expect", "REJECT"=>1.0e+1)
    return ctrl
@@ -343,21 +343,21 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*"," #Kc
       part *= lpad(qunl[11],3)*"," #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%8.4f", frql[2])*","
+      part *= @sprintf("%10.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    else
-      part  = lpad(qunl[1],3)*"/2,"
+      part  = lpad(qunl[1]*0.5,4)*","
       part *= lpad(qunl[2],3)*","
       part *= lpad(qunl[3],3)*","
       part *= lpad(qunl[4],3)*","
       part *= lpad(qunl[5],3)*","
-      part *= lpad(qunl[7],3)*"/2,"
+      part *= lpad(qunl[7]*0.5,4)*","
       part *= lpad(qunl[8],3)*","
       part *= lpad(qunl[9],3)*","
       part *= lpad(qunl[10],3)*","
       part *= lpad(qunl[11],3)*","
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%8.4f", frql[2])*","
+      part *= @sprintf("%10.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    end
    return part

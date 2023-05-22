@@ -21,7 +21,9 @@ function μred(s::Float64,jb::Float64,nb::Int,jk::Float64,nk::Int)::Float64
    return wig6j(nk,jk,s,jb,nb,1)*jnred(jb,nb)*jnred(jk,nk)#*√(2*nb+1)
 end
 function μelem(pr::Float64,q,s::Float64,jb::Float64,nb,kb,jk::Float64,nk,kk)::Array{Float64,2}
-   @. return pr*wig3j(nb,1,nk,-kb,q,kk)*μred(s,jb,nb,jk,nk)*(-1)^(s+jb-kb+δ(q,-1))
+   @. return pr*wig3j( nb,1,nk,
+                      -kb,q,kk)*μred(s,jb,nb,jk,nk)*
+               (-1)^(s+jb-kb+nb+nk)
 end
 function μmat(μs,s,jb,jk)
    lb = Int((2.0*s+1.0)*(2.0*jb+1.0))
