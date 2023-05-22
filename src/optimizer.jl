@@ -155,7 +155,7 @@ function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
-   jcbn = zero(jcbn)
+   jcbn = zeros(Float64,size(inds)[1],length(perm))
    deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals)
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
@@ -177,7 +177,7 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
 """
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
-   jcbn = zero(jcbn)
+   jcbn = zeros(Float64,size(inds)[1],length(perm))
    @threads for a in 1:size(inds,1)
       ju = 0.5*inds[a,1]
       σu = inds[a,2]
@@ -205,6 +205,21 @@ This builds the Jacobian based on the Hellmann–Feynman theorem.
       end
    end
    return jcbn
+end
+function tsrapprox(j,β)::Vector{Float64}
+   for i in 1:length(β)
+      j[:,i] .*= β[i]
+   end
+   #δ = sum(j,dims=2)
+   return vec(sum(j,dims=2))
+end
+
+function linereject(j,w,omc,unc,thres)
+   filt = abs.(omc) .≤ (thres .* unc)
+   jout = j[filt,:]
+   wout = w[filt,filt]
+   mout = omc[filt]
+   return jout, wout, mout
 end
 
 function build_hess!(hssn,dk,jtw,jcbn,weights)
@@ -311,7 +326,7 @@ function harshfilt(β,rms,param,scl,perm)
 end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
-function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
+function lbmq_turducken!(H,J,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
    tdncount = ctrl["turducken"]
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
@@ -333,9 +348,17 @@ function lbmq_turducken!(H,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,st
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
       vals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, omc, = rmscalc(vals,inds,ofreqs)
+      #println()
+      #println(β[:,i-1])
+      #omc += tsrapprox(J,β[:,i-1])
+      #nrms = BLAS.nrm2(omc)/√length(omc)
       β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
+      #println(β[:,i])
+      #println()
       #β[:,i] = harshfilt(β[:,i],nparams,scls,perm)
-      β[:,i] *= turducken_acc(λ,β[:,i],H)
+      #α = 1.1 #turducken_acc(λ,β[:,i],H)
+      #println(α)
+      #β[:,i] *= α#turducken_acc(λ,β[:,i],H)
    end
    βf = sum(β,dims=2)
    nparams[perm] .+= β[:,end]
@@ -385,15 +408,16 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    stoit = 5
    #println(omc)
    nparams = copy(params)
-   uncs = zero(perm)
+   puncs = zero(perm)
    βf = zero(perm) #step
    J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
    jtw = zero(omc) #jtwient
-   K = zero(omc) #acceleration correction
+   #K = zero(omc) #acceleration correction
    #H = zeros(Float64,length(perm),length(perm)) #Hessian
    #D = zero(H) #Elliptical Trust Region
    #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
    J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+   #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    H, jtw = build_hess(jtw,J,W)
    #println(H)
    if true ∈ isnan.(H)
@@ -415,7 +439,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
       λlm = λgen(μlm, rms) 
-   βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,
+   βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,J,
             jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       #println(βf)
@@ -428,12 +452,13 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(βf)
 	 #μlm *= (nrms/rms)^2
          rms = nrms
-         omc .= nomc
+         omc = nomc
          params .= nparams
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+         #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
          H, jtw = build_hess(jtw,J,W)
          #println(diag(H))
          counter += 1
@@ -474,6 +499,10 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #uncs = paramunc!(uncs,H,perm,omc)
          #println(uncs)
          break
+      elseif λlm > 1.0e+9
+         println("λlm exceeded threshold.")
+         println("If you were using the turducken, try again without it")
+         break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
          #println(omc)
@@ -483,10 +512,11 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
-   uncs = zeros(size(params))
-   uncs[perm] = paramunc!(uncs,H,perm,omc)
+   puncs = zeros(size(params))
+   puncs[perm] = paramunc!(puncs,H,perm,omc)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
-   params[1:15], uncs[1:15] = fullrecov(params[1:15],uncs[1:15])
-   return params, uncs, fomc, fcfrqs, vals
+   params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
+   println(uncrformattersci(params[perm],puncs[perm]))
+   return params, puncs, fomc, fcfrqs, vals
 end

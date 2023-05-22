@@ -92,14 +92,14 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
       lines = pred2lne(lines,ctrl["S"])
    end
    #determine the states
-   linds, ofreqs, uncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
+   linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
    jlist = jlister(linds)
    #println(linds)
    #opt
 #   println("Beginning optimization")
-   tsrp, uncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,uncs,linds,prm,err,cdo,stg)
+   tsrp, puncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg)
    println(tsrp)
-   println(uncs)
+   println(puncs)
    reswritter(molnam,lines,omcs,cfrqs)
    #println("New Parameter Vector:")
    #println("New Energy levels")
