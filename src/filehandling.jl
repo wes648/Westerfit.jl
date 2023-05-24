@@ -436,7 +436,7 @@ function uncrformattersci(values,unc)
    for i in 1:length(values)
       number = -1*floor(Int, log10(uncr[i])) + uncertainty_digits - 1
       temp = round(values[i], digits = number)
-      valstr[i] = num_to_string(temp, "%e")
+      valstr[i] = num_to_string(temp, "%0.15e")
    end
    
    valhalf = chop.(valstr, head = 0, tail = 4)
