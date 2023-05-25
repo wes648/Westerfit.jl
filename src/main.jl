@@ -20,13 +20,15 @@ BLAS.set_num_threads(Threads.nthreads())
 
 const csl = 29979.2458
 
-function westersim(molnam::String, ctrl)
+function westersim(molnam::String, prm, ctrl)
    println("westersim!")
    molnam = replace(molnam, r".inp"=>"")
    #read input file
-   prm, ser = secordinp(molnam)
+   sof, ser = secordinp(molnam)
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
-   prm = vcat(prm,cdf)
+   if prm==nothing
+      prm = vcat(sof,cdf)
+   end
    #calculate energy levels
    σcnt = σcount(ctrl["NFOLD"])
    sd = Int(2.0*ctrl["S"]+1.0)
@@ -87,6 +89,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    err = vcat(ser,cde)
    if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check
       lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
+      println(size(lines))
    else # Self-consistency check
       lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
       lines = pred2lne(lines,ctrl["S"])
@@ -108,6 +111,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #   println(vals)
    #end
    #write output file
+   return tsrp
 end
 
 function westerfit(molnam::String)
@@ -115,14 +119,16 @@ function westerfit(molnam::String)
    #read input file
    ctrl = ctrlinp(molnam)
    if occursin("T",ctrl["RUNmode"])
-      westersim(molnam, ctrl)
+      westersim(molnam,nothing, ctrl)
       westerfit(molnam, ctrl)
    else
       if occursin("F",ctrl["RUNmode"])
-         westerfit(molnam, ctrl)
+         prm = westerfit(molnam, ctrl)
+      else
+         prm = nothing
       end
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
-         westersim(molnam, ctrl)
+         westersim(molnam, prm, ctrl)
       end
    end
 end

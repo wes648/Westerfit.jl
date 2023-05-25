@@ -314,10 +314,10 @@ function turducken_acc(λ::Float64,β::Array{Float64},h)::Float64
    return out
 end
 
-function harshfilt(β,rms,param,scl,perm)
-   tol = 1.0e-3
-   for i in 1:length(perm)
-      test = param[perm[i]]*tol
+function harshfilt!(β,param,scals)
+   tol = 5.0e-1
+   for i in 1:length(param)
+      test = param[i]*scals[i]*tol
       if abs(β[i]) > test
          β[i] = sign(β[i])*test
       end
@@ -341,8 +341,8 @@ function lbmq_turducken!(H,J,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,
    end
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
-   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
-   #β[:,1] = harshfilt(β[:,1],nparams,scls,perm)
+   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) #.* scls[perm]
+   β[:,1] = harshfilt!(β[:,1],nparams[perm],scls[perm])
    for i in 2:tdncount
       nparams[perm] .+= β[:,i-1]
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
@@ -517,6 +517,6 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
-   println(uncrformattersci(params[perm],puncs[perm]))
+   #println(uncrformattersci(params[perm],puncs[perm]))
    return params, puncs, fomc, fcfrqs, vals
 end
