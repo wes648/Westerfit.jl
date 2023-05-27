@@ -54,21 +54,28 @@ function anaderiv(j,s,σ,vec,rp,rpid)
    out = transpose(vec)*mat*vec
    return out
 end
-function sumder(out,j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
+function sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
    ind = rpid+1
-   if ind ≤ length(scl)
-      check = scl[ind]
+   if ind ≤ length(stg)+15
+      check = stg[ind-15]
       while check < zero(check)
          pm = prm[ind]
+         #println(pm)
+         #println(ops[:,ind-15])
          out .+= tsrop(pm,ops[:,ind-15],j,s,nb,kb,mb,nk,kk,mk)
          ind += 1
-         check = scl[ind]
+         if ind-15 ≤ length(stg)
+            check = stg[ind-15]
+         else
+            check = 0
+         end
       end
    end
    return out
 end
 
-function derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
+function derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
+   #println(prm)
    if scl[rpid] < 0
    elseif rpid ≤ 4 #pure rot
       pr = zeros(4)
@@ -100,17 +107,17 @@ function derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
       out = tsrop(1.0,0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    else #user def
       out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
-      out .= sumder(out,j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
+      out .= sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
    end
    return out
 end
-function anaderiv(prm,scl,rpid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec)
-   mat = derivmat(j,s,nf,rpid,prm,scl,ops,nb,kb,mb,nk,kk,mk)
+function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec)
+   mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
    out = transpose(vec)*mat*vec
    return out
 end
 
-function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
+function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
    sd = Int(2*s+1)
    mcalc = ctrl["mcalc"]
    jmin = 0.5*iseven(sd)
@@ -143,7 +150,7 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
          vec = vecs[1:jd*msd,sind:find,sc]
          @simd for i in 1:length(perm)
             pid = perm[i]
-            ders = diag(anaderiv(prm,scl,pid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
+            ders = diag(anaderiv(prm,scl,stg,pid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
             derivs[sind:find,sc,i] = ders
          end#perm loop
       end #j loop
@@ -151,12 +158,12 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl)
    return derivs
 end#function
 
-function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals)
+function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals,stg)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds)[1],length(perm))
-   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals)
+   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals,stg)
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
@@ -171,41 +178,41 @@ function lbmq_gain(β,λ::Float64,g,omc,nomc)::Float64
    return out
 end
 
-function build_jcbn!(jcbn,ops,inds,s,ctrl,vecs,params,perm,scals)
-"""
-This builds the Jacobian based on the Hellmann–Feynman theorem.
-"""
-   nf = ctrl["NFOLD"]
-   mcalc = ctrl["mcalc"]
-   jcbn = zeros(Float64,size(inds)[1],length(perm))
-   @threads for a in 1:size(inds,1)
-      ju = 0.5*inds[a,1]
-      σu = inds[a,2]
-      nuk = ngen(ju,s)
-      kuk = kgen(ju,s)
-      muk = mgen(nf,mcalc,σu)
-      nub = Matrix(transpose(nuk))
-      kub = Matrix(transpose(kuk))
-      mub = Matrix(transpose(muk))
-      jl = 0.5*inds[a,4]
-      σl = inds[a,5]
-      nlk = ngen(jl,s)
-      klk = kgen(jl,s)
-      mlk = mgen(nf,mcalc,σl)
-      nlb = Matrix(transpose(nlk))
-      klb = Matrix(transpose(klk))
-      mlb = Matrix(transpose(mlk))
-      vecu = vecs[1:size(nuk,1)*size(muk,1),inds[a,3],σu+1]
-      vecl = vecs[1:size(nlk,1)*size(mlk,1),inds[a,6],σl+1]
-      @simd for i in 1:length(perm)
-         b = perm[i]
-         #dν/dOp = d/dOp (Eu - El)
-         jcbn[a,i]  = anaderiv(params,scals,b,ops,ju,s,nf,nub,kub,mub,nuk,kuk,muk,vecu)
-         jcbn[a,i] -= anaderiv(params,scals,b,ops,jl,s,nf,nlb,klb,mlb,nlk,klk,mlk,vecl)
-      end
-   end
-   return jcbn
-end
+#function build_jcbn!(jcbn,ops,inds,s,ctrl,vecs,params,perm,scals)
+#"""
+#This builds the Jacobian based on the Hellmann–Feynman theorem.
+#"""
+#   nf = ctrl["NFOLD"]
+#   mcalc = ctrl["mcalc"]
+#   jcbn = zeros(Float64,size(inds)[1],length(perm))
+#   @threads for a in 1:size(inds,1)
+#      ju = 0.5*inds[a,1]
+#      σu = inds[a,2]
+#      nuk = ngen(ju,s)
+#      kuk = kgen(ju,s)
+#      muk = mgen(nf,mcalc,σu)
+#      nub = Matrix(transpose(nuk))
+#      kub = Matrix(transpose(kuk))
+#      mub = Matrix(transpose(muk))
+#      jl = 0.5*inds[a,4]
+#      σl = inds[a,5]
+#      nlk = ngen(jl,s)
+#      klk = kgen(jl,s)
+#      mlk = mgen(nf,mcalc,σl)
+#      nlb = Matrix(transpose(nlk))
+#      klb = Matrix(transpose(klk))
+#      mlb = Matrix(transpose(mlk))
+#      vecu = vecs[1:size(nuk,1)*size(muk,1),inds[a,3],σu+1]
+#      vecl = vecs[1:size(nlk,1)*size(mlk,1),inds[a,6],σl+1]
+#      @simd for i in 1:length(perm)
+#         b = perm[i]
+#         #dν/dOp = d/dOp (Eu - El)
+#         jcbn[a,i]  = anaderiv(params,scals,b,ops,ju,s,nf,nub,kub,mub,nuk,kuk,muk,vecu)
+#         jcbn[a,i] -= anaderiv(params,scals,b,ops,jl,s,nf,nlb,klb,mlb,nlk,klk,mlk,vecl)
+#      end
+#   end
+#   return jcbn
+#end
 function tsrapprox(j,β)::Vector{Float64}
    for i in 1:length(β)
       j[:,i] .*= β[i]
@@ -324,9 +331,16 @@ function harshfilt!(β,param,scals)
    end
    return β
 end
+function trfilter!(β,h,Δ)
+   nrm = BLAS.nrm2(β .* diag(h))
+   if nrm > Δ
+      β .*= Δ/nrm
+   end
+   return β
+end
 
 #function lbmq_turducken!(βf,D,H,jtw,omc,λ,nlist,inds,nparams,perm,ofreqs)
-function lbmq_turducken!(H,J,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
+function lbmq_turducken!(H,J,jtw,omc,λ,Δ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
    tdncount = ctrl["turducken"]
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
@@ -341,8 +355,9 @@ function lbmq_turducken!(H,J,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,
    end
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
-   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) #.* scls[perm]
-   β[:,1] = harshfilt!(β[:,1],nparams[perm],scls[perm])
+   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
+   #β[:,1] .= trfilter!(β[:,1],H,Δ)
+   #β[:,1] = harshfilt!(β[:,1],nparams[perm],scls[perm])
    for i in 2:tdncount
       nparams[perm] .+= β[:,i-1]
       #vals, nvecs = limeigcalc(nlist, inds, nparams)
@@ -353,6 +368,7 @@ function lbmq_turducken!(H,J,jtw,omc,λ,nlist,inds,nparams,scls,perm,ofreqs,rms,
       #omc += tsrapprox(J,β[:,i-1])
       #nrms = BLAS.nrm2(omc)/√length(omc)
       β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
+      #β[:,i] .= trfilter!(β[:,i],H,Δ)
       #println(β[:,i])
       #println()
       #β[:,i] = harshfilt(β[:,i],nparams,scls,perm)
@@ -402,10 +418,10 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    println("Initial λ = $λlm")
-   Δlm = 1.0E+2
-   Δlm *= length(perm)
+   Δlm = nrm2(params[perm])/length(perm)
    counter = 0
-   stoit = 5
+   BAD = 1
+   println("Initial Δ = $Δlm")
    #println(omc)
    nparams = copy(params)
    puncs = zero(perm)
@@ -416,7 +432,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #H = zeros(Float64,length(perm),length(perm)) #Hessian
    #D = zero(H) #Elliptical Trust Region
    #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-   J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+   J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales,stg)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    H, jtw = build_hess(jtw,J,W)
    #println(H)
@@ -440,14 +456,19 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
       #oparams = copy(params)
       λlm = λgen(μlm, rms) 
    βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,J,
-            jtw,omc,λlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
+         jtw,omc,λlm,Δlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       #println(βf)
       ρlm = lbmq_gain(βf,λlm,jtw*omc,omc,nomc)
    #println()
    #println(ρlm)
    #println()
-      if nrms < rms #
+      if nrms < rms #*(1.0 + 0.1^BAD)
+         #if nrms < rms
+         #   BAD = min(1,BAD-1)
+         #else
+         #   BAD += 1
+         #end
    #    if ρlm > 0.0#-1.0e-7 #
          #println(βf)
 	 #μlm *= (nrms/rms)^2
@@ -457,7 +478,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales)
+         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales,stg)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
          H, jtw = build_hess(jtw,J,W)
          #println(diag(H))
@@ -467,16 +488,19 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, ρlm = $ρlm")
+         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δlm = $Δlm")
          #println(H^(-1/2))
          println(params)
+         #println(diag(H))
          #λlm = 0.0
          #if ρlm > 1e-6
             μlm /= 20.0
          #end
+         Δlm *= 6.0
       else
          #params .= oparams
          μlm = max(4.0*μlm,1.0E-24)
+         Δlm = max(0.90*Δlm,0.0001)
       end
       #ρlm = lbmq_gain(β,λlm,jtw*omc,rms,nrms)
       #if ρlm ≥ 0.75
@@ -499,7 +523,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #uncs = paramunc!(uncs,H,perm,omc)
          #println(uncs)
          break
-      elseif λlm > 1.0e+9
+      elseif (λlm > 1.0e+9)&&(Δlm == 0.0)
          println("λlm exceeded threshold.")
          println("If you were using the turducken, try again without it")
          break
