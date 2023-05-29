@@ -421,7 +421,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    Δlm = nrm2(params[perm])/length(perm)
    counter = 0
    BAD = 1
-   println("Initial Δ = $Δlm")
+   #println("Initial Δ = $Δlm")
    #println(omc)
    nparams = copy(params)
    puncs = zero(perm)
@@ -463,9 +463,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #println()
    #println(ρlm)
    #println()
-      if nrms < rms #*(1.0 + 0.1^BAD)
+      if nrms < rms#*(1.0 + 0.1^BAD)
          #if nrms < rms
-         #   BAD = min(1,BAD-1)
+         #   BAD = max(1,BAD-1)
          #else
          #   BAD += 1
          #end
@@ -488,7 +488,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
-         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ, Δlm = $Δlm")
+         println("After $scounter interations, RMS = $srms, log₁₀(λ) = $slλ")
          #println(H^(-1/2))
          println(params)
          #println(diag(H))
@@ -496,11 +496,11 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #if ρlm > 1e-6
             μlm /= 20.0
          #end
-         Δlm *= 6.0
+         #Δlm *= 6.0
       else
          #params .= oparams
          μlm = max(4.0*μlm,1.0E-24)
-         Δlm = max(0.90*Δlm,0.0001)
+         #Δlm = max(0.90*Δlm,0.0001)
       end
       #ρlm = lbmq_gain(β,λlm,jtw*omc,rms,nrms)
       #if ρlm ≥ 0.75
