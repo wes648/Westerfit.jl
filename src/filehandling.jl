@@ -47,7 +47,7 @@ function secordinit()
 end
 function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
-   prd[1] += prd[12]*prd[13]^2              # Aeff = A + Fρ²
+   prd[1] += csl*prd[12]*prd[13]^2           # Aeff = A + Fρ²
    out[2] = 0.5*(prd[2] + prd[3])                 #BN
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
