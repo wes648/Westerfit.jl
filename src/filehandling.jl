@@ -405,19 +405,23 @@ function uncrformattersci(values,unc)
    uncstr = fill("0", length(uncr))
    
    for i in 1:length(uncr)
-      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
-      words = string("%0.",number,"f")
-      uncstr[i] = num_to_string(uncr[i],words)
+      if uncr[i] == 0.0
+         uncstr[i] = string("Fixed")
+      else
+         number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
+         words = string("%0.",number,"f")
+         uncstr[i] = num_to_string(uncr[i],words)
+      end
    end
    
    uncstr1 = Base.lstrip.(uncstr, '0')
    uncstr1 = Base.lstrip.(uncstr1, '.')
    uncstr1 = Base.lstrip.(uncstr1, '0')
    
-   uncunstr = parse.(Float64, uncstr1)
+   uncunstr = tryparse.(Float64, uncstr1)
    for i in 1:length(uncunstr)
-      if 10.0 <= uncunstr[i] < 100.0
-         uncunstr[i] = 10*uncunstr[i]
+      if uncunstr[i] == Float64 && 10.0 <= uncunstr[i] < 100.0
+         uncunstr[i] *= 10
       else
       end
    end
@@ -428,15 +432,23 @@ function uncrformattersci(values,unc)
    valstr = fill("0", length(values))
    
    for i in 1:length(values)
-      number = -1*floor(Int, log10(uncr[i])) + uncertainty_digits - 1
+      if uncr[i] == 0.0
+         number = length(values[i]) + 4
+      else
+         number = abs(floor(Int, log10(uncr[i]))) + uncertainty_digits - 1
+      end
       words = string("%0.",number,"f")
-      valstr[i] = num_to_string(values[i],words)
+      valstr[i] = num_to_string(values[i], words)
    end
 
    for i in 1:length(values)
-      number = -1*floor(Int, log10(uncr[i])) + uncertainty_digits - 1
+      if uncr[i] == 0.0
+         number = length(values[i]) + 4
+      else
+         number = -1*floor(Int, log10(uncr[i])) + uncertainty_digits - 1
+      end
       temp = round(values[i], digits = number)
-      valstr[i] = num_to_string(temp, "%0.15e")
+      valstr[i] = num_to_string(temp, "%0.14e")
    end
    
    valhalf = chop.(valstr, head = 0, tail = 4)
@@ -444,7 +456,7 @@ function uncrformattersci(values,unc)
    
    ehalf = fill("0", length(values))
    for i in 1:length(valstr)
-      ehalf[i] = chop(valstr[i], head = (length(valstr[i]) -4), tail = 0)
+         ehalf[i] = chop(valstr[i], head = (length(valstr[i]) -4), tail = 0)
    end
    
    valunc = fill("0", length(values))
@@ -453,7 +465,7 @@ function uncrformattersci(values,unc)
    for i in 1:length(valstr)
       finalval[i] = chop(valstr[i], head = (length(valstr[i]) - 3), tail = 0)
    end
-   finalval = parse.(Float64, finalval)
+   finalval = tryparse.(Float64, finalval)
    evalue = fill("0", length(values))
    
    for i in 1:length(values)
@@ -476,6 +488,18 @@ function uncrformattersci(values,unc)
          evalue[i] = num_to_string(finalval[i], "%.0f")
          valhalf[i] = string(valhalfreal)
          valunc[i] = string(valhalf[i], "(", uncstr1[i], ")e", evalue[i])
+      end
+   end
+
+   for i in 1:length(values)
+      if valhalf[i] == "0."
+         valhalf[i] *= "0"
+      end
+      if uncr[i] == 0.0
+         valunc[i] = string(valhalf[i], "e", evalue[i], " (Fixed)")
+      elseif abs(unc[i]) >= abs(values[i])
+         valunc[i] = string("(Undetermined)")
+      else
       end
    end
    return valunc
