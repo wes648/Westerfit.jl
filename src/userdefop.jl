@@ -472,8 +472,9 @@ function jsred(j,s,nb,nk)
                     s,nb, 1)*jnred(nb,nk)*nred(s)
 end
 function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
-   @. return pr*wig3j(nb,l,nk,-kb,q,kk)*√(2.0*l+1.0)*
-             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb)
+   @. return pr*wig3j( nb,l,nk,
+                      -kb,q,kk)*√(2.0*l+1.0)*
+             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb+q)
 end
 function srlpart(pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nk))
@@ -507,7 +508,7 @@ function hrsr(rpr,spr,j,s)
    end
    return out
 end
-function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)
+function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}
    out = hrot2v2(rpr,nb,kb,nk,kk)
    if s == zero(s)
    elseif zero(s) < s < one(s)
