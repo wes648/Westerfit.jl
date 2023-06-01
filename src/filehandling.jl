@@ -47,9 +47,9 @@ function secordinit()
 end
 function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
-   prd[1] += csl*prd[12]*prd[13]^2           # Aeff = A + Fρ²
+   tempa = prd[1] + csl*prd[12]*prd[13]^2         #Aeff = A + Fρ²
    out[2] = 0.5*(prd[2] + prd[3])                 #BN
-   out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
+   out[1] = tempa - 0.5*(prd[2] + prd[3])         #BK
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
    out[5] = -(prd[5] + prd[6] + prd[8]) / √3.0    #T⁰₀(ϵ)
@@ -77,9 +77,9 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
    out[5] = (-prd[5] + √2.0*prd[6])/√3.0         #ϵzz
-   out[6] = -(2*prd[5]/√3 - prd[6]/√6) + prd[8]  #ϵxx
+   out[6] = -(prd[5]/√3 + prd[6]/√6) + prd[8]    #ϵxx
    out[7] = -prd[7]                              #ϵxz
-   out[8] = -(2*prd[5]/√3 - prd[6]/√6) - prd[8]  #ϵyy
+   out[8] = -(prd[5]/√3 + prd[6]/√6) - prd[8]    #ϵyy
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
