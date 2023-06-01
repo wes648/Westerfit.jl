@@ -76,10 +76,10 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[2] = prd[2] + 2.0*prd[3]                  #B
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
-   out[5] = (prd[5]/√3 - prd[6]/√6)/3.0          #ϵzz
-   out[6] = (prd[5]/√3 + 2*prd[6]/√6)/6 + prd[8] #ϵxx
+   out[5] = (-prd[5] + √2.0*prd[6])/√3.0         #ϵzz
+   out[6] = -(2*prd[5]/√3 - prd[6]/√6) + prd[8]  #ϵxx
    out[7] = -prd[7]                              #ϵxz
-   out[8] = (prd[5]/√3 + 2*prd[6]/√6)/6 - prd[8] #ϵyy
+   out[8] = -(2*prd[5]/√3 - prd[6]/√6) - prd[8]  #ϵyy
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
@@ -102,8 +102,8 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[2] = unc[2]^2 + 4.0*unc[3]^2                #σB
    out[3] = unc[2]^2 + 4.0*unc[3]^2                #σC
    out[4] = unc[4]^2                               #σDab
-   out[5] = unc[5]^2 /27.0 + unc[6]^2 /54.0        #σϵzz
-   out[6] = unc[5]^2 /108. + unc[6]^2 /54. + unc[8]^2 #σϵxx
+   out[5] = (prd[5]^2 + 2.0*prd[6]^2)/3.0          #σϵzz
+   out[6] = (4*prd[5]^2/3 + prd[6]^2/6) + prd[8]^2 #σϵxx
    out[7] = unc[7]^2                               #σϵxz
    out[8] = out[6]                                 #σϵyy
    out[9] = unc[9]^2                               #σχzz
@@ -408,7 +408,7 @@ function uncrformattersci(values,unc)
       if uncr[i] == 0.0
          uncstr[i] = string("Fixed")
       else
-         number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
+         number = abs(floor(Int, log10(unc[i]))) + uncertainty_digits - 1
          words = string("%0.",number,"f")
          uncstr[i] = num_to_string(uncr[i],words)
       end

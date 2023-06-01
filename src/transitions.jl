@@ -81,9 +81,11 @@ function fullμmat(μs,nf,mcalc,s,jb,σb,jk,σk)
 end
 function intmat(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck)
    out = fullμmat(μ,nf,mcalc,s,jb,σb,jk,σk)
+   println(out)
    out = sparse(transpose(vecb)*(out)*veck)
    out .*= out
-   return droptol!(out,INTTHRESH)
+   println(out)
+   return out #droptol!(out,INTTHRESH)
 end
 function jbjklister(jmin,jmax,mΔj)
    out = zeros(0,2)
@@ -118,6 +120,8 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1+(σtype(nf,σc)==2)))
    frqs = spzeros(length(rvals),length(cvals))
    ints = spzeros(length(rvals),length(cvals))
+   exprmin = exp(-minimum(rvals)/kbT)
+   expcmin = exp(-minimum(cvals)/kbT)
    #elow = spzeros(length(vals),length(vals))
    #build matrix of intensities
    for i in 1:size(jbjk,1)
@@ -165,14 +169,14 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
-         thermfact = (exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
+         thermfact = abs(-exp(-cvals[c]/kbT) + exprmin)/Qrt
          outfrq[i,2] = ints[r,c]#*thermfact
          outqns[i,1:6] = rqns[r,:]
          outqns[i,7:12] = cqns[c,:]
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
-         thermfact = (exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
+         thermfact = abs(-exp(-rvals[r]/kbT) + expcmin)/Qrt
          outfrq[i,2] = ints[r,c]#*thermfact
          outqns[i,1:6] = cqns[c,:]
          outqns[i,7:12] = rqns[r,:]
