@@ -18,7 +18,8 @@ function μproc(μf,μo)
 end
 
 function μred(s::Float64,jb::Float64,nb::Int,jk::Float64,nk::Int)::Float64
-   return wig6j(nk,jk,s,jb,nb,1)*jnred(jb,nb)*jnred(jk,nk)#*√(2*nb+1)
+   return wig6j(nk,jk,s,
+                jb,nb,1)*jnred(jb,nb)*jnred(jk,nk)#*√(2*nb+1)
 end
 function μelem(pr::Float64,q,s::Float64,jb::Float64,nb,kb,jk::Float64,nk,kk)::Array{Float64,2}
    @. return pr*wig3j( nb,1,nk,
@@ -80,12 +81,10 @@ function fullμmat(μs,nf,mcalc,s,jb,σb,jk,σk)
    return out
 end
 function intmat(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck)
-   out = fullμmat(μ,nf,mcalc,s,jb,σb,jk,σk)
-   println(out)
+   out = fullμmat(μ,nf,mcalc,s,jk,σk,jb,σb)
    out = sparse(transpose(vecb)*(out)*veck)
    out .*= out
-   println(out)
-   return out #droptol!(out,INTTHRESH)
+   return droptol!(out,INTTHRESH)
 end
 function jbjklister(jmin,jmax,mΔj)
    out = zeros(0,2)
@@ -132,8 +131,8 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       kinds = jvlinds(jk,s,vtm)
       binds = jvlinds(jb,s,vtm)
       #filter vecs
-      kvecs = cvecs[1:Int(2*jb+1)*rmsd,kinds]
-      bvecs = rvecs[1:Int(2*jk+1)*cmsd,binds]
+      kvecs = cvecs[1:Int(2*jk+1)*cmsd,kinds]
+      bvecs = rvecs[1:Int(2*jb+1)*rmsd,binds]
       #calculate intensities
       μs = intmat(μ,ctrl["INTthres"],nf,ctrl["mcalc"],s,jb,σr,bvecs,jk,σc,kvecs)
       if (jb==jk)&&(σr==σc)
