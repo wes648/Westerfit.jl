@@ -1,12 +1,4 @@
 
-#=
-include("@__DIR__/WIGXJPF.jl")
-include("@__DIR__/jacobi.jl")
-include("@__DIR__/filehandling.jl")
-using LinearAlgebra, SparseArrays, Base.Threads, .WIGXJPF, LinearAlgebra.BLAS
-include("@__DIR__./userdefop.jl")
-=#
-
 vt2m(vtm)::Int = ceil(vtm/2)*cospi(vtm)
 vt2m(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
 function vtlist(vtm,σt) 
@@ -121,11 +113,11 @@ function qngen(n,nf,m,σ)
    nd = Int(2*n+1)
    md = Int(2*m+(σtype(nf,σ)==2)+1)
    narray = fill(n,nd*md)
-   karray = kron(ones(Int,md),abs.(collect(Int,-n:n)))
+   karray = kron(ones(Int,md),collect(Int,-n:n))
    kcarray = k2kc.(narray,karray)
    marray = kron(msbuilder(nf,m,σ),ones(Int,nd))
    σarray = fill(σ,nd*md)
-   out = hcat(narray,karray,kcarray,marray,σarray)
+   out = hcat(narray,abs.(karray),kcarray,marray,σarray)
 end
 function qngen(j,s,nf,m,σ)
    nlist = Δlist(j,s)
@@ -136,10 +128,11 @@ function qngen(j,s,nf,m,σ)
       nd = Int(2*n+1)
       part = zeros(Int,nd,3)
       part[:,1] = fill(n,nd)
-      part[:,2] = abs.(collect(Int,-n:n))
+      part[:,2] = collect(Int,-n:n)
       part[:,3] = k2kc.(part[:,1],part[:,2])
       out = vcat(out,part)
    end
+   out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,md),out)
    marray = kron(msbuilder(nf,m,σ),ones(Int,jsd))
    out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
@@ -155,10 +148,11 @@ function qngenv(j,s,nf,vtm,σ)
       nd = Int(2*n+1)
       part = zeros(Int,nd,3)
       part[:,1] = fill(n,nd)
-      part[:,2] = abs.(collect(Int,-n:n))
+      part[:,2] = collect(Int,-n:n)
       part[:,3] = k2kc.(part[:,1],part[:,2])
       out = vcat(out,part)
    end
+   out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,vd),out)
    vtrray = kron(nf .* vtcoll(vtm,σt) .+ σ,ones(Int,jsd))
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
@@ -423,7 +417,6 @@ function hrttest(n,mc,nf,σ)::SparseMatrixCSC{Float64, Int64}
    return hout
 end
 
-
 function hrlpart(out,pr,l::Int,nb,kb,nk,kk)::Array{Float64,2}
    @simd for q in -l:l
       out .+= hrelem(pr[T(l,q)],l,q,nb,kb,nk,kk)
@@ -462,10 +455,13 @@ function hrot(pr,j,s)
 end
 
 function nsred(l::Int,nb,nk)
-   @. return 0.5*(nred(nk)*wig6j( 1, 1, l,
-                                 nb,nk,nk) + 
-                  nred(nb)*wig6j( 1, 1, l,
-                                 nk,nb,nb))
+   @. return 0.5*( 
+      sqrt(nk*(nk+1)*(2*nk+1))*
+         wig6j( 1, 1, l,
+               nb,nk,nk) + 
+      sqrt(nb*(nb+1)*(2*nb+1))*
+         wig6j( 1, 1, l,
+               nk,nb,nb))
 end
 function jsred(j,s,nb,nk)
    @. return wig6j(nk, s, j,
@@ -474,7 +470,7 @@ end
 function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*wig3j( nb,l,nk,
                       -kb,q,kk)*√(2.0*l+1.0)*
-             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s-kb+q)
+             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s+nb-nk-kb+δi(q,-1))
 end
 function srlpart(pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nk))
@@ -490,11 +486,13 @@ function hsr(pr,j,s)
    kks = kgen(j,s)
    kbs = transpose(kks)
    out = zeros(size(kks))
+   f = (abs.(kbs-kks) .≤ 2).*(abs.(nbs-nks) .≤ 2)
    @simd for l in 0:2:2
-      out .= srlpart(pr,l,j,s,nbs,kbs,nks,kks)
-   end
-   return out
+      out[f] += srlpart(pr,l,j,s,nbs[f],kbs[f],nks[f],kks[f])
+   end#sr for loop
+   return dropzeros(sparse(out))
 end
+
 function hrsr(rpr,spr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
    nks = ngen(j,s,lb)
@@ -512,9 +510,12 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}
    out = hrot2v2(rpr,nb,kb,nk,kk)
    if s == zero(s)
    elseif zero(s) < s < one(s)
-      @simd for l in 0:2:2
-         out += srlpart(spr,l,j,s,nb,kb,nk,kk)
-      end
+      f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
+      out[f] += srlpart(spr,0,j,0.5,nb[f],kb[f],nk[f],kk[f])
+      out[f] += srlpart(spr,2,j,0.5,nb[f],kb[f],nk[f],kk[f])
+#      @simd for l in 0:2:2
+#         out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
+#      end#sr for loop
    else
       f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
       @simd for l in 0:2:2
@@ -532,7 +533,6 @@ function hrsrtest(pr,j,s)
    out = hrsr(pr[1:4],pr[5:8],pr[9:11],j,s,nb,kb,nk,kk)
    return out
 end
-
 
 function hsrq(out,spr,qpr,j,s,nb,kb,nk,kk)
    for l in 0:2:2
@@ -708,15 +708,6 @@ function szop3(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    return szelem3(j,s,nb,kb,nk,kk)^p
 end
 
-
-#function rsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,
-#               j,s,nb::Array{Int,2},kb::Array{Int,2},
-#               nk::Array{Int,2},kk::Array{Int,2})::Array{Float64,2}
-#   tz = ntop(a,nb,kb,nk,kk).*nzop(b,nb,kb,nk,kk).*nsop(d,j,s,nb,kb,nk,kk) #these all commute!
-#   pm = npmp(c,nb,kb,nk,kk)
-#   sz = szop(e,j,s,nb,kb,nk,kk)
-#   return (tz*sz*pm + pm*sz*tz) .* (pr/4.0)
-#end
 function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
                nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
@@ -772,18 +763,7 @@ function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::I
                mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    return dropzeros!(kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk)))
 end
-#function tsrop(pr::Tuple,a::Tuple,b::Tuple,c::Tuple,d::Tuple,e::Tuple,f::Tuple,
-#               g::Tuple,h::Tuple,
-#               j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
-#               mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
-#               mk::Array{Int,2})#::Array{Float64,2}
-#   out = tsrop(pr[1],a[1],b[1],c[1],d[1],e[1],f[1],g[1],h[1],j,s,nb,kb,mb,nk,kk,mk)
-#   for i in 2:length(pr)
-#      out += tsrop(pr[1]*pr[i],a[i],b[i],c[i],d[i],e[i],f[i],g[i],h[i],
-#                   j,s,nb,kb,mb,nk,kk,mk)
-#   end
-#   return dropzeros!(out)
-#end
+
 function tsrop(pr,op::Array,j::Float64,s::Float64,
                nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
@@ -990,4 +970,3 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    end
    return fvls, fvcs, fqns
 end
-

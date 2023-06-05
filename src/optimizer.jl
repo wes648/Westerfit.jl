@@ -494,7 +494,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(diag(H))
          #λlm = 0.0
          #if ρlm > 1e-6
-            μlm /= 1.25 #5.0 #20.0
+            μlm /= 20.0
+            #μlm /= 5.0
+            #μlm /= 1.25 #20.0
          #end
          #Δlm *= 6.0
       else
@@ -541,6 +543,6 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
-   #println(uncrformattersci(params[perm],puncs[perm]))
+   println(uncrformattersci(params[perm],puncs[perm]))
    return params, puncs, fomc, fcfrqs, vals
 end
