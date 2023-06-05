@@ -515,11 +515,11 @@ function iterativecopier(molnam::String)
       filename = string(molnam, oldarray[i], ".inp")
       newfilename = string(molnam, newarray[i], ".inp")
       if isfile(filename) == true
-         println("yes")
-         cp(filename, newfilename, force=true)
+         mv(filename, newfilename, force=true)
       end
    end
 end
+
 
 function inpwriter(molnam::String, values)
    findstr = `grep -n 2NDORDER $molnam.inp`
@@ -537,30 +537,30 @@ function inpwriter(molnam::String, values)
    highervalues = values[16:end]
 
    controls = file[1:strln-1, 1]
-   secnam = file[strln+1:strln+15,1]
-   secscale = file[strln+1:strln+15,3]
+   secnam = file[strln:strln2-3,1]
+   secscale = file[strln:strln2-3,3]
 
-   highnam = file[strln2+2:end,1]
-   highscale = file[strln2+2:end,3]
-   higha= file[strln2+2:end,4]
-   highb= file[strln2+2:end,5]
-   highc= file[strln2+2:end,6]
-   highd= file[strln2+2:end,7]
-   highe= file[strln2+2:end,8]
-   highf= file[strln2+2:end,9]
-   highg= file[strln2+2:end,10]
-   highh= file[strln2+2:end,11]
-   highstg= file[strln2+2:end,12]
+   highnam = file[strln2:end,1]
+   highscale = file[strln2:end,3]
+   higha= file[strln2:end,4]
+   highb= file[strln2:end,5]
+   highc= file[strln2:end,6]
+   highd= file[strln2:end,7]
+   highe= file[strln2:end,8]
+   highf= file[strln2:end,9]
+   highg= file[strln2:end,10]
+   highh= file[strln2:end,11]
+   highstg= file[strln2:end,12]
    
    secondord = fill("0",15)
-   higherord = fill("0",length(file[strln2+2:end,1]))
+   higherord = fill("0",length(file[strln2:end,1]))
 
-   for i in 1:15
-      secondord[i] = string(secnam[i],";", lpad(secvalues[i],13),";",lpad(secscale[i],6))
+   for i in 1:length(secvalues)
+      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],20),";",lpad(secscale[i],6))
    end
 
    for i in 1:length(higherord)
-      higherord[i] = string(highnam[i],";",lpad(highervalues[i],21),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
+      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],20),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
    end
 
    io = open("$molnam.inp", "w") do io
@@ -580,8 +580,6 @@ function inpwriter(molnam::String, values)
       end
    end
 end
-
-
 
 """END CODE FOR INPUT FILE WRITER"""
 
