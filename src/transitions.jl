@@ -84,7 +84,7 @@ function intmat(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck)
    out = fullμmat(μ,nf,mcalc,s,jk,σk,jb,σb)
    out = sparse(transpose(vecb)*(out)*veck)
    out .*= out
-   return droptol!(out,INTTHRESH)
+   return droptol!(out,INTTHRESH*0.01)
 end
 function jbjklister(jmin,jmax,mΔj)
    out = zeros(0,2)
