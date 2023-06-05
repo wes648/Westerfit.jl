@@ -506,6 +506,85 @@ function uncrformattersci(values,unc)
 end
 """END CODE FOR UNCERTAINTY PRINTER THINGY"""
 
+"""INSERT CODE FOR INPUT FILE WRITER"""
+
+function iterativecopier(molnam::String)
+   oldarray = ["8", "7", "6", "5", "4", "3", "2", "1", ""]
+   newarray = ["9", "8", "7", "6", "5", "4", "3", "2", "1"]
+   for i in 1:length(oldarray)
+      filename = string(molnam, oldarray[i], ".inp")
+      newfilename = string(molnam, newarray[i], ".inp")
+      if isfile(filename) == true
+         println("yes")
+         cp(filename, newfilename, force=true)
+      end
+   end
+end
+
+function inpwriter(molnam::String, values)
+   findstr = `grep -n 2NDORDER $molnam.inp`
+   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
+   findstr2 = `grep -n PARAMS $molnam.inp`
+   strln2 = parse(Int,readchomp(pipeline(findstr2,`cut -d : -f1`)))
+   file = readdlm(pwd()*"/"*molnam*"1.inp",';',comments=true,comment_char='#')
+   
+   exz = values[7] #replace this with something more flexible
+   eyy = values[8]
+   values[7] = eyy
+   values[8] = exz
+
+   secvalues = values[1:15]
+   highervalues = values[16:end]
+
+   controls = file[1:strln-1, 1]
+   secnam = file[strln+1:strln+15,1]
+   secscale = file[strln+1:strln+15,3]
+
+   highnam = file[strln2+2:end,1]
+   highscale = file[strln2+2:end,3]
+   higha= file[strln2+2:end,4]
+   highb= file[strln2+2:end,5]
+   highc= file[strln2+2:end,6]
+   highd= file[strln2+2:end,7]
+   highe= file[strln2+2:end,8]
+   highf= file[strln2+2:end,9]
+   highg= file[strln2+2:end,10]
+   highh= file[strln2+2:end,11]
+   highstg= file[strln2+2:end,12]
+   
+   secondord = fill("0",15)
+   higherord = fill("0",length(file[strln2+2:end,1]))
+
+   for i in 1:15
+      secondord[i] = string(secnam[i],";", lpad(secvalues[i],13),";",lpad(secscale[i],6))
+   end
+
+   for i in 1:length(higherord)
+      higherord[i] = string(highnam[i],";",lpad(highervalues[i],21),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
+   end
+
+   io = open("$molnam.inp", "w") do io
+      for i in 1:length(controls)
+         println(io, controls[i])
+      end
+      println(io, "")
+      println(io,"%2NDORDER")
+      for i in 1:length(secondord)
+         println(io, secondord[i])
+      end
+      println(io,"")
+      println(io,"%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))")
+      println(io,"%Op;                     Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;  stg")
+      for i in 1:length(higherord)
+         println(io, higherord[i])
+      end
+   end
+end
+
+
+
+"""END CODE FOR INPUT FILE WRITER"""
+
 
 function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
    c = 29979.2458
