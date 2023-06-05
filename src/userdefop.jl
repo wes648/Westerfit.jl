@@ -465,12 +465,12 @@ function nsred(l::Int,nb,nk)
 end
 function jsred(j,s,nb,nk)
    @. return wig6j(nk, s, j,
-                    s,nb, 1)*jnred(nb,nk)*nred(s)
+                    s,nb, 1)*√((2*nb+1)*(2*nk+1))*nred(s)
 end
 function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*wig3j( nb,l,nk,
-                      -kb,q,kk)*√(2.0*l+1.0)*
-             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1.0)^(j+s+nb-nk-kb+δi(q,-1))
+                      -kb,q,kk)*√(2*l+1)*
+             nsred(l,nb,nk)*jsred(j,s,nb,nk)*(-1)^(j+s+nb-nk-kb+δi(q,-1))
 end
 function srlpart(pr,l::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nk))
