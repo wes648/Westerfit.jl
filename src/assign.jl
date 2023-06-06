@@ -75,11 +75,46 @@ function expectkassign!(vals,vecs,j,s,nf,mc,σ)
    return vals, vecs
 end
 
+"""
+the new k assignment
+avecs = abs.(vecs)
+perm = zeros(Int,2N+1)
+for i in 1:(2N+1)
+   a,b = Tuple(argmax(avecs))
+   perm[b] = a
+   arv5[:,b] *= 0.0
+   arv5[a,:] *= 0.0
+end
+"""
+### Expect-Expect-Overlap
+function expectassign!(vals,vecs,j,s,nf,mc,σ)
+   ns, nd, ni, jsd = srprep(j,s)
+   list = mexpect(vecs,jsd,nf,mc,σ)
+   #println(list)
+   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   vals = vals[list]
+   vecs = vecs[:,list]
+   list = neko(vecs,md,j,s,jsd,ns,nd,ni)
+   vals = vals[list]
+   vecs = vecs[:,list]   
+   return vals, vecs
+end
+function neko(vecs,mcd,j,s,jsd,ns,nd,ni)
+   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   nlist = zeros(Int,jsd)
+   for i in 1:length(ns)
+      n = ns[i]
+      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
+      nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
+      n2[part] .= 0.0
+   end
+   return nlist
+end
+function koverlap()
+end
 
-
-
-
-### SIMPLE
+### RAM36
 #sum across each m to find dominate torsional state
 function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    ovrlp = zeros(md,size(svcs,2))
