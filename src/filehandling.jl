@@ -515,18 +515,20 @@ function iterativecopier(molnam::String)
       filename = string(molnam, oldarray[i], ".inp")
       newfilename = string(molnam, newarray[i], ".inp")
       if isfile(filename) == true
-         mv(filename, newfilename, force=true)
+         cp(filename, newfilename, force=true)
       end
    end
 end
 
 
 function inpwriter(molnam::String, values)
-   findstr = `grep -n 2NDORDER $molnam.inp`
-   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   findstr2 = `grep -n PARAMS $molnam.inp`
-   strln2 = parse(Int,readchomp(pipeline(findstr2,`cut -d : -f1`)))
-   file = readdlm(pwd()*"/"*molnam*"1.inp",';',comments=true,comment_char='#')
+   findctrl = `grep -n CNTRLS $molnam.inp`
+   strlnctrl = parse(Int,readchomp(pipeline(findctrl,`cut -d : -f1`)))
+   find2nd = `grep -n 2NDORDER $molnam.inp`
+   strln2nd = parse(Int,readchomp(pipeline(find2nd,`cut -d : -f1`)))
+   findhigh = `grep -n PARAMS $molnam.inp`
+   strlnhigh = parse(Int,readchomp(pipeline(findhigh,`cut -d : -f1`)))
+   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
    
    exz = values[7] #replace this with something more flexible
    eyy = values[8]
@@ -536,34 +538,38 @@ function inpwriter(molnam::String, values)
    secvalues = values[1:15]
    highervalues = values[16:end]
 
-   controls = file[1:strln-1, 1]
-   secnam = file[strln:strln2-3,1]
-   secscale = file[strln:strln2-3,3]
+   controls = file[strlnctrl:strln2nd-2, 1]
+   secnam = file[strln2nd:strlnhigh-3,1]
+   secscale = file[strln2nd:strlnhigh-3,3]
 
-   highnam = file[strln2:end,1]
-   highscale = file[strln2:end,3]
-   higha= file[strln2:end,4]
-   highb= file[strln2:end,5]
-   highc= file[strln2:end,6]
-   highd= file[strln2:end,7]
-   highe= file[strln2:end,8]
-   highf= file[strln2:end,9]
-   highg= file[strln2:end,10]
-   highh= file[strln2:end,11]
-   highstg= file[strln2:end,12]
+   highnam = file[strlnhigh:end,1]
+   highscale = file[strlnhigh:end,3]
+   higha= file[strlnhigh:end,4]
+   highb= file[strlnhigh:end,5]
+   highc= file[strlnhigh:end,6]
+   highd= file[strlnhigh:end,7]
+   highe= file[strlnhigh:end,8]
+   highf= file[strlnhigh:end,9]
+   highg= file[strlnhigh:end,10]
+   highh= file[strlnhigh:end,11]
+   highstg= file[strlnhigh:end,12]
    
    secondord = fill("0",15)
-   higherord = fill("0",length(file[strln2:end,1]))
+   higherord = fill("0",length(file[strlnhigh:end,1]))
 
    for i in 1:length(secvalues)
-      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],20),";",lpad(secscale[i],6))
+      ln = 30 - length(secnam[i])
+      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(secscale[i],6))
    end
 
    for i in 1:length(higherord)
-      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],20),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
+      ln = 30 - length(highnam[i])
+      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
    end
 
+   time = now()
    io = open("$molnam.inp", "w") do io
+      println(io,molnam, "   @   ", time)
       for i in 1:length(controls)
          println(io, controls[i])
       end
@@ -574,7 +580,7 @@ function inpwriter(molnam::String, values)
       end
       println(io,"")
       println(io,"%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))")
-      println(io,"%Op;                     Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;  stg")
+      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;  stg")
       for i in 1:length(higherord)
          println(io, higherord[i])
       end
