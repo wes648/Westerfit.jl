@@ -498,7 +498,8 @@ function uncrformattersci(values,unc)
       if uncr[i] == 0.0
          valunc[i] = string(valhalf[i], "e", evalue[i], " (Fixed)")
       elseif abs(unc[i]) >= abs(values[i])
-         valunc[i] = string("(Undetermined)")
+         valshort = num_to_string(valhalf[i], "%0.3f")
+         valunc[i] = string(valshort,"e",evalue[i],"(Undetermined)")
       else
       end
    end
