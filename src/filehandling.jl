@@ -148,6 +148,7 @@ parsetuple(T::Type,s::AbstractString) = Tuple(parse.(T, split(s, ',')))
 parsetuple(T::Type,s::Int) = s
 parsetuple(s::Int) = s
 parsetuple(T::Type,s::Float64) = s
+
 function opinp(molnam::String)
    findstr = `grep -n PARAMS $molnam.inp`
    strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`))) + 1
@@ -422,7 +423,8 @@ function uncrformattersci(values,unc)
    for i in 1:length(uncunstr)
       if uncunstr[i] == Float64 && 10.0 <= uncunstr[i] < 100.0
          uncunstr[i] *= 10
-      else
+      elseif uncunstr[i] == Float64 && 1.0 <= uncunstr[i] < 10.0
+         uncunstr[i] *= 100
       end
    end
    uncstr1 = string.(uncunstr)
@@ -692,4 +694,69 @@ function TraWriterold(molnam,freqs, qunus)
       end
    end
    println("Transitions written to $molnam.cat!")
+end
+
+
+
+function findstrinput(molnam)
+   findctrl = `grep -n CNTRLS $molnam.inp`
+   strlnctrl = parse(Int,readchomp(pipeline(findctrl,`cut -d : -f1`)))
+   find2nd = `grep -n 2NDORDER $molnam.inp`
+   strln2nd = parse(Int,readchomp(pipeline(find2nd,`cut -d : -f1`)))
+   findhigh = `grep -n PARAMS $molnam.inp`
+   strlnhigh = parse(Int,readchomp(pipeline(findhigh,`cut -d : -f1`)))
+   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
+   return strlnctrl,strln2nd,strlnhigh,file
+end
+
+function outputinit(molnam,params,scls,linelength)
+
+  strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+
+
+   controls = file[strlnctrl+1:strln2nd-2, 1]
+   
+   secvalues = params[1:15]
+   highervalues = params[16:end]
+   secscale = scls[1:15]
+   highscale = scls[16:end]
+
+   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   highnam = file[strlnhigh:strlnhigh+length(highervalues)-1,1]
+   fullnam = vcat(secnam, highnam)
+   
+   secondord = fill("0",15)
+   higherord = fill("0",length(highnam))
+   
+   for i in 1:length(secondord)
+      ln = 30 - length(secnam[i])
+      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(secscale[i],6))
+   end
+   
+   for i in 1:length(higherord)
+      ln = 30 - length(highnam[i])
+      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6))
+   end
+   
+   time = now()
+   
+   io = open("$molnam.out","w")
+      println(io,molnam,"   @   ",time)
+      println(io,"")
+      println(io,"Control Parameters")
+      for i in 1:length(controls)
+         println(io,controls[i])
+      end
+      println(io,"")
+      println(io,"Initial Parameters")
+      for i in 1:length(secvalues)
+         println(io,secondord[i])
+      end
+      println(io,"")
+      for i in 1:length(highervalues)
+         println(io,higherord[i])
+      end
+      println(io,"")
+      println(io,"Number of lines = $linelength")
+      println(io,"")
 end

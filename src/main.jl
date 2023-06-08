@@ -90,17 +90,20 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    err = vcat(ser,cde)
    if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check
       lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
-      println(size(lines))
+      linelength = (size(lines,1))
    else # Self-consistency check
       lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
       lines = pred2lne(lines,ctrl["S"])
    end
+
    #determine the states
    linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
    jlist = jlister(linds)
    #println(linds)
    #opt
 #   println("Beginning optimization")
+   outputinit(molnam,prm,err,linelength)
+
    tsrp, puncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg)
    println(tsrp)
    println(puncs)
