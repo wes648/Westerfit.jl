@@ -78,6 +78,7 @@ Add the SparseArrays and StaticArrays packages to your Julia installation.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
 Next up, you'll need to install [http://fy.chalmers.se/subatom/wigxjpf/](WIGXJPF).
 Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
+The repository will download with the library compiled on an x86-64 Ubuntu based system but this may not work on every system.
 Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
 This script just needs the following two lines:
 ```
