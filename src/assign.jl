@@ -6,6 +6,9 @@ This is where the assignment routines are located for westerfit.
 
 
 ### EXPECTATION
+kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
+
 function mexpect(vecs,jsd,nf,mc,σ)
    m2 = kron(Diagonal(msbuilder(nf,mc,σ)) ^2, I(jsd))
    mlist = diag(vecs' * m2 * vecs)
@@ -87,13 +90,13 @@ for i in 1:(2N+1)
 end
 """
 ### Expect-Expect-Overlap
-function expectassign!(vals,vecs,j,s,nf,mc,σ)
+function eeoassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
    md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
    vals = vals[list]
-   vecs = vecs[:,list]
+   vecs = vecs[:,list] #simplifies down to just ground tor-state
    list = neko(vecs,md,j,s,jsd,ns,nd,ni)
    vals = vals[list]
    vecs = vecs[:,list]   
@@ -105,13 +108,22 @@ function neko(vecs,mcd,j,s,jsd,ns,nd,ni)
    for i in 1:length(ns)
       n = ns[i]
       part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
-      part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
-      nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
+      part = part[koverlap(vecs,part,ni[i,1],ni[i,2],nd[i])]
+      nlist[ni[i,1]:ni[i,2]] = part
       n2[part] .= 0.0
    end
    return nlist
 end
-function koverlap()
+function koverlap(vecs,part,ns,nf,nd)
+   avecs = abs.(vecs[ns:nf,part])
+   piece = zeros(Int,nd)
+   for j in 1:nd 
+      a,b = Tuple(argmax(avecs))
+      piece[b] = a
+      avecs[:,b] *= 0.0
+      avecs[a,:] *= 0.0
+   end
+   return piece
 end
 
 ### RAM36
