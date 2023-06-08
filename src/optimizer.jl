@@ -508,9 +508,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #println(diag(H))
          #λlm = 0.0
          #if ρlm > 1e-6
-            μlm /= 20.0
+            #μlm /= 20.0
             #μlm /= 5.0
-            #μlm /= 1.25 #20.0
+            μlm /= 1.25 #20.0
          #end
          #Δlm *= 6.0
       else
