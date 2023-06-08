@@ -525,14 +525,9 @@ end
 
 
 function inpwriter(molnam::String, values)
-   findctrl = `grep -n CNTRLS $molnam.inp`
-   strlnctrl = parse(Int,readchomp(pipeline(findctrl,`cut -d : -f1`)))
-   find2nd = `grep -n 2NDORDER $molnam.inp`
-   strln2nd = parse(Int,readchomp(pipeline(find2nd,`cut -d : -f1`)))
-   findhigh = `grep -n PARAMS $molnam.inp`
-   strlnhigh = parse(Int,readchomp(pipeline(findhigh,`cut -d : -f1`)))
-   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
-   
+
+  strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+
    exz = values[7] #replace this with something more flexible
    eyy = values[8]
    values[7] = eyy
@@ -758,5 +753,67 @@ function outputinit(molnam,params,scls,linelength)
       end
       println(io,"")
       println(io,"Number of lines = $linelength")
+      println(io,"")
+end
+
+
+function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
+
+   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+
+   counter = parse(Int,scounter)
+
+   prd = paramarray[:,counter+1]
+   prdold = paramarray[:,counter]
+   
+   highervalues = prd[16:end]
+   
+   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   highnam = file[strlnhigh:strlnhigh+length(highervalues)-1,1]
+   fullnam = vcat(secnam, highnam)
+   
+   change = zeros(length(prd))
+   change[perm] .+= βf
+
+   schange = fill("Fixed",length(change))
+   for i in 1:length(change)
+      if change[i] != 0
+        schange[i] = @sprintf("%0.4f",change[i])
+      else
+      end
+   end
+   
+   percent = zeros(length(change))
+   for i in 1:length(change)
+      if prdold[i] !=0   
+         percent[i] = abs((change[i]/prdold[i])*100)
+      else
+         percent[i] = 0.0
+      end
+   end
+   maxloc = argmax(percent)
+   spercent = @sprintf("%0.4f", percent[maxloc])
+   maxname = fullnam[maxloc]
+   
+
+   prdprint = fill("0",length(fullnam))
+   for i in 1:length(prdprint)
+      ln = 30 - length(fullnam[i])
+      prdprint[i] = string(fullnam[i],"; ", lpad(prd[i],ln), "; ",lpad(schange[i],10))
+   end
+   
+   io = open("$molnam.out", "a")
+      println(io, "After $scounter Iterations:")
+      println(io, "")
+      println(io, "RMS = $srms MHz, log₁₀(λ) = $slλ")
+      println(io, "")
+      println(io, "                        Parameter     Change")
+      for i in 1:length(prdprint)
+         println(io, prdprint[i])
+      end
+      println(io,"")
+      println(io,"Max Change; $maxname, $spercent%")
+      println(io,"")
+      println(io,"-------------------------------------")
       println(io,"")
 end

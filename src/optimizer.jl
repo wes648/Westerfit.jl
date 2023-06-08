@@ -394,13 +394,19 @@ function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(15),stgs) .> 0)]
 end
 
-function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
+function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #vals,vecs = limeigcalc(nlist, inds, params)
    S = ctrl["S"]
    #println(inds)
    sd = Int(2*S+1)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   oparams = params
+   LIMIT = ctrl["maxiter"]
+
+
+   paramarray = zeros(Float64, length(params), LIMIT+1)
+   paramarray[:,1]=params
+   oparams = paramarray[:,1]
+
    rms, omc, = rmscalc(vals, inds, ofreqs)
    #perm,n = findnz(sparse(scales))
    perm = permdeterm(scales,stg)
@@ -414,13 +420,19 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
    #RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-6
    ϵ1 = 0.1E-6
-   LIMIT = ctrl["maxiter"]
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    println("Initial λ = $λlm")
    Δlm = nrm2(params[perm])/length(perm)
    counter = 0
    BAD = 1
+
+   io = open("$molnam.out", "a")
+   println(io,"Initial RMS = $rms MHz, Initial λ = $λlm")
+   println(io,"")
+   println(io,"-------------------------------------")
+   println(io,"")
+
    #println("Initial Δ = $Δlm")
    #println(omc)
    nparams = copy(params)
@@ -483,12 +495,14 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          H, jtw = build_hess(jtw,J,W)
          #println(diag(H))
          counter += 1
+         paramarray[:,counter+1] = params
          #sρlm = (@sprintf("%0.4f", ρlm))
          srms = (@sprintf("%0.4f", rms))
          slλ = (@sprintf("%0.4f", log10(λlm)))
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
+         iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
          #println(H^(-1/2))
          println(params)
          #println(diag(H))
@@ -534,7 +548,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg)
          #println(omc)
          break
       else
-         #write update to file
+
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
