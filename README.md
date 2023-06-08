@@ -80,10 +80,10 @@ Next up, you'll need to install [http://fy.chalmers.se/subatom/wigxjpf/](WIGXJPF
 Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
 Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
 This script just needs the following two lines:
-<code>
+```
  #!/bin/bash
  julia -tX /path/to/westerfit/scr/run.jl $1
-</code>
+```
 Set X to be the number of threads you want westerfit to run on (more is better!) and fill in your full path to the code.
 Now all you need to do to run westerfit is type `westerfit molnam` and it'll run on molnam.inp.
 You can replace molnam with any string.
