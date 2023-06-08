@@ -2,44 +2,39 @@
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
 
 Description of current status:
-Torsion-Rotation tested against BELGI & RAM36. See test/belgi and example/2ba
-Hyper-fine tested against SPFIT. see test/spfit
-SR undergoing testing. see test/spfit
+Current molecular tests are largely going well.
+Most problems are from minor differences in K assignment after diagonalization which is somewhat expected but nonetheless frustrating.
 
 The westerfit input file is divided into three sections each with a designated header. The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
 
 ### Control Settings
 Below are control settings, their meanings, and default values::Type
 
+**apology** (true::Bool): Prints a sincere if awkward apology for the name of the program
 
-**apology**: Prints a sincere if awkward apology for the name of the program, true::Bool
+**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. Currently ES run before F but this will be reversed in a future update. ESF
 
-**RUNmode**: Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. Currently ES run before F but this will be reversed in a future update. ESF::String
+**S** (0::Float64): Spin value of the internal spin source. This can be either electron or nuclear spin
 
+**NFOLD** (0::Int): Symmetry-fold of the internal rotor. 0 disables most of the torsional code (I think)
 
-**S**: Spin value of the internal spin source. This can be either electron or nuclear spin, 0::Float64
+**mcalc** (8::Int): Determines the size of the torsional basis as 2mcalc+1 for A & E symmetry states and 2mcalc+2 for B symmetry. BELGI uses 10 for the first stage and the equivalent of 4 for the second stage. I've found 5 to work reasonably well without being repulsively slow.
 
-**NFOLD**: Symmetry-fold of the internal rotor. 0 disables most of the torsional code (I think),  0::Int
+**vtmax** (0::Int): Largest torsional state output by the code. I *think* this also impacts what torsional states are used in the fitter. Best to keep with just ground state for now. 
 
-**mcalc**: Determines the size of the torsional basis as 2mcalc+1 for A & E symmetry states and 2mcalc+2 for B symmetry. BELGI uses 10 for the first stage and the equivalent of 4 for the second stage. 8::Int
+**Jmax** (0.0::Float64): Largest J value in the simulation. The code will automatically adjust if S is a half integer and print a warning.
 
-**vtmax**: Largest torsional state output by the code. I *think* this also impacts what torsional states are used in the fitter. Best to keep with just ground state for now. 0::Int
+**νmin** (0.0::Float64): Lowest frequency in the simulation in GHz
 
+**νmax** (40.::Float64): Highest frequency in the simulation in GHz. Make sure this is larger than νmin or the code will crash
 
-**Jmax**: Largest J value in the simulation, 0.0::Float64
+**INTthres** (0.0::Float64): Minimum intensity value included in the file
 
-**νmin**: Lowest frequency in the simulation in GHz, 0.0::Float64
+**TK** (8.0::Float64): Temperature of the simulation, not sure this is actually used because a certain author finds thermodynamics abhorrent
 
-**νmax**: Highest frequency in the simulation in GHz, 40.::Float64
+**λlm0** (0.0001::Float64): Scale-factor used to determine the inital Levenberg-Marquardt Parameter. This gets multiplied by a function of the rms to determine the LBMQ Parameter used in a given step.
 
-**INTthres**: Minimum intensity value included in the file, 0.0::Float64
-
-**TK**: Temperature of the simulation, not sure this is actually used because a certain author finds thermodynamics abhorrent, 8.0::Float64
-
-
-**λlm0**: Scale-factor used to determine the inital Levenberg-Marquardt Parameter. This gets multiplied by rms/(1+rms), 0.0001::Float64
-
-**turducken**: Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian, 1::Int
+**turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
 
 
 ### Second Order Parameters
@@ -69,12 +64,31 @@ These are manual coded in operators that are implemented as the anti-commutator 
 These lines can also be commented out but do not remove the lines opening with %.
 The first column is a name string for the operators.
 Here are some unicode characters for easier name: Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ.
-The second & third columns are Float64 and are the parameter value and step scale factor, respectively. Currently the step scale factor just acts as a binary of 0 meaning don't fit or non-zero meaning do fit. Will be expanded later.
+The second & third columns are Float64 and are the parameter value and step scale factor, respectively. A scale factor of zero will keep that operator fixed during the optimization.
 The next 8 columns are Int referring to the powers of the various operators as described in the line beginign that block of the input file.
 There are no checks of symmetry like in RAM36 so go wild. 
 One could also code in inverse powers but I'm not sure why one would. Let me know if you do and how it helped!
 The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
+
+### Installation
+Currently, the installation of westerfit is a touch convoluted.
+You will need to install [https://julialang.org/](Julia) and I recommend doing so through [https://github.com/JuliaLang/juliaup](juliaup). 
+Add the SparseArrays and StaticArrays packages to your Julia installation. 
+The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
+Next up, you'll need to install [http://fy.chalmers.se/subatom/wigxjpf/](WIGXJPF).
+Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
+Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
+This script just needs the following two lines:
+<code>
+ #!/bin/bash
+ julia -tX /path/to/westerfit/scr/run.jl $1
+</code>
+Set X to be the number of threads you want westerfit to run on (more is better!) and fill in your full path to the code.
+Now all you need to do to run westerfit is type `westerfit molnam` and it'll run on molnam.inp.
+You can replace molnam with any string.
+I recommend a helpful molecule name.
+Enjoy!
 
 
 ### A remark of inspiration:
