@@ -869,11 +869,12 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   if σtype(nf,σ) != 1 #A & B states have more symmetry
-      U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
-   else
-      U = ur(j,s,mcalc,σt)
-   end
+   #if σtype(nf,σ) != 1 #A & B states have more symmetry
+   #   U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
+   #else
+   #   U = ur(j,s,mcalc,σt)
+   #end
+   U = kron(ut(mcalc,σt),ur(j,s))
    H = (U*H*U)
    ### All lines commented with ### are for the Jacobi routine
    ###perm = kperm(j,s,mcalc)

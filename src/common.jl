@@ -339,15 +339,26 @@ This generates a standard Wang Transformation Matrix for a matrix of size m. As
    end
 end
 
-function ut(m,n)
+function ut(m,σt)::SparseMatrixCSC{Float64, Int64}
 """
 This builds the torsional Wang Transformation matrix for a span of -m:m with a
    rotational block size of 2*n+1. A pure torsional form can be built using n=0
 """
-   nd = 2*n+1
-   out = (1/sqrt(2)) .*  [-1*eye(m) zeros(m) rotl90(eye(m)); zeros(1,m) sqrt(2) zeros(1,m);
-   rotl90(eye(m)) zeros(m) eye(m)]
-   out = kron(out,eye(nd))
+   if σt == 0
+      c = spzeros(m)
+      r = c'
+      u = sparse((1/√2)*I,m,m)
+      l = rotl90(u)
+      out = [-u c l; r 1 r; l c u]
+   elseif σt==2
+      m += 1
+      c = spzeros(m)
+      u = sparse((1/√2)*I,m,m)
+      l = rotl90(u)
+      out = [-u c l; l c u]
+   else
+      out = sparse(I,2*m+1,2*m+1)
+   end
    return out
 end
 function ut(m,σt,j,s)
@@ -393,9 +404,11 @@ function eyr(x::Int)::Array{Float64,2}
    diagm(ones(x))
 end
 function ur(n::Int)::SparseMatrixCSC{Float64, Int64}
-   out = (1.0/sqrt(2.0)) * [-eye(n) spzeros(n) rotl90(eye(n)); 
-                        spzeros(1,n) sqrt(2) spzeros(1,n);
-                        rotl90(eye(n)) spzeros(n) eye(n)]
+      c = spzeros(n)
+      r = c'
+      u = sparse((1/√2)*I,n,n)
+      l = rotl90(u)
+      out = [-u c l; r 1 r; l c u]
    return out
 end
 function ur(j,s,m::Int,σt::Int)::SparseMatrixCSC{Float64, Int64}
