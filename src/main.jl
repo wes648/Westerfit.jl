@@ -23,7 +23,7 @@ const csl = 29979.2458
 
 function westersim(molnam::String, prm, ctrl)
    println("westersim!")
-   molnam = split(molnam,'.')[1]
+   molnam = String(split(molnam,'.')[1])
    #molnam = replace(molnam, r".inp"=>"")
    #read input file
    sof, ser = secordinp(molnam)
@@ -120,7 +120,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
 end
 
 function westerfit(molnam::String)
-   molnam = split(molnam,'.')[1]
+   molnam = String(split(molnam,'.')[1])
    #read input file
    ctrl = ctrlinp(molnam)
    if occursin("T",ctrl["RUNmode"])
