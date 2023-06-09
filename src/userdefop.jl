@@ -848,7 +848,6 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    #if true ∈ isnan.(hout)
    #   println("FUCK!!! j=$j, error from H-cd")
    #end
-   #println("hjbuild over \n")
    return hout
 end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
