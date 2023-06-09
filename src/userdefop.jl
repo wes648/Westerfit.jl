@@ -826,6 +826,7 @@ function htorq(sof,nf,mb,mk)
    return out
 end
 function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
+   #println("\n Begining hjbuild")
    nk = ngen(j,s)
    kk = kgen(j,s)
    nb = Matrix(transpose(nk))
@@ -838,7 +839,8 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #println("hout type = $(typeof(hout))")
    if s != zero(s)#add η
-      hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
+   #@time   hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
+      hout += kron(sof[15]*Diagonal(mk),Diagonal(kk))
    end
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
@@ -846,6 +848,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    #if true ∈ isnan.(hout)
    #   println("FUCK!!! j=$j, error from H-cd")
    #end
+   #println("hjbuild over \n")
    return hout
 end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)

@@ -264,16 +264,16 @@ end
 
 #####OUTPUTS
 function reslin(line,omc,cfrq)
-   part  = lpad(line[ 1],6)*";"
-   part *= lpad(Int(line[ 2]),4)*";"
-   part *= lpad(Int(line[ 3]),4)*";"
-   part *= lpad(Int(line[ 4]),4)*";"
-   part *= lpad(Int(line[ 5]),4)*";"
-   part *= lpad(line[ 6],6)*";"
-   part *= lpad(Int(line[ 7]),4)*";"
-   part *= lpad(Int(line[ 8]),4)*";"
-   part *= lpad(Int(line[ 9]),4)*";"
-   part *= lpad(Int(line[10]),4)*";"
+   part  = lpad(line[ 1],4)*";"
+   part *= lpad(Int(line[ 2]),3)*";"
+   part *= lpad(Int(line[ 3]),3)*";"
+   part *= lpad(Int(line[ 4]),3)*";"
+   part *= lpad(Int(line[ 5]),3)*";"
+   part *= lpad(line[ 6],4)*";"
+   part *= lpad(Int(line[ 7]),3)*";"
+   part *= lpad(Int(line[ 8]),3)*";"
+   part *= lpad(Int(line[ 9]),3)*";"
+   part *= lpad(Int(line[10]),3)*";"
    part *= " "*lpad(@sprintf("%0.5f", line[11]), 16)*";"
    part *= " "*lpad(@sprintf("%0.6f", omc), 16)*";"
    part *= " "*lpad(@sprintf("%0.5f", cfrq), 16)
