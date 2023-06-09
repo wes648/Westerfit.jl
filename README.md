@@ -73,10 +73,10 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 
 ### Installation
 Currently, the installation of westerfit is a touch convoluted.
-You will need to install [https://julialang.org/](Julia) and I recommend doing so through [https://github.com/JuliaLang/juliaup](juliaup). 
+You will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup). 
 Add the SparseArrays and StaticArrays packages to your Julia installation. 
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
-Next up, you'll need to install [http://fy.chalmers.se/subatom/wigxjpf/](WIGXJPF).
+Next up, you'll need to install [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/).
 Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
 The repository will download with the library compiled on an x86-64 Ubuntu based system but this may not work on every system.
 Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
