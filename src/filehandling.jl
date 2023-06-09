@@ -400,7 +400,7 @@ function uncrformatter(values,unc)
 end
 
 function uncrformattersci(values,unc)
-   uncertainty_digits = 3
+   uncertainty_digits = 2
 
    uncr = round.(unc, sigdigits = uncertainty_digits)
    uncstr = fill("0", length(uncr))
