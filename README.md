@@ -1,9 +1,7 @@
 # westerfit
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
 
-Description of current status:
-Current molecular tests are largely going well.
-Most problems are from minor differences in K assignment after diagonalization which is somewhat expected but nonetheless frustrating.
+**WARNING** This code has not yet been published! You are more than welcome to download it & fiddle around with it but if you need to publish the results, please reach out to the authors first! Once the paper is out, we will remove this warning and you'll be able to publish results without contacting us first.
 
 The westerfit input file is divided into three sections each with a designated header. The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
 
