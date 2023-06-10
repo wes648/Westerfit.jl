@@ -839,8 +839,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    hout += kron(eye(size(mk,1)), hrsr(sof[1:4],sof[5:8],sof[9:11],j,s,nb,kb,nk,kk))
    #println("hout type = $(typeof(hout))")
    if s != zero(s)#add η
-   #@time   hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
-      hout += kron(sof[15]*Diagonal(mk),Diagonal(kk))
+      hout += tsrop(sof[15],0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
    end
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)

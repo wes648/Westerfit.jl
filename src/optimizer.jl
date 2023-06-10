@@ -87,14 +87,9 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
       pr[rpid-4] = 1.0
       out = hrsr(zeros(4),pr,zeros(3),j,s,nb,kb,nk,kk)
       out = kron(I(size(mk,1)),out)
-   elseif (rpid==9)||(rpid==11) #qua
+   elseif 9 ≤ rpid ≤ 11 #qua
       pr = zeros(3)
       pr[rpid-8] = 1.0
-      out = hrsr(zeros(4),zeros(4),pr,j,s,nb,kb,nk,kk)
-      out = kron(I(size(mk,1)),out)
-   elseif (rpid==10) #qua
-      pr = zeros(3)
-      pr[2] = -1.0
       out = hrsr(zeros(4),zeros(4),pr,j,s,nb,kb,nk,kk)
       out = kron(I(size(mk,1)),out)
    elseif (rpid==12)||(rpid==14) # F or Vnf
@@ -557,6 +552,12 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
-   println(uncrformattersci(params[perm],puncs[perm]))
+   try
+      println(uncrformattersci(params[perm],puncs[perm]))
+   catch
+      println("Yikes! The uncertainty formatter failed")
+      println("There are likely some ill-fit parameters")
+      println("You'll have to manually typeset the uncertainties")
+   end
    return params, puncs, fomc, fcfrqs, vals
 end
