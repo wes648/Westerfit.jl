@@ -546,8 +546,8 @@ function wigdiv(x,s::Number)
    if s<one(s)
       return zero(x)
    else
-      return x ./ wig3j( s,2,s,
-                        -s,0,s)
+      return x / wig3j( s,2,s,
+                       -s,0,s)
    end
 end
 function qured(j,s,nb,nk)
@@ -895,6 +895,8 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
       vals, vecs = expectkassign!(vals,vecs,j,s,nf,mcalc,σ)      
+   elseif ctrl["assign"]=="eeo"
+      vals, vecs = eeoassign!(vals,vecs,j,s,nf,mcalc,σ)
    else
       vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
    end
