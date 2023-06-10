@@ -133,6 +133,8 @@ function koverlap(vecs,part,ns,nf,nd,n)
       avecs[:,b] *= 0.0
       avecs[a,:] *= 0.0
    end
+   piece[1:(n+isodd(n))] = sort(piece[1:(n+isodd(n))],rev=true)
+   piece[(n+isodd(n)+1):end] = sort(piece[(n+isodd(n)+1):end])
    return piece
 end
 
