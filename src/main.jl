@@ -30,6 +30,8 @@ function westersim(molnam::String, prm, ctrl)
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    if prm==nothing
       prm = vcat(sof,cdf)
+   else
+      prm[1:15] = sod2prep(prm[1:15])
    end
    #calculate energy levels
    σcnt = σcount(ctrl["NFOLD"])
