@@ -65,7 +65,7 @@ function westersim(molnam::String, prm, ctrl)
    #calculate transitions
    if occursin("S",ctrl["RUNmode"])
       kbT = ctrl["TK"]*20836.61912 #MHz/K
-      Qrt = sum(exp.(fvls))
+      Qrt = sum(exp.(fvls ./ -kbT))/3
       finfrq = zeros(0,3)
       finqns = zeros(Int,0,12)
       @time for sc in 1:σcnt
