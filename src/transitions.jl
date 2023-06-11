@@ -168,15 +168,15 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
-         thermfact = abs(-exp(-cvals[c]/kbT) + exprmin)/Qrt
-         outfrq[i,2] = ints[r,c]#*thermfact
+         thermfact = abs(exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
+         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σc+1)*100
          outqns[i,1:6] = rqns[r,:]
          outqns[i,7:12] = cqns[c,:]
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
-         thermfact = abs(-exp(-rvals[r]/kbT) + expcmin)/Qrt
-         outfrq[i,2] = ints[r,c]#*thermfact
+         thermfact = abs(exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
+         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σr+1)*100
          outqns[i,1:6] = cqns[c,:]
          outqns[i,7:12] = rqns[r,:]
       end
