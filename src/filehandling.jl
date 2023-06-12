@@ -834,7 +834,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
 end
 
 
-function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
+function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
 
    strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
 
@@ -902,7 +902,6 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
          end
       end
 
-   ctrl = ctrlinit()
    if ctrl["apology"] == true
       println(io,"Again, sorry about the name...")
    end

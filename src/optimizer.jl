@@ -501,7 +501,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
          #println(H^(-1/2))
-         println(params)
+         #println(params)
          #println(diag(H))
          #λlm = 0.0
          #if ρlm > 1e-6
@@ -559,6 +559,6 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
    slλ = (@sprintf("%0.4f", log10(λlm)))
-   outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
+   outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    return params, puncs, fomc, fcfrqs, vals
 end
