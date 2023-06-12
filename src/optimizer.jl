@@ -448,6 +448,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
    #uncs = paramunc!(uncs,H,perm,omc)
+   endpoint = "not yet"
    converged=false
    while converged==false
       #=
@@ -549,7 +550,6 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          endpoint = "iter"
          break
       else
-
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)

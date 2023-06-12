@@ -497,6 +497,9 @@ function uncrformattersci(values,unc)
       if valhalf[i] == "0."
          valhalf[i] *= "0"
       end
+      if valhalf[i] == "-0."
+         valhalf[i] *= "0"
+      end
       if uncr[i] == 0.0
          valunc[i] = string(valhalf[i], "e", evalue[i], " (Fixed)")
       elseif abs(unc[i]) >= abs(values[i])
@@ -763,6 +766,7 @@ function outputinit(molnam,params,scls,linelength)
       println(io,"")
       println(io,"Number of lines = $linelength")
       println(io,"")
+   close(io)
 end
 
 
@@ -828,6 +832,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
       println(io,"")
       println(io,"-------------------------------------")
       println(io,"")
+   close(io)
 end
 
 
@@ -839,7 +844,7 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
    scounter = lpad(counter,3)
 
 
-   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵxz","ϵyy","χzz","χxz","χxx-χyy","F (MHz)","ρ","V3","η"]
    highnamall = file[strlnhigh:end,1]
    highstg= file[strlnhigh:end,12]
    highnam = highnamall[highstg .!= 0.0]
@@ -856,8 +861,10 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
       elseif endpoint == "LMthresh"
          println(io,"λlm exceeded threshold.")
          println(io,"If you were using the turducken, try again without it.")
-      else endpoint == "iter"
+      elseif endpoint == "iter"
          println(io,"Alas, the iteration count has exceeded the limit.")
+      else
+         println("The output writer seems to be having issues.")
       end
 
       println(io,"")
@@ -870,13 +877,13 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
 
       try
          finalunc = uncrformattersci(params,puncs)
-
-         formatted = fill("0",2,length(finalunc))
-         for i in 1:length(finalunc)
+         
+         formatted = fill("0",2,length(fullnam))
+         for i in 1:length(fullnam)
             ln = 30 - length(fullnam[i])
-            formatted[i] = string(fullnam[i], "; ", lpad(formatted[i],ln))
+            formatted[i] = string(fullnam[i], "; ", lpad(finalunc[i],ln))
          end
-         for i in 1:length(formatted)
+         for i in 1:length(fullnam)
             println(io,formatted[i])
          end
       catch
@@ -896,5 +903,7 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
             println(io,unformat[i])
          end
       end
+   close(io)
 
+   println("Output written to $molnam.out!")
 end
