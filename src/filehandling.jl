@@ -709,16 +709,21 @@ function outputinit(molnam,params,scls,linelength)
 
   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
 
+   indexcon = first(findall(isequal("%CNTRLS"),file[:,1]))
+   index2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
 
-   controls = file[strlnctrl+1:strln2nd-2, 1]
+   controls = file[indexcon+1:index2nd-2, 1]
    
    secvalues = params[1:15]
    highervalues = params[16:end]
    secscale = scls[1:15]
    highscale = scls[16:end]
+   highstg= file[strlnhigh:end,12]
+
 
    secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
-   highnam = file[strlnhigh:strlnhigh+length(highervalues)-1,1]
+   highnamall = file[strlnhigh:end,1]
+   highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
    
    secondord = fill("0",15)
@@ -749,7 +754,7 @@ function outputinit(molnam,params,scls,linelength)
          println(io,secondord[i])
       end
       println(io,"")
-      for i in 1:length(highervalues)
+      for i in 1:length(higherord)
          println(io,higherord[i])
       end
       println(io,"")
@@ -766,11 +771,14 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
 
    prd = paramarray[:,counter+1]
    prdold = paramarray[:,counter]
+   highstg= file[strlnhigh:end,12]
+
    
    highervalues = prd[16:end]
    
    secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
-   highnam = file[strlnhigh:strlnhigh+length(highervalues)-1,1]
+   highnamall = file[strlnhigh:end,1]
+   highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
    
    change = zeros(length(prd))
@@ -802,7 +810,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
       ln = 30 - length(fullnam[i])
       prdprint[i] = string(fullnam[i],"; ", lpad(prd[i],ln), "; ",lpad(schange[i],10))
    end
-   
+      
    io = open("$molnam.out", "a")
       println(io, "After $scounter Iterations:")
       println(io, "")
