@@ -423,7 +423,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    BAD = 1
 
    io = open("$molnam.out", "a")
-   println(io,"Initial RMS = $rms MHz, Initial λ = $λlm")
+   println(io,"Initial RMS = $rms MHz")
+   println("Initial λ = $λlm")
    println(io,"")
    println(io,"-------------------------------------")
    println(io,"")
