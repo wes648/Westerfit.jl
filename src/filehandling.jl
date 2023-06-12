@@ -698,8 +698,6 @@ function TraWriterold(molnam,freqs, qunus)
    println("Transitions written to $molnam.cat!")
 end
 
-
-
 function findstrinput(molnam)
    findctrl = `grep -n CNTRLS $molnam.inp`
    strlnctrl = parse(Int,readchomp(pipeline(findctrl,`cut -d : -f1`)))
@@ -844,7 +842,7 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
    scounter = lpad(counter,3)
 
 
-   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵxz","ϵyy","χzz","χxz","χxx-χyy","F (MHz)","ρ","V3","η"]
+   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵxz","ϵyy","χzz","χxz","χxx-χyy","F","ρ","V3","η"]
    highnamall = file[strlnhigh:end,1]
    highstg= file[strlnhigh:end,12]
    highnam = highnamall[highstg .!= 0.0]
@@ -877,7 +875,7 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
 
       try
          finalunc = uncrformattersci(params,puncs)
-         
+
          formatted = fill("0",2,length(fullnam))
          for i in 1:length(fullnam)
             ln = 30 - length(fullnam[i])
@@ -903,6 +901,12 @@ function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
             println(io,unformat[i])
          end
       end
+
+   ctrl = ctrlinit()
+   if ctrl["apology"] == true
+      println(io,"Again, sorry about the name...")
+   end
+
    close(io)
 
    println("Output written to $molnam.out!")
