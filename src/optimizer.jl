@@ -424,7 +424,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
 
    io = open("$molnam.out", "a")
    println(io,"Initial RMS = $rms MHz")
-   println("Initial λ = $λlm")
+   println(io,"Initial λ = $λlm")
    println(io,"")
    println(io,"-------------------------------------")
    println(io,"")
@@ -522,26 +522,31 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       #end
       if (rms ≤ goal)#&&(counter > 1)
          println("A miracle has come to pass. The fit has converged")
+         endpoint = "converge"
          break
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
          #uncs = paramunc!(uncs,H,perm,omc)
          #println(omc)
          #println(uncs)
+         endpoint = "RMS"
          break
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
          #uncs = paramunc!(uncs,H,perm,omc)
          #println(uncs)
+         endpoint = "step size"
          break
       elseif (λlm > 1.0e+9)&&(Δlm == 0.0)
          println("λlm exceeded threshold.")
          println("If you were using the turducken, try again without it")
+         endpoint = "LMthresh"
          break
       elseif counter ≥ LIMIT
          println("Alas, the iteration count has exceeded the limit")
          #println(omc)
+         endpoint = "iter"
          break
       else
 
@@ -553,12 +558,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
-   try
-      println(uncrformattersci(params[perm],puncs[perm]))
-   catch
-      println("Yikes! The uncertainty formatter failed")
-      println("There are likely some ill-fit parameters")
-      println("You'll have to manually typeset the uncertainties")
-   end
+   slλ = (@sprintf("%0.4f", log10(λlm)))
+   outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
    return params, puncs, fomc, fcfrqs, vals
 end
