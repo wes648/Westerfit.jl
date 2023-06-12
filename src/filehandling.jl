@@ -76,15 +76,15 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[2] = prd[2] + 2.0*prd[3]                  #B
    out[3] = prd[2] - 2.0*prd[3]                  #C
    out[4] = prd[4]                               #Dab
-   out[5] = (-prd[5] + √2.0*prd[6])/√3.0         #ϵzz
+   out[5] = (-prd[5] + √2*prd[6])/√3             #ϵzz
    out[6] = -(prd[5]/√3 + prd[6]/√6) + prd[8]    #ϵxx
    out[7] = -prd[7]                              #ϵxz
    out[8] = -(prd[5]/√3 + prd[6]/√6) - prd[8]    #ϵyy
    out[9] = prd[9]                               #χzz
    out[10] = -√(1.5)*prd[10]                     #χxz
    out[11] = √6*prd[11]                          #χxx-χyy
-   out[12] = prd[12]#/csl                         #F (MHz)
-   out[14] = 2.0*prd[14] #/ csl                   #V3
+   out[12] = prd[12]#/csl                        #F (MHz)
+   out[14] = 2.0*prd[14] #/ csl                  #V3
    out[15] = prd[15]                             #η
    return out
 end
@@ -102,15 +102,15 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[2] = unc[2]^2 + 4.0*unc[3]^2                #σB
    out[3] = unc[2]^2 + 4.0*unc[3]^2                #σC
    out[4] = unc[4]^2                               #σDab
-   out[5] = (prd[5]^2 + 2.0*prd[6]^2)/3.0          #σϵzz
-   out[6] = (4*prd[5]^2/3 + prd[6]^2/6) + prd[8]^2 #σϵxx
+   out[5] = (prd[5]^2 + 2*prd[6]^2)/3              #σϵzz
+   out[6] = (2*prd[5]^2 + prd[6]^2)/6 + prd[8]^2 #σϵxx
    out[7] = unc[7]^2                               #σϵxz
-   out[8] = out[6]                                 #σϵyy
+   out[8] = (2*prd[5]^2 + prd[6]^2)/6 + prd[8]^2 #σϵyy
    out[9] = unc[9]^2                               #σχzz
    out[10] = 1.5*unc[10]^2                         #σχxz
    out[11] = 6.0*unc[11]^2                         #σχxx-χyy
-   out[12] = unc[12]^2 #/csl                         #σF
-   out[14] = 4.0*unc[14]^2 #/ csl                   #σV3
+   out[12] = unc[12]^2 #/csl                       #σF
+   out[14] = 4.0*unc[14]^2 #/ csl                  #σV3
    out[15] = unc[15]^2                             #ση
    return sqrt.(out)
 end

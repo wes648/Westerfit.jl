@@ -3,7 +3,7 @@ test
 NFOLD = 0  
 S = 0.5
 TK = 25.0
-assign = eeo
+#assign = eeo
 RUNmode = F
 mcalc = 0
 vtmax = 0
