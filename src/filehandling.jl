@@ -537,6 +537,9 @@ function inpwriter(molnam::String, values)
    secvalues = values[1:15]
    highervalues = values[16:end]
 
+   indexcon = first(findall(isequal("%CNTRLS"),file[:,1]))
+   index2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
+
    controls = file[strlnctrl:strln2nd-2, 1]
    secnam = file[strln2nd:strlnhigh-3,1]
    secscale = file[strln2nd:strlnhigh-3,3]
@@ -825,4 +828,73 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
       println(io,"")
       println(io,"-------------------------------------")
       println(io,"")
+end
+
+
+function outputfinal(molnam,frms,counter,slλ,puncs,params,endpoint)
+
+   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+
+   srms = (@sprintf("%0.4f", frms))
+   scounter = lpad(counter,3)
+
+
+   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   highnamall = file[strlnhigh:end,1]
+   highstg= file[strlnhigh:end,12]
+   highnam = highnamall[highstg .!= 0.0]
+   fullnam = vcat(secnam, highnam)
+
+   io = open("$molnam.out", "a")
+
+      if endpoint == "converge"
+         println(io,"A miracle has come to pass. The fit has converged.")
+      elseif endpoint == "RMS"
+         println(io,"The RMS has stopped decreasing. Hopefully it is low.")
+      elseif endpoint == "step size"
+         println(io,"It would appear step size has converged.")
+      elseif endpoint == "LMthresh"
+         println(io,"λlm exceeded threshold.")
+         println(io,"If you were using the turducken, try again without it.")
+      else endpoint == "iter"
+         println(io,"Alas, the iteration count has exceeded the limit.")
+      end
+
+      println(io,"")
+
+      println(io,"After $scounter iterations:")
+      println(io,"")
+      println(io,"Final RMS = $srms MHz")
+      println(io,"Final log₁₀(λ) = $slλ")
+      println(io,"")
+
+      try
+         finalunc = uncrformattersci(params,puncs)
+
+         formatted = fill("0",2,length(finalunc))
+         for i in 1:length(finalunc)
+            ln = 30 - length(fullnam[i])
+            formatted[i] = string(fullnam[i], "; ", lpad(formatted[i],ln))
+         end
+         for i in 1:length(formatted)
+            println(io,formatted[i])
+         end
+      catch
+
+         println(io,"Yikes! The uncertainty formatter failed")
+         println(io,"There are likely some ill-fit parameters")
+         println(io,"You'll have to manually typeset the uncertainties")
+
+         unformat = fill("0",3,length(params))
+         for i in 1:length(params)
+            ln = 30 - length(fullnam[i])
+            ln2 = 30 - length(params[i])
+            unformat[i] = string(fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2))
+         end
+
+         for i in 1:length(unformat)
+            println(io,unformat[i])
+         end
+      end
+
 end
