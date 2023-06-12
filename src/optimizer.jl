@@ -381,9 +381,10 @@ end
 function aitkenδ(γ)#this was a weird accelerator idea
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
-function paramunc!(uncs,H,perm,omc)
-   uncs = □rt.(diag(inv(Symmetric(H)))) .* (sum(omc .^2))/(length(omc)-length(perm))
-   return uncs
+function paramunc!(uncs,H,W,perm,omc)
+   uncs = diag(inv(Symmetric(H)))
+   uncs .*= (omc' * W * omc)/(length(omc)-length(perm))
+   return □rt.(uncs)
 end
 function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(15),stgs) .> 0)]
@@ -554,7 +555,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    puncs = zeros(size(params))
-   puncs[perm] = paramunc!(puncs,H,perm,omc)
+   puncs[perm] = paramunc!(puncs,H,W,perm,omc)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])

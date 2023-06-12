@@ -1,4 +1,4 @@
-mcltol-a   @   2023-06-10T01:18:25.202
+mcltol-a   @   2023-06-12T10:48:49.637
 
 Control Parameters
 NFOLD = 0  
@@ -10,8 +10,6 @@ mcalc = 0
 vtmax = 0
 Jmax = 12.5
 νmin =   0.0
-νmax = 100.0
-%2NDORDER
 
 Initial Parameters
 BN;                 2297.4490975;   1.0
@@ -33,11 +31,17 @@ V3/2;                        0.0;   0.0
 
 Number of lines = 240
 
-Initial RMS = 38.17073778146986 MHz, Initial λ = 3.7469020246117588e-6
+Initial RMS = 38.17073778146986 MHz
+Initial λ = 3.7469020246117588e-6
 
 -------------------------------------
 
-N;            2334.415330029684;    36.9662
+After   1 Iterations:
+
+RMS = 0.0250 MHz, log₁₀(λ) = -5.4263
+
+                        Parameter     Change
+BN;            2334.415330029684;    36.9662
 BK;           1038.9151866566706;     1.9864
 B⨦;            78.20833885282939;     0.9946
 Dab;                         0.0;      Fixed
@@ -81,4 +85,31 @@ V3/2;                        0.0;      Fixed
 Max Change; T²₁(χ), 3.6846%
 
 -------------------------------------
+
+ The RMS has stopped decreasing. Hopefully it is low.
+
+After   2 iterations:
+
+Final RMS = 0.0248 MHz
+Final log₁₀(λ) = 2.6391
+
+A;               3.3733279(23)e3
+B;              1.19533178(25)e3
+C;               882.49857(25)e0
+Dab;               0.0e0 (Fixed)
+ϵzz;               0.0e0 (Fixed)
+ϵxx;               0.0e0 (Fixed)
+ϵxz;               0.0e0 (Fixed)
+ϵyy;              -0.0e0 (Fixed)
+χzz;                59.897(58)e0
+χxz;                 32.27(88)e0
+χxx-χyy;              5.96(78)e0
+F;                 0.0e0 (Fixed)
+ρ;                 0.0e0 (Fixed)
+V3;                0.0e0 (Fixed)
+η;                 0.0e0 (Fixed)
+
+
+ Again, sorry about the name...
+
 
