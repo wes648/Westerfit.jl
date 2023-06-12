@@ -102,10 +102,10 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[2] = unc[2]^2 + 4.0*unc[3]^2                #σB
    out[3] = unc[2]^2 + 4.0*unc[3]^2                #σC
    out[4] = unc[4]^2                               #σDab
-   out[5] = (prd[5]^2 + 2*prd[6]^2)/3              #σϵzz
-   out[6] = (2*prd[5]^2 + prd[6]^2)/6 + prd[8]^2 #σϵxx
+   out[5] = (unc[5]^2 + 2*unc[6]^2)/3              #σϵzz
+   out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2 #σϵxx
    out[7] = unc[7]^2                               #σϵxz
-   out[8] = (2*prd[5]^2 + prd[6]^2)/6 + prd[8]^2 #σϵyy
+   out[8] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2 #σϵyy
    out[9] = unc[9]^2                               #σχzz
    out[10] = 1.5*unc[10]^2                         #σχxz
    out[11] = 6.0*unc[11]^2                         #σχxx-χyy
