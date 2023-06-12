@@ -851,18 +851,18 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    io = open("$molnam.out", "a")
 
       if endpoint == "converge"
-         println(io,"A miracle has come to pass. The fit has converged.")
+         println(io," A miracle has come to pass. The fit has converged.")
       elseif endpoint == "RMS"
-         println(io,"The RMS has stopped decreasing. Hopefully it is low.")
+         println(io," The RMS has stopped decreasing. Hopefully it is low.")
       elseif endpoint == "step size"
-         println(io,"It would appear step size has converged.")
+         println(io," It would appear step size has converged.")
       elseif endpoint == "LMthresh"
-         println(io,"λlm exceeded threshold.")
-         println(io,"If you were using the turducken, try again without it.")
+         println(io," λlm exceeded threshold.")
+         println(io," If you were using the turducken, try again without it.")
       elseif endpoint == "iter"
-         println(io,"Alas, the iteration count has exceeded the limit.")
+         println(io," Alas, the iteration count has exceeded the limit.")
       else
-         println("The output writer seems to be having issues.")
+         println(" The output writer seems to be having issues.")
       end
 
       println(io,"")
@@ -886,9 +886,9 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
          end
       catch
 
-         println(io,"Yikes! The uncertainty formatter failed")
-         println(io,"There are likely some ill-fit parameters")
-         println(io,"You'll have to manually typeset the uncertainties")
+         println(io," Yikes! The uncertainty formatter failed")
+         println(io," There are likely some ill-fit parameters")
+         println(io," You'll have to manually typeset the uncertainties")
 
          unformat = fill("0",3,length(params))
          for i in 1:length(params)
@@ -902,10 +902,11 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
          end
       end
 
-   if ctrl["apology"] == true
-      println(io,"Again, sorry about the name...")
+   println(io,"\n")
+   if ctrl["apology"]==true
+      println(io," Again, sorry about the name...")
    end
-
+   println(io,"\n")
    close(io)
 
    println("Output written to $molnam.out!")
