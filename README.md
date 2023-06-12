@@ -3,6 +3,9 @@ A new program for the simulating and fitting of molecular rotational spectra for
 
 **WARNING** This code has not yet been published! You are more than welcome to download it & fiddle around with it but if you need to publish the results, please reach out to the authors first! Once the paper is out, we will remove this warning and you'll be able to publish results without contacting us first.
 
+## Quickstart
+
+The following is intended to be a quick reference on the input file structure & program usage. A more complete manual will be constructed once the paper is published.
 The westerfit input file is divided into three sections each with a designated header. The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
 
 ### Control Settings
@@ -71,7 +74,7 @@ One could also code in inverse powers but I'm not sure why one would. Let me kno
 The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
 
-### Installation
+## Installation
 Currently, the installation of westerfit is a touch convoluted.
 You will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup). 
 Add the SparseArrays and StaticArrays packages to your Julia installation. 
@@ -79,6 +82,7 @@ The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believ
 Next up, you'll need to install [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/).
 Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
 The repository will download with the library compiled on an x86-64 Ubuntu based system but this may not work on every system.
+I'm not sure if this library will be useable on ARM-based processors. Please let me know if you figure out how to use it for such.
 Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
 This script just needs the following two lines:
 ```
@@ -92,7 +96,7 @@ I recommend a helpful molecule name.
 Enjoy!
 
 
-### A remark of inspiration:
+## A remark of inspiration:
 
 >I don't have any idea whether we will ever need spectroscopy again in 40 years. 
 >As for spectroscopy, people who want to do spectroscopy seem to be born that way.... 
