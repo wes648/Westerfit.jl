@@ -725,7 +725,8 @@ function outputinit(molnam,params,scls,linelength)
    highstg= file[strlnhigh:end,12]
 
 
-   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   secnam = [" BN", " BK", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
+             " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -781,7 +782,8 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    
    highervalues = prd[16:end]
    
-   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)","T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   secnam = [" BN", " BK", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
+             " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -872,7 +874,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"Final RMS = $srms MHz")
       println(io,"Final log₁₀(λ) = $slλ")
       println(io,"")
-
+      println(size(params))
       try
          finalunc = uncrformattersci(params,puncs)
 

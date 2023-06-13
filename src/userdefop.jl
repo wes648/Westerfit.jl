@@ -558,7 +558,7 @@ end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
              wig3j( nb, 2,nk,
-                   -kb,-q,kk)*(-1.0)^(nb+nk-kb+s+j+1)
+                   -kb,-q,kk)*(-1.0)^(nb+nk-kb+s+j)
 end
 function qutensor(pr)
    out = zeros(5)
