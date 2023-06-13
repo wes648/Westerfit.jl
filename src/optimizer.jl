@@ -418,6 +418,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    ϵ1 = 0.1E-6
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
+   oλlm = λlm
    println("Initial λ = $λlm")
    Δlm = nrm2(params[perm])/length(perm)
    counter = 0
@@ -504,12 +505,14 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #println(H^(-1/2))
          #println(params)
          #println(diag(H))
-         #λlm = 0.0
-         #if ρlm > 1e-6
-            #μlm /= 20.0
-            #μlm /= 5.0
+         #λlm = λgen(μlm, rms) 
+         if λlm < oλlm
+            μlm /= 20.0
+         #   μlm /= 5.0
+         else
             μlm /= 1.25 #20.0
-         #end
+         end
+         #oλlm = λlm
          #Δlm *= 6.0
       else
          #params .= oparams
