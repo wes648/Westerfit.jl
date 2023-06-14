@@ -13,7 +13,7 @@ Below are control settings, their meanings, and default values::Type
 
 **apology** (true::Bool): Prints a sincere if awkward apology for the name of the program
 
-**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. Currently ES run before F but this will be reversed in a future update. ESF
+**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. The Fit will run first and then put the new parameters into the ES calculation.
 
 **S** (0::Float64): Spin value of the internal spin source. This can be either electron or nuclear spin
 
