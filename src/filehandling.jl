@@ -873,11 +873,20 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"")
       println(io,"Final RMS = $srms MHz")
       println(io,"Final log₁₀(λ) = $slλ")
-      println(io,"")
-      println(size(params))
+      println(io,"\n")
+
+      unformat = fill("0",length(params))
+      for i in 1:length(params)
+         ln = 30 - length(fullnam[i])
+         ln2 = 30 - length(params[i])
+         unformat[i] = string(fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2))
+      end
+      for i in 1:length(unformat)
+         println(io,unformat[i])
+      end
+      println(io,"\n")
       try
          finalunc = uncrformattersci(params,puncs)
-
          formatted = fill("0",2,length(fullnam))
          for i in 1:length(fullnam)
             ln = 30 - length(fullnam[i])
@@ -887,21 +896,9 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
             println(io,formatted[i])
          end
       catch
-
          println(io," Yikes! The uncertainty formatter failed")
          println(io," There are likely some ill-fit parameters")
-         println(io," You'll have to manually typeset the uncertainties")
-
-         unformat = fill("0",3,length(params))
-         for i in 1:length(params)
-            ln = 30 - length(fullnam[i])
-            ln2 = 30 - length(params[i])
-            unformat[i] = string(fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2))
-         end
-
-         for i in 1:length(unformat)
-            println(io,unformat[i])
-         end
+         println(io," You'll have to manually typeset the uncertainties\n")
       end
 
    println(io,"\n")
