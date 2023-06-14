@@ -404,10 +404,12 @@ function uncrformattersci(values,unc)
 
    uncr = round.(unc, sigdigits = uncertainty_digits)
    uncstr = fill("0", length(uncr))
-   
+
    for i in 1:length(uncr)
       if uncr[i] == 0.0
          uncstr[i] = string("Fixed")
+      elseif uncr[i] ≥ 1.0 && typeof(uncr[i]) == Float64
+         uncstr[i] = num_to_string(uncr[i],"%0.2e")
       else
          number = abs(floor(Int, log10(unc[i]))) + uncertainty_digits - 1
          words = string("%0.",number,"f")
@@ -418,18 +420,22 @@ function uncrformattersci(values,unc)
    uncstr1 = Base.lstrip.(uncstr, '0')
    uncstr1 = Base.lstrip.(uncstr1, '.')
    uncstr1 = Base.lstrip.(uncstr1, '0')
+
    
    uncunstr = tryparse.(Float64, uncstr1)
+
+
    for i in 1:length(uncunstr)
-      if uncunstr[i] == Float64 && 10.0 <= uncunstr[i] < 100.0
-         uncunstr[i] *= 10
-      elseif uncunstr[i] == Float64 && 1.0 <= uncunstr[i] < 10.0
+     # if typeof(uncunstr[i]) == Float64 && 10.0 <= uncunstr[i] < 100.0
+     #    uncunstr[i] *= 10
+      if typeof(uncunstr[i]) == Float64 && 1.0 <= uncunstr[i] < 10.0
          uncunstr[i] *= 100
       end
    end
    uncstr1 = string.(uncunstr)
    uncstr1 = Base.rstrip.(uncstr1, '0')
    uncstr1 = Base.rstrip.(uncstr1, '.')
+   uncstr1 = Base.rstrip.(uncstr1, '0')
 
    valstr = fill("0", length(values))
    
