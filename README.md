@@ -41,7 +41,7 @@ Below are control settings, their meanings, and default values::Type
 
 
 ### Second Order Parameters
-The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occure upon initializing the code.
+The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
 
 $A$, $B$, and $C$ are the rotational constants corresponding to the $z$, $x$, and $y$ molecule fixed axes respectively. 
 $D_{ab}$ is the off-diagonal rotational constant for the Rho Axis Method. 
