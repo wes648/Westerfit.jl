@@ -53,7 +53,7 @@ It engages in the Hamiltonian as $-2\rho FP_{\alpha}N_{z}$ and $(A-F\rho^{2})N_{
 The $Vn$ is the first term in the potential expansion as determined by NFOLD.
 
 The $\epsilon$ terms are the spin-rotation coupling terms referring to axes in their subscripts. 
-ϵxz is the average of the $\epsilon$_{xz}$ and $\epsilon$_{zx}$ terms as they do not have seperable matrix elements. 
+ϵxz is the average of the $\epsilon_{xz}$ and $\epsilon_{zx}$ terms as they do not have seperable matrix elements. 
 These are transformed into spherical tensor notation upon start of the code.
 These can also serve as nuclear spin-rotation coupling as they are mathematically equivalent.
 
