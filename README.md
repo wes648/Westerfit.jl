@@ -87,7 +87,7 @@ Lastly, I recommend making a bash script called `westerfit` somewhere in your pa
 This script just needs the following two lines:
 ```
  #!/bin/bash
- julia -tX /path/to/westerfit/scr/run.jl $1
+ julia -tX /path/to/westerfit/src/run.jl $1
 ```
 Set X to be the number of threads you want westerfit to run on (more is better!) and fill in your full path to the code.
 Now all you need to do to run westerfit is type `westerfit molnam` and it'll run on molnam.inp.
