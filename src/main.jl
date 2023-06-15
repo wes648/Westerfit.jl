@@ -117,7 +117,6 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #   vals, vecs = rotdiag(Nmax,n,rotparams)
    #   println(vals)
    #end
-   #write output file
    return tsrp
 end
 

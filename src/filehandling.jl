@@ -435,7 +435,11 @@ function uncrformattersci(values,unc)
    uncstr1 = string.(uncunstr)
    uncstr1 = Base.rstrip.(uncstr1, '0')
    uncstr1 = Base.rstrip.(uncstr1, '.')
-   uncstr1 = Base.rstrip.(uncstr1, '0')
+   for i in 1:length(uncstr1)
+      if uncstr1[i] != "nothing" && parse(Float64, uncstr1[i]) > 10.0 
+         uncstr1[i] = Base.rstrip(uncstr1[i], '0')
+      end
+   end
 
    valstr = fill("0", length(values))
    
@@ -536,37 +540,41 @@ end
 
 function inpwriter(molnam::String, values)
 
-  strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+   iterativecopier(molnam)
 
-   exz = values[7] #replace this with something more flexible
-   eyy = values[8]
-   values[7] = eyy
-   values[8] = exz
+   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+
+   strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
+   strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
+   strlnhigh = first(findall(isequal("%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))"),file[:,1]))
 
    secvalues = values[1:15]
-   highervalues = values[16:end]
 
-   indexcon = first(findall(isequal("%CNTRLS"),file[:,1]))
-   index2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
+   highstg= file[strlnhigh+2:end,12]
+   ohighval = file[strlnhigh+2:end,2]
+   uval = ohighval[highstg .== 0.0]
+   newhighval = values[16:end]
+
+   highervalues = vcat(uval,newhighval)
 
    controls = file[strlnctrl:strln2nd-2, 1]
-   secnam = file[strln2nd:strlnhigh-3,1]
-   secscale = file[strln2nd:strlnhigh-3,3]
+   secnam = file[strln2nd+1:strlnhigh-1,1]
+   secscale = file[strln2nd+1:strlnhigh-1,3]
 
-   highnam = file[strlnhigh:end,1]
-   highscale = file[strlnhigh:end,3]
-   higha= file[strlnhigh:end,4]
-   highb= file[strlnhigh:end,5]
-   highc= file[strlnhigh:end,6]
-   highd= file[strlnhigh:end,7]
-   highe= file[strlnhigh:end,8]
-   highf= file[strlnhigh:end,9]
-   highg= file[strlnhigh:end,10]
-   highh= file[strlnhigh:end,11]
-   highstg= file[strlnhigh:end,12]
+   highnam = file[strlnhigh+2:end,1]
+   highscale = file[strlnhigh+2:end,3]
+   higha= file[strlnhigh+2:end,4]
+   highb= file[strlnhigh+2:end,5]
+   highc= file[strlnhigh+2:end,6]
+   highd= file[strlnhigh+2:end,7]
+   highe= file[strlnhigh+2:end,8]
+   highf= file[strlnhigh+2:end,9]
+   highg= file[strlnhigh+2:end,10]
+   highh= file[strlnhigh+2:end,11]
    
    secondord = fill("0",15)
-   higherord = fill("0",length(file[strlnhigh:end,1]))
+   higherord = fill("0",length(file[strlnhigh+2:end,1]))
+
 
    for i in 1:length(secvalues)
       ln = 30 - length(secnam[i])
