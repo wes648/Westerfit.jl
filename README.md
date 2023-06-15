@@ -13,7 +13,7 @@ Below are control settings, their meanings, and default values::Type
 
 **apology** (true::Bool): Prints a sincere if awkward apology for the name of the program
 
-**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. Currently ES run before F but this will be reversed in a future update. ESF
+**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. The Fit will run first and then put the new parameters into the ES calculation.
 
 **S** (0::Float64): Spin value of the internal spin source. This can be either electron or nuclear spin
 
@@ -37,11 +37,11 @@ Below are control settings, their meanings, and default values::Type
 
 **turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
 
-**assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, expect, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. RAM36 uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. expectk is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, eeo does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally expect is recommended but RAM36 works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in eeo but find it's performance lacking.
+**assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, expect, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. RAM36 uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. expectk is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, eeo does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally expect is recommended but RAM36 works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in eeo but find its performance lacking.
 
 
 ### Second Order Parameters
-The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occure upon initializing the code.
+The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
 
 $A$, $B$, and $C$ are the rotational constants corresponding to the $z$, $x$, and $y$ molecule fixed axes respectively. 
 $D_{ab}$ is the off-diagonal rotational constant for the Rho Axis Method. 
@@ -53,7 +53,7 @@ It engages in the Hamiltonian as $-2\rho FP_{\alpha}N_{z}$ and $(A-F\rho^{2})N_{
 The $Vn$ is the first term in the potential expansion as determined by NFOLD.
 
 The $\epsilon$ terms are the spin-rotation coupling terms referring to axes in their subscripts. 
-$\epsilon$xz is the average of the xz and zx terms as they do not have seperable matrix elements. 
+ϵxz is the average of the $\epsilon_{xz}$ and $\epsilon_{zx}$ terms as they do not have seperable matrix elements. 
 These are transformed into spherical tensor notation upon start of the code.
 These can also serve as nuclear spin-rotation coupling as they are mathematically equivalent.
 
@@ -87,7 +87,7 @@ Lastly, I recommend making a bash script called `westerfit` somewhere in your pa
 This script just needs the following two lines:
 ```
  #!/bin/bash
- julia -tX /path/to/westerfit/scr/run.jl $1
+ julia -tX /path/to/westerfit/src/run.jl $1
 ```
 Set X to be the number of threads you want westerfit to run on (more is better!) and fill in your full path to the code.
 Now all you need to do to run westerfit is type `westerfit molnam` and it'll run on molnam.inp.
