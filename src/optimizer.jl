@@ -564,5 +564,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
+   println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
+   inpwriter(molnam, params)
    return params, puncs, fomc, fcfrqs, vals
 end
