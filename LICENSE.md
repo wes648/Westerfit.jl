@@ -1,4 +1,3 @@
- ----------------------------------------------------------------------------
  JH "Wes" Westerfield started this project. At the moment it is not ready for
  unrestricted usage. If you really need to use it right now, let me know 
  before you do so.
@@ -12,6 +11,5 @@
  is missing. I'd also just love to nerd out over weird spectroscopy problems
  with you.
  Please enjoy, Wes
- ----------------------------------------------------------------------------
 
 
