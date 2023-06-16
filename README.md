@@ -15,6 +15,8 @@ Below are control settings, their meanings, and default values::Type
 
 **RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. The Fit will run first and then put the new parameters into the ES calculation.
 
+**overwrite** (true::Bool): Whether or not to overwrite the input file with the new values from the fit. Regardless, the input file will be copied to a back up.
+
 **S** (0::Float64): Spin value of the internal spin source. This can be either electron or nuclear spin
 
 **NFOLD** (0::Int): Symmetry-fold of the internal rotor. 0 disables most of the torsional code (I think)
