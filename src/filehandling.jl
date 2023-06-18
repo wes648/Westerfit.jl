@@ -557,7 +557,7 @@ function inpwriter(molnam::String, values)
 
    highervalues = vcat(uval,newhighval)
 
-   controls = file[strlnctrl:strln2nd-2, 1]
+   controls = file[strlnctrl:strln2nd-1, 1]
    secnam = file[strln2nd+1:strlnhigh-1,1]
    secscale = file[strln2nd+1:strlnhigh-1,3]
 
@@ -723,7 +723,7 @@ function findstrinput(molnam)
    return strlnctrl,strln2nd,strlnhigh,file
 end
 
-function outputinit(molnam,params,scls,linelength)
+function outputinit(molnam,params,scls,linelength,ctrl)
 
   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
 
@@ -764,8 +764,8 @@ function outputinit(molnam,params,scls,linelength)
       println(io,molnam,"   @   ",time)
       println(io,"")
       println(io,"Control Parameters")
-      for i in 1:length(controls)
-         println(io,controls[i])
+      for (key,value) in ctrl
+         println(io,key," = ", value)
       end
       println(io,"")
       println(io,"Initial Parameters")
