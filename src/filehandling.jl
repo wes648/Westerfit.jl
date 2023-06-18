@@ -460,7 +460,7 @@ function uncrformattersci(values,unc)
          number = -1*floor(Int, log10(uncr[i])) + uncertainty_digits - 1
       end
       temp = round(values[i], digits = number)
-      valstr[i] = num_to_string(temp, "%0.14e")
+      valstr[i] = num_to_string(temp, "%0.10e")
    end
    
    valhalf = chop.(valstr, head = 0, tail = 4)
@@ -890,6 +890,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"\n")
 
       unformat = fill("0",length(params))
+      println("                    Parameter                   Uncertainty")
       for i in 1:length(params)
          ln = 30 - length(fullnam[i])
          ln2 = 30 - length(params[i])
@@ -899,6 +900,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
          println(io,unformat[i])
       end
       println(io,"\n")
+
       try
          finalunc = uncrformattersci(params,puncs)
          formatted = fill("0",2,length(fullnam))
@@ -906,6 +908,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
             ln = 30 - length(fullnam[i])
             formatted[i] = string(fullnam[i], "; ", lpad(finalunc[i],ln))
          end
+         println("Journal Formatted Values")
          for i in 1:length(fullnam)
             println(io,formatted[i])
          end
