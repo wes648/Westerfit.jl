@@ -105,7 +105,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #println(linds)
    #opt
 #   println("Beginning optimization")
-   outputinit(molnam,prm,err,linelength)
+   outputinit(molnam,prm,err,linelength,ctrl)
 
    tsrp, puncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    println(tsrp)
