@@ -755,7 +755,7 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    
    for i in 1:length(higherord)
       ln = 30 - length(highnam[i])
-      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6))
+      higherord[i] = string(" ",highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6))
    end
    
    time = now()
@@ -796,8 +796,8 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    
    highervalues = prd[16:end]
    
-   secnam = [" BN", " BK", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
-             " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
+   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)",
+             "T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -829,7 +829,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    prdprint = fill("0",length(fullnam))
    for i in 1:length(prdprint)
       ln = 30 - length(fullnam[i])
-      prdprint[i] = string(fullnam[i],"; ", lpad(prd[i],ln), "; ",lpad(schange[i],10))
+      prdprint[i] = string(" ",fullnam[i],"; ", lpad(prd[i],ln), "; ",lpad(schange[i],10))
    end
       
    io = open("$molnam.out", "a")
@@ -890,11 +890,11 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"\n")
 
       unformat = fill("0",length(params))
-      println("                    Parameter                   Uncertainty")
+      println(io,"                         Parameter                   Uncertainty")
       for i in 1:length(params)
          ln = 30 - length(fullnam[i])
          ln2 = 30 - length(params[i])
-         unformat[i] = string(fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2))
+         unformat[i] = string(" ",fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2))
       end
       for i in 1:length(unformat)
          println(io,unformat[i])
@@ -908,9 +908,9 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
             ln = 30 - length(fullnam[i])
             formatted[i] = string(fullnam[i], "; ", lpad(finalunc[i],ln))
          end
-         println("Journal Formatted Values")
+         println(io,"Journal Formatted Values")
          for i in 1:length(fullnam)
-            println(io,formatted[i])
+            println(io," ",formatted[i])
          end
       catch
          println(io," Yikes! The uncertainty formatter failed")
