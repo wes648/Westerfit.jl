@@ -233,7 +233,7 @@ Tq(q::Int)::Int = 3 + q #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
 
 function kgen(n::Int)::Array{Int,2}
-   return kron(collect(-n:n),ones(Int,1,2*n+1))
+   return kron(collect(-n:n),ones(Int,2*n+1)' )
 end
 function kgen2(n::Int)::LowerTriangular{Int, Matrix{Int}}
    ks = collect(-n:n)
@@ -245,7 +245,7 @@ function kgen2(n::Int)::LowerTriangular{Int, Matrix{Int}}
 end
 
 function kgeni(n::Int,lb::Int)::Array{Int,2}
-   return kron(collect(-n:n),ones(Int,1,lb))
+   return kron(collect(-n:n),ones(Int,lb)' )
 end
 function kgeni(j::Float64,s::Float64,lb::Int)::Array{Int,2}
    ns = Δlist(j,s)
@@ -256,22 +256,22 @@ function kgeni(j::Float64,s::Float64,lb::Int)::Array{Int,2}
       out[si:fi] = collect(-n:n)
       si = fi + 1
    end
-   return kron(out,ones(Int,1,lb))
+   return kron(out,ones(Int,lb)' )
 end
 function kgen(j::Float64,s::Float64)::Array{Int,2}
    ns = Δlist(j,s)
-   out = zeros(Int,Int((2.0*s+1.0)*(2.0*j+1.0)))
+   out = zeros(Int,convert(Int,(2.0*s+1.0)*(2.0*j+1.0)))
    si = 1
    for n in ns 
       fi = si + 2*n
       out[si:fi] = collect(-n:n)
       si = fi + 1
    end
-   lb = convert(Int,(2.0*j+1.0)*(2.0*s+1.0))
-   return kron(out,ones(Int,1,lb))
+   #lb = convert(Int,(2.0*j+1.0)*(2.0*s+1.0))
+   return kron(out,ones(Int,convert(Int,(2.0*j+1.0)*(2.0*s+1.0)))' )
 end
 function ngen(n::Int)::Array{Int,2}
-   return kron(fill(n,2*n+1),ones(Int,1,2*n+1))
+   return kron(fill(n,2*n+1),ones(Int,2*n+1)' )
 end
 function ngeni(j::Float64,s::Float64,lb::Int)::Array{Int,2}
    ns = Δlist(j,s)
@@ -282,19 +282,18 @@ function ngeni(j::Float64,s::Float64,lb::Int)::Array{Int,2}
       out[si:fi] = fill(n,2*n+1)
       si = fi + 1
    end
-   return kron(out,ones(Int,1,lb))
+   return kron(out,ones(Int,lb)' )
 end
 function ngen(j::Float64,s::Float64)::Array{Int,2}
    ns = Δlist(j,s)
-   lb = convert(Int, (2.0*s+1.0)*(2.0*j+1.0))
-   out = zeros(Int,lb)
+   out = zeros(Int,convert(Int, (2.0*s+1.0)*(2.0*j+1.0)))
    si = 1
    for n in ns 
       fi = si + 2*n
       out[si:fi] = fill(n,2*n+1)
       si = fi + 1
    end
-   return kron(out,ones(Int,1,lb))
+   return kron(out,ones(Int,convert(Int, (2.0*s+1.0)*(2.0*j+1.0)))' )
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
@@ -325,7 +324,7 @@ end
 #   end
 #end
 msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
-mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,1,2*mc+1))
+mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,2*mc+1)' )
 
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)

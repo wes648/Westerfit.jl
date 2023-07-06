@@ -9,9 +9,7 @@ This generates a list of all J₃ values that satisfy the Triangle Conditions wi
    inputs J₁ and J₂. This is typically used to determine N values for a given
    J and S.
 """
-   max = Int(J+S)
-   min = Int(abs(J-S))
-   return collect(min:max)
+   return collect(Int(abs(J-S)):Int(J+S))
 end
 
 function Δtest(a,b,c)
