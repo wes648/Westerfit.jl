@@ -67,7 +67,7 @@ function TriangleTester(triangles, ofreqs)
        max = findmax(line)
        line[max[2]] *= -1 #negates the smallest one
        if sum(line) >= 0.1 #checks that they sum to zero
-           println("The transitions on lines ", A, ", ", B, ", and ", C, " don't form a triangle.")
+           println("The transitions on lines ", triangles[i,1], ", ", triangles[i,2], ", and ", triangles[i,3], " don't form a triangle.")
        else
        end
    end
