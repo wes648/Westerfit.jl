@@ -43,6 +43,7 @@ function westersim(molnam::String, prm, ctrl)
    mcd = Int(2*ctrl["mcalc"]+(iseven(ctrl["NFOLD"]))+1)
    jfd = sd*Int(sum(2.0 .* jlist .+ 1.0))
    fvls = zeros(Float64,jfd*vtd,σcnt)
+   fpasz = zeros(Float64,jfd*vtd,σcnt)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
    fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
    @time @simd for sc in 1:σcnt
@@ -51,16 +52,17 @@ function westersim(molnam::String, prm, ctrl)
 	   jmsd = Int(mcd*sd*(2*jmax+1))
 	   jsvd = Int(jfd*vtd)
 #       fvls[1:jvsd,σ], fvcs[1:jmsd,1:jsvd,σ], fqns[:,1:jvsd,σ] = tsrcalc(sof,cdf,cdo,
-      tempa, tempe, tempq = tsrcalc(ctrl,prm,stg, cdo,
+      tempa, tempe, tempq, tpasz = tsrcalc(ctrl,prm,stg, cdo,
       	        ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],jlist,ctrl["S"],sd,σ)
       fvls[1:jsvd,sc] = tempa
+      fvls[1:jsvd,sc] = tpasz
       fvcs[1:jmsd,1:jsvd,sc] = tempe
       fqns[1:jsvd,:,sc] = tempq
    end
    println("yay energy levels are calculated!")
    #write energies to file
    if occursin("E",ctrl["RUNmode"])
-      engwriter(molnam,ctrl,fvls,fqns)
+      engwriter(molnam,ctrl,fvls,fqns,fpasz)
    end
    #calculate transitions
    if occursin("S",ctrl["RUNmode"])
