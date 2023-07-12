@@ -900,7 +900,13 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
-   return vals, vecs
+   pasz = zero(vals)
+   if s != zero(s)#add η
+      pasz = vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
+         j,s,Matrix(transpose(ngen(j,s))),
+         Matrix(transpose(kgen(j,s)),mb,ngen(j,s),kgen(j,s),mk) * vecs
+   end
+   return vals, vecs, pasz
 end
 
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
@@ -916,6 +922,7 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    msd = sd*mcd
    mstrt, mstop = mslimit(nf,mcalc,σ)
    outvals = zeros(Float64,jfd*vtd)
+   outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int(sd*(2*jmax+1)*mcd),jfd*vtd)
    for j in jlist #thread removed for troubleshooting purposes
@@ -924,12 +931,13 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
+      tvals, tvecs, tpasz = tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
       outvals[sind:find] = tvals###[pull]
+      outpasz[sind:find] = tpasz
       outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
    end
-   return outvals, outvecs, outquns
+   return outvals, outvecs, outquns, outpasz
 end
 
 function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
@@ -964,7 +972,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
          jd = Int(2.0*j) + 1
          #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc], = tsrdiag(ctrl,
             sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
          #fvls[sind:find,sc] = tvals#[pull]
          #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
