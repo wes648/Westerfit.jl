@@ -890,6 +890,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ###perm = assignperm(vecs)
    if ctrl["assign"]=="RAM36"
       perm = ramassign(vecs,j,s,mcalc,σt,vtm)
+      println(perm)
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
@@ -934,7 +935,7 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
       tvals, tvecs, tpasz = tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
-      outvals[sind:find] = tvals###[pull]
+      outvals[sind:find] = tvals
       outpasz[sind:find] = tpasz
       outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
