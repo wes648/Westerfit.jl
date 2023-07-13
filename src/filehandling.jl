@@ -365,7 +365,7 @@ Outputs energy levels with state assignments to a csv-like file
    for i in 1:len
       energy = eng[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
-      out[i] = englin(ctrl["S"],energy,qns[i,:],pasz)
+      out[i] = englin(ctrl["S"],energy,qns[i,:],pasz[i])
    end
    io = open("$molnam.eng", "w") do io
       for i in out

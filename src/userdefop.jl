@@ -399,6 +399,7 @@ function hrot2v2(pr,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}#fastest
    out .+= transpose(out)
    lst = diagind(out)
    out[lst] .= hrdiag(pr[2],pr[1],nk[lst],kk[lst])
+   #println(out)
    return out
 end
 function hrtest(n)::SparseMatrixCSC{Float64, Int64}
@@ -904,13 +905,14 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    if s != zero(s)#add η
       pasz = vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
          j,s,Matrix(transpose(ngen(j,s))),
-         Matrix(transpose(kgen(j,s)),mb,ngen(j,s),kgen(j,s),mk) * vecs
+         Matrix(transpose(kgen(j,s))),mb,ngen(j,s),kgen(j,s),mk) * vecs
    end
-   return vals, vecs, pasz
+   return vals, vecs, diag(pasz)
 end
 
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:15]
+   #println(sof)
    cdf = prmsetter(prm[16:end],stg)
    tormat, mk, mb = htor(sof,nf,mcalc,σ)
    mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)

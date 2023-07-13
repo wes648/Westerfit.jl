@@ -55,7 +55,7 @@ function westersim(molnam::String, prm, ctrl)
       tempa, tempe, tempq, tpasz = tsrcalc(ctrl,prm,stg, cdo,
       	        ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],jlist,ctrl["S"],sd,σ)
       fvls[1:jsvd,sc] = tempa
-      fvls[1:jsvd,sc] = tpasz
+      fpasz[1:jsvd,sc] = tpasz
       fvcs[1:jmsd,1:jsvd,sc] = tempe
       fqns[1:jsvd,:,sc] = tempq
    end
