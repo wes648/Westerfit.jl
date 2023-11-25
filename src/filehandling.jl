@@ -320,7 +320,7 @@ function englin(s,eng,qunl,pasz)
    part *= lpad(qunl[5],4)*","
    part *= lpad(qunl[6],4)*","
    part *= " "*lpad(@sprintf("%0.10f", eng), 16)
-   part *= " "*lpad(@sprintf("%0.10f", pasz), 16)
+   part *= ", "*lpad(@sprintf("%0.10f", pasz), 16)
    return part
 end
 function engwriter(molnam,ctrl,energies,qunus)
