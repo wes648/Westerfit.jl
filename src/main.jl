@@ -7,8 +7,8 @@ using SparseArrays
 using StaticArrays
 using Base.Threads
 using Dates
-include("@__DIR__/../WIGXJPF.jl")
-using .WIGXJPF
+#include("@__DIR__/../WIGXJPF.jl")
+using WIGXJPFjl
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../common.jl")
 include("@__DIR__/../filehandling.jl")

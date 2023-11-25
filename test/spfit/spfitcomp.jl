@@ -28,6 +28,7 @@ using LinearAlgebra
 include("@__DIR__/../../../src/main.jl")
 
 qns = ["J", "N", "Ka", "Kc", "E"]
+csl = 29979.2458
 
 function setvars(nams,vals,s) #sets all the variables to the values in nams and vals
    run(`cp ref.var test.var`)
@@ -46,9 +47,10 @@ function setvars(nams,vals,s) #sets all the variables to the values in nams and 
       elseif nam=="chixmy"
          val *= 0.25
       elseif nam=="chixz"
-         val *= 1.0
-      elseif nam=="epzz"
-         val *= √6
+         val *= -1.0
+      #elseif nam=="epxz"
+      #   val *= -1.0
+      #else
       end
       sedstr = "s/$nam/$val/g"
       sp = `sed -i $sedstr test.var`
@@ -73,8 +75,12 @@ function procspfit()
    spfit = readdlm("test.egy",',')
    perm = [6, 7, 8, 9, 3]
    spfit = spfit[:,perm]
-   spfit = spfit[sortperm(spfit[:,end], by=abs), :]
+   #spfit = spfit[sortperm(spfit[:,end], by=abs), :]
+#   spfit = spfit[sortperm(spfit[:,1]), :]
+   spfit = spfit[sortperm(spfit[:,5]), :]
+   #spfit = spfit[sortperm(spfit[:,1]), :]
    spfit[:,1] = (spfit[:,1].-1)./2
+   spfit[:,end] ./= csl
    return spfit
 end
 
@@ -82,7 +88,9 @@ function procwesterfit()
    west = readdlm("test.eng", ',')
    perm = [1, 2, 3, 4, 7]
    west = west[:,perm]
-   west = west[sortperm(west[:,end], by=abs), :]
+   #west = west[sortperm(west[:,end], by=abs), :]
+   west = west[sortperm(west[:,5]), :]
+   #west = west[sortperm(west[:,1]), :]
    west[:,1] = west[:,1].*0.5
    west[:,3] = abs.(west[:,3])
    return west
@@ -99,21 +107,33 @@ function westvspfit(spfit,west)
       err = rms(spfit[:,i], west[:,i])
       println("RMS of $(qns[i]) = $err")
    end
+   err = rms(spfit[:,end], west[:,end])*csl
+   println("RMS of $(qns[end]) = $err")
 end
 
 function runtest()
-   nams = ["Av"; "Bv"; "Cv"; "Dabv"; "DK"; "DNK"; "DN"; "dN"; "dK"; "chizz"; "chixmy"; "chixz"; "epzz"; "epxx"; "epyy"; "epxz"]
-  # vals = [3000.0; 1500.0; 1000.0; 50.0; .0; .0; .0; .0; .0; 0.; 10.; 0.; 3000.; 800.; 13.; 1000.]
-   vals = [000.0; 00.0; 000.0; 0.0; .0; .0; .0; .0; .0; 0.; 0.; 0.; 3000.; 00.; 0.; 00.]
+   nams = ["Av"; "Bv"; "Cv"; "Dabv"; "chizz"; "chixmy"; "chixz"; "epzz"; "epxx"; "epyy"; "epxz"]
+   #vals = [3000.0; 1500.0; 1000.0; 50.0; -30.; 20.; 50.; 000.; 00.; 0.; 00.] #just qua
+   vals = [3000.0; 1500.0; 1000.0; 50.0; -30.; -20.; 50.; 300.; 80.; 13.; 100.] #all
+   #vals = [3000.0; 1500.0; 1000.0; 50.0; -00.; 00.; 00.; 300.; 80.; 13.; 100.] #just sr
+   #vals = [3000.0; 1500.0; 1000.0; 0.0; -30.; 20.; 0.; 300.; 80.; 13.; 00.] #on-diag
    s = 1.0
    setvars(nams, vals, s)
-#   runspfit()
+   runspfit()
    runwesterfit()
-#   west = procwesterfit()
-#   spfit = procspfit()
-#   westvspfit(spfit,west)
+   west = procwesterfit()
+   spfit = procspfit()
+   westvspfit(spfit,west)
 #   println([west[:,1] spfit[:,1]])
+   plot(west[:,5],(spfit[:,5].-west[:,5]).*csl,seriestype=:scatter,label=false,ylab="ΔE (MHz)",
+      xlab="westerfit Energy (cm⁻¹)",dpi=500)
+   hline!([-1e-6,1e-6],label=false)
+   savefig("wesvspft.png")
 end
+
+runtest()
+
+#=
 function stabdiv(a,b)
    if b==zero(b)
       return 0.0
@@ -155,5 +175,4 @@ function runeatest()
    end
    savefig("parm.png")
 end
-
-runtest()
+=#

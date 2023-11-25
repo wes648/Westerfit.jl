@@ -510,7 +510,7 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}
    out = hrot2v2(rpr,nb,kb,nk,kk)
    if s == zero(s)
    elseif zero(s) < s < one(s)
-      f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
+      f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 1)
       out[f] += srlpart(spr,0,j,0.5,nb[f],kb[f],nk[f],kk[f])
       out[f] += srlpart(spr,2,j,0.5,nb[f],kb[f],nk[f],kk[f])
 #      @simd for l in 0:2:2
@@ -518,9 +518,11 @@ function hrsr(rpr,spr,qpr,j,s,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}
 #      end#sr for loop
    else
       f = (abs.(kb-kk) .≤ 2).*(abs.(nb-nk) .≤ 2)
-      @simd for l in 0:2:2
-         out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
-      end#sr for loop
+      #@simd for l in 0:2:2
+      #   out[f] += srlpart(spr,l,j,s,nb[f],kb[f],nk[f],kk[f])
+      #end#sr for loop
+      out[f] += srlpart(spr,0,j,s,nb[f],kb[f],nk[f],kk[f])
+      out[f] += srlpart(spr,2,j,s,nb[f],kb[f],nk[f],kk[f])
       out[f] += qulpart(qpr,j,s,nb[f],kb[f],nk[f],kk[f])
    end
    return out
@@ -558,7 +560,7 @@ end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
              wig3j( nb, 2,nk,
-                   -kb,-q,kk)*(-1.0)^(nb+nk-kb+s+j)
+                   -kb, q,kk)*(-1.0)^(nb+nk-kb+s+j)
 end
 function qutensor(pr)
    out = zeros(5)
@@ -573,7 +575,7 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    out = spzeros(size(nb))
    ten = qutensor(pr)
    @simd for q in -2:2
-      out += quelem(ten[Tq(-q)],q,j,s,nb,kb,nk,kk)
+      out += quelem(ten[Tq(-q)],-q,j,s,nb,kb,nk,kk)
    end
    #out .*= qured(j,s,nb,nk)
    out = wigdiv(out,s)
@@ -712,7 +714,7 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
                j,s,nb::Array{Int,2},kb::Array{Int,2},
                nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
-   #the below all commute!
+   #all in the follwing line commute!
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
    op *= sparse(npmp(c,nb,kb,nk,kk))
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
@@ -743,6 +745,28 @@ function torop(pr::Float64,p::Int,c::Int,s::Int,
    #end
    return (pr*0.5) * op
 end
+function cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
+   am = ntop(Int(sum(cdo[1,:])>0),nb,kb,nk,kk)
+   bm = nzop(Int(sum(cdo[2,:])>0),nb,kb,nk,kk)
+   cm = sparse(npmp(Int(sum(cdo[3,:])>0),nb,kb,nk,kk))
+   dm = nsop(Int(sum(cdo[4,:])>0),j,s,nb,kb,nk,kk) 
+   em = sparse(szop2(Int(sum(cdo[5,:])>0),j,s,nb,kb,nk,kk))
+   fm = paop(Int(sum(cdo[6,:])>0),mb,mk)
+   gm = cosp(Int(sum(cdo[7,:])>0),mb,mk)
+   hs = sinp(Int(sum(cdo[8,:])>0),mb,mk)
+   hy = sparse(nyop(Int(sum(cdo[8,:])>0),nb,kb,nk,kk))
+   out = zeros(size(mk).*size(nk))
+   @simd for i in eachindex(cdf)
+      rop = am^cdo[1,i] * bm^cdo[2,i] * cm^cdo[3,i] * dm^cdo[4,i] * em^cdo[5,i] * hy^*(1-δ(cdo[8,i],0))
+      rop += rop'
+      top = fm^cdo[6,i] * gm^cdo[7,i] * hs^cdo[8,i]
+      top += top'
+      top *= cdf[i]*0.125
+      out += kron(top,rop)
+   end
+   return out
+end
+
 function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
                mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
    out = torop(pr[1],p[1],c[1],s[1],mb,mk)
@@ -826,7 +850,7 @@ function htorq(sof,nf,mb,mk)
    return out
 end
 function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
-   #println("\n Begining hjbuild")
+   #println("\n Begining hjbuild for J = $j")
    nk = ngen(j,s)
    kk = kgen(j,s)
    nb = Matrix(transpose(nk))
@@ -844,9 +868,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    @simd for i in 1:length(cdf)
       hout += tsrop(cdf[i],cdo[:,i],j,s,nb,kb,mb,nk,kk,mk)
    end
-   #if true ∈ isnan.(hout)
-   #   println("FUCK!!! j=$j, error from H-cd")
-   #end
+   #@time hout += cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
    return hout
 end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
@@ -890,7 +912,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ###perm = assignperm(vecs)
    if ctrl["assign"]=="RAM36"
       perm = ramassign(vecs,j,s,mcalc,σt,vtm)
-      println(perm)
+      #println(perm)
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
@@ -904,11 +926,11 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    vecs = U*vecs
    pasz = zero(vals)
    if s != zero(s)#add η
-      pasz = vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
+      pasz = diag(vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
          j,s,Matrix(transpose(ngen(j,s))),
-         Matrix(transpose(kgen(j,s))),mb,ngen(j,s),kgen(j,s),mk) * vecs
+         Matrix(transpose(kgen(j,s))),mb,ngen(j,s),kgen(j,s),mk) * vecs)
    end
-   return vals, vecs, diag(pasz)
+   return vals, vecs, pasz
 end
 
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
