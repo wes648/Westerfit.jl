@@ -1,7 +1,7 @@
 # westerfit
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
 
-**WARNING** The westerfit team is currently in the processes of finishing a dissertation and moving across the country. The code will be additionally unstable with some very odd breakages or temporary features as Wes's dissertation gets finished. There will not be a chance for us to fix or address many of these issues prior to mid-September. We apologize for the inconvenience.
+The westerfit dev team is back! Questions can be directed to wes.harper2@gmail.com
 
 **WARNING** This code has not yet been published! You are more than welcome to download it & fiddle around with it but if you need to publish the results, please reach out to the authors first! Once the paper is out, we will remove this warning and you'll be able to publish results without contacting us first.
 
@@ -81,12 +81,11 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 ## Installation
 Currently, the installation of westerfit is a touch convoluted.
 You will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup). 
-Add the SparseArrays and StaticArrays packages to your Julia installation. 
+Add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Julia installation.
+The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and I don't know if the install script will work on Windows.
+You may have to manually place the shared library in the packages deps directory and I ask that you let me know if that's the case.
+You may also have better luck using WSL on Windows if you don't have access to a Linux machine.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
-Next up, you'll need to install [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/).
-Place the compiled library in westerfit/lib and westerfit will look for `libwigxjpf_shared.so`.
-The repository will download with the library compiled on an x86-64 Ubuntu based system but this may not work on every system.
-I'm not sure if this library will be useable on ARM-based processors. Please let me know if you figure out how to use it for such.
 Lastly, I recommend making a bash script called `westerfit` somewhere in your path.
 This script just needs the following two lines:
 ```
