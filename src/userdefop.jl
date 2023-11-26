@@ -406,8 +406,8 @@ function hrtest(n)::SparseMatrixCSC{Float64, Int64}
    pr = [1.75; 1.25; 0.25; 0.02]
    nk = ngen(n)
    kk = kgen(n)
-   nb = Matrix(transpose(nk))
-   kb = Matrix(transpose(kk))
+   nb = permutedims(nk)
+   kb = permutedims(kk)
    return hrot2v2(pr,nb,kb,nk,kk)
 end
 function hrttest(n,mc,nf,σ)::SparseMatrixCSC{Float64, Int64}
@@ -425,9 +425,9 @@ function hrlpart(out,pr,l::Int,nb,kb,nk,kk)::Array{Float64,2}
 end
 function hrot(pr,n)
    nks = ngen(n)
-   nbs = Matrix(transpose(nks))
+   nbs = permutedims(nks)
    kks = kgen(n)
-   kbs = transpose(kks)
+   kbs = permutedims(kks)
    out = zeros(size(kks))
    @simd for l in 0:2:2
       out .= hrlpart(out,pr,l,nbs,kbs,nks,kks)
@@ -444,9 +444,9 @@ end
 function hrot(pr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
    nks = ngen(j,s,lb)
-   nbs = Matrix(transpose(nks))
+   nbs = permutedims(nks)
    kks = kgen(j,s,lb)
-   kbs = transpose(kks)
+   kbs = permutedims(kks)
    out = zeros(size(kks))
    @simd for l in 0:2:2
       out .= hrlpart(out,pr,l,nbs,kbs,nks,kks)
@@ -482,9 +482,9 @@ end
 function hsr(pr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
    nks = ngen(j,s)
-   nbs = Matrix(transpose(nks))
+   nbs = permutedims(nks)
    kks = kgen(j,s)
-   kbs = transpose(kks)
+   kbs = permutedims(kks)
    out = zeros(size(kks))
    f = (abs.(kbs-kks) .≤ 2).*(abs.(nbs-nks) .≤ 2)
    @simd for l in 0:2:2
@@ -496,9 +496,9 @@ end
 function hrsr(rpr,spr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
    nks = ngen(j,s,lb)
-   nbs = Matrix(transpose(nks))
+   nbs = permutedims(nks)
    kks = kgen(j,s,lb)
-   kbs = transpose(kks)
+   kbs = permutedims(kks)
    out = zeros(size(kks))
    @simd for l in 0:2:2
       out .= hrlpart(out,rpr,l,nbs,kbs,nks,kks)
@@ -530,8 +530,8 @@ end
 function hrsrtest(pr,j,s)
    nk = ngen(j,s)
    kk = kgen(j,s)
-   nb = Matrix(transpose(nk))
-   kb = Matrix(transpose(kk))
+   nb = permutedims(nk)
+   kb = permutedims(kk)
    out = hrsr(pr[1:4],pr[5:8],pr[9:11],j,s,nb,kb,nk,kk)
    return out
 end
@@ -582,10 +582,7 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    return out
 end
 
-jnred(j::Float64,n::Float64)::Float64 = √((2.0*j+1.0)*(2.0*n+1.0))
-jnred(j::Float64,n::Int)::Float64 = √((2.0*j+1.0)*(2*n+1))
-jnred(j::Int,n::Float64)::Float64 = √((2*j+1)*(2.0*n+1.0))
-jnred(j::Int,n::Int)::Float64 = √((2*j+1)*(2*n+1))
+jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
 
 function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
    out = zeros(9)
@@ -799,8 +796,8 @@ end
 function hbuild(rot,spi,qua,tor,cdf,cdo,j,s,mb,mk)
    nk = ngen(j,s)
    kk = kgen(j,s)
-   nb = Matrix(transpose(nk))
-   kb = Matrix(transpose(kk))
+   nb = permutedims(nk)
+   kb = permutedims(kk)
    hout = kron(eye(size(mk,1)), hrsr(rot,spi,qua,j,s,nb,kb,nk,kk))
    htor = torop(tor[1],2,0,0,mb,mk)
    htor .+= torop(tor[3],0,1,0,mb,mk).+ torop(tor[3],0,0,0,mb,mk)
@@ -815,7 +812,7 @@ end
 
 function htor(sof,cdf::Array,cdo::Array,nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
-   mb = Matrix(transpose(mk))
+   mb = permutedims(mk)
    out = torop(sof[12],2,0,mb,mk)
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,1,mb,mk)
    @simd for i in 1:length(cdf)
@@ -825,21 +822,21 @@ function htor(sof,cdf::Array,cdo::Array,nf,mcalc,σ)
 end
 function htor(sof,cdf::Nothing,cdo::Nothing,nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
-   mb = Matrix(transpose(mk))
+   mb = permutedims(mk)
    out = torop(sof[12],2,0,mb,mk)
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,1,mb,mk)
    return out, mk, mb
 end
 function htor(sof,nf,mcalc,σ) #this is the current one being called by the code
    mk = mgen(nf,mcalc,σ)
-   mb = Matrix(transpose(mk))
+   mb = permutedims(mk)
    out = torop(sof[12],2,0,mb,mk)
    out += sof[14]*eye(size(out,1)) - torop(sof[14],0,nf,mb,mk)
    return out, mk, mb
 end
 function httest(nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
-   mb = Matrix(transpose(mk))
+   mb = permutedims(mk)
    out = torop(150.0,2,0,mb,mk)
    out += 6000.0*eye(size(out,1)) - torop(6000.0,0,nf,mb,mk)
    return out
@@ -853,8 +850,8 @@ function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
    #println("\n Begining hjbuild for J = $j")
    nk = ngen(j,s)
    kk = kgen(j,s)
-   nb = Matrix(transpose(nk))
-   kb = Matrix(transpose(kk))
+   nb = permutedims(nk)
+   kb = permutedims(kk)
    #scale up tormat & add -2ρF
    hout = kron(tormat,eye(size(nk,1))) 
    hout += kron(sof[13] * Diagonal(mk), Diagonal(kk))
@@ -874,8 +871,8 @@ end
 #=function hjbuild(sof,cdf::Nothing,cdo::Nothing,tormat,j,s,mb,mk)
    nk = ngen(j,s)
    kk = kgen(j,s)
-   nb = Matrix(transpose(nk))
-   kb = Matrix(transpose(kk))
+   nb = permutedims(nk)
+   kb = permutedims(kk)
    #scale up tormat & add -2ρF
    hout = kron(tormat,eye(size(nk,1))) -
                tsrop(sof[13],0,1,0,0,0,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
@@ -907,7 +904,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    #println(vals)
    #nk = kron(I(size(tormat,1)),ngen(j,s,))
-   #nb = Matrix(transpose(nk))
+   #nb = permutedims(nk)
    #println(diag(vecs' * ntop(2,nb,nb,nk,nk) * vecs))
    ###perm = assignperm(vecs)
    if ctrl["assign"]=="RAM36"
@@ -927,8 +924,8 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    pasz = zero(vals)
    if s != zero(s)#add η
       pasz = diag(vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
-         j,s,Matrix(transpose(ngen(j,s))),
-         Matrix(transpose(kgen(j,s))),mb,ngen(j,s),kgen(j,s),mk) * vecs)
+         j,s,permutedims(ngen(j,s)),
+         permutedims(kgen(j,s)),mb,ngen(j,s),kgen(j,s),mk) * vecs)
    end
    return vals, vecs, pasz
 end

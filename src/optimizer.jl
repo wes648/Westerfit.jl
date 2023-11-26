@@ -132,7 +132,7 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
       jmsd = Int(mcd*sd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       mk = mgen(nf,mcalc,σ)
-      mb = Matrix(transpose(mk))
+      mb = permutedims(mk)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       @threads for j in jsublist
          #println(j)
@@ -140,8 +140,8 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
          sind, find = jvdest(j,s,ctrl["vtmax"]) 
          nk = ngen(j,s)
          kk = kgen(j,s)
-         nb = Matrix(transpose(nk))
-         kb = Matrix(transpose(kk))
+         nb = permutedims(nk)
+         kb = permutedims(kk)
          vec = vecs[1:jd*msd,sind:find,sc]
          @simd for i in 1:length(perm)
             pid = perm[i]
@@ -186,17 +186,17 @@ end
 #      nuk = ngen(ju,s)
 #      kuk = kgen(ju,s)
 #      muk = mgen(nf,mcalc,σu)
-#      nub = Matrix(transpose(nuk))
-#      kub = Matrix(transpose(kuk))
-#      mub = Matrix(transpose(muk))
+#      nub = permutedims(nuk)
+#      kub = permutedims(kuk)
+#      mub = permutedims(muk)
 #      jl = 0.5*inds[a,4]
 #      σl = inds[a,5]
 #      nlk = ngen(jl,s)
 #      klk = kgen(jl,s)
 #      mlk = mgen(nf,mcalc,σl)
-#      nlb = Matrix(transpose(nlk))
-#      klb = Matrix(transpose(klk))
-#      mlb = Matrix(transpose(mlk))
+#      nlb = permutedims(nlk)
+#      klb = permutedims(klk)
+#      mlb = permutedims(mlk)
 #      vecu = vecs[1:size(nuk,1)*size(muk,1),inds[a,3],σu+1]
 #      vecl = vecs[1:size(nlk,1)*size(mlk,1),inds[a,6],σl+1]
 #      @simd for i in 1:length(perm)
