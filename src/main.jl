@@ -84,9 +84,10 @@ function westersim(molnam::String, prm, ctrl)
    end
 end
 
-function westerfit(molnam::String,ctrl::Dict{String,Any})
+function westerfit_f(molnam::String,ctrl::Dict{String,Any})
 """
-   The fitter!
+   The fitter! It's called that for westerfit_function to differentiate from the westerfit
+   module. I wanted these to be  the same but alas.
 """
    println("westerfit!")
    prm, ser = secordinp(molnam)
@@ -122,7 +123,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    return tsrp
 end
 
-function westerfit(molnam::String)
+function westermain(molnam::String)
    molnam = String(split(molnam,'.')[1])
    #read input file
    ctrl = ctrlinp(molnam)
@@ -131,7 +132,7 @@ function westerfit(molnam::String)
       westerfit(molnam, ctrl)
    else
       if occursin("F",ctrl["RUNmode"])
-         prm = westerfit(molnam, ctrl)
+         prm = westerfit_f(molnam, ctrl)
       else
          prm = nothing
       end
