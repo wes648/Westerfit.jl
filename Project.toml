@@ -4,9 +4,17 @@ authors = ["wes648 <jhwesterfield@ucdavis.edu>"]
 version = "0.1.0"
 
 [deps]
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 WIGXJPFjl = "c012394e-041f-4dac-954c-af2908646be0"
+
+[compat]
+julia = "^1.9"
+DelimitedFiles = "^1.9.1"
+StaticArrays = "^1.7.0"
+WIGXJPFjl = "^0.1.0"
+

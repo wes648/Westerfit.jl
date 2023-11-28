@@ -259,8 +259,8 @@ function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    return nind
 end
 
-kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
+#kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
+#keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
    jd = Int(2.0*j) + 1
