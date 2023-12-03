@@ -132,7 +132,7 @@ function westerfit(molnam::String)
       westerfit(molnam, ctrl)
    else
       if occursin("F",ctrl["RUNmode"])
-         prm = westerfit_f(molnam, ctrl)
+         prm = westerfit(molnam, ctrl)
       else
          prm = nothing
       end
