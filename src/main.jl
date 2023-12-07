@@ -26,7 +26,7 @@ function westersim(molnam::String, prm, ctrl)
    molnam = String(split(molnam,'.')[1])
    #molnam = replace(molnam, r".inp"=>"")
    #read input file
-   sof, ser = secordinp(molnam)
+   sof, ser = secordinp(molnam,ctrl["Irrep"])
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    if prm==nothing
       prm = vcat(sof,cdf)
@@ -90,7 +90,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    module. I wanted these to be  the same but alas.
 """
    println("westerfit!")
-   prm, ser = secordinp(molnam)
+   prm, ser = secordinp(molnam,ctrl["Irrep"])
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)
