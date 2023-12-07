@@ -6,7 +6,7 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
-      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true,
       "assign"=>"expect", "REJECT"=>1.0e+1, "Irrep"=>"Ir")
    return ctrl
 end
@@ -35,6 +35,7 @@ function ctrlinp(molnam::String)
       println("Jmax must be integer for interger S. Adding 1/2")
    end
    ctrl["assign"] = strip(ctrl["assign"])
+   ctrl["Irrep"] = strip(ctrl["Irrep"])
    #println(ctrl)
    return ctrl
 end
@@ -801,7 +802,7 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    highstg= file[strlnhigh:end,12]
 
 
-   secnam = [" BN", " BK", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
+   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
              " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
@@ -858,7 +859,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    
    highervalues = prd[16:end]
    
-   secnam = ["BN", "BK", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)",
+   secnam = ["BK", "BN", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)",
              "T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
