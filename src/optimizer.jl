@@ -561,10 +561,12 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    puncs[perm] = paramunc!(puncs,H,W,perm,omc)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
-   params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15])
+   params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15],ctrl["Irrep"])
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
-   println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
-   inpwriter(molnam, params)
+   if ctrl["overwrite"]==true
+      println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
+      inpwriter(molnam, params)
+   end
    return params, puncs, fomc, fcfrqs, vals
 end

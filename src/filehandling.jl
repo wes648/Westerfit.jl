@@ -6,8 +6,8 @@ This contains all the filehandling for the westerfit package. It's not particula
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
-      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60,
-      "assign"=>"expect", "REJECT"=>1.0e+1)
+      "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true
+      "assign"=>"expect", "REJECT"=>1.0e+1, "Irrep"=>"Ir")
    return ctrl
 end
 function ctrlinp(molnam::String)
@@ -40,11 +40,29 @@ function ctrlinp(molnam::String)
 end
 
 function secordinit()
-   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "F" => 12, "ρ" => 13,
+   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, "F" => 12, "ρ" => 13,
       "Vn" => 14, "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 8, "ϵxz" => 7, "η" => 15,
       "χzz"=> 9, "χxmy"=> 11, "χxz"=> 10)
    return prd
 end
+
+function irrepswap(irrep)
+   if irrep=="Il"
+      perm = [1;3;2]
+   elseif irrep=="IIr"
+      perm = [2;3;1]
+   elseif irrep=="IIl"
+      perm = [2;1;3]
+   elseif irrep=="IIIr"
+      perm = [3;1;2]
+   elseif irrep=="IIIl"
+      perm = [3;2;1]
+   else #Ir is default
+      perm = [1;2;3]
+   end
+   return perm
+end
+
 function sod2prep(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    tempa = prd[1] + csl*prd[12]*prd[13]^2         #Aeff = A + Fρ²
@@ -114,16 +132,18 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[15] = unc[15]^2                             #ση
    return sqrt.(out)
 end
-function fullrecov(prd,unc)
+function fullrecov(prd,unc,irrep)
    oprd = paramrecov(prd)
    ounc = uncrecov(unc,oprd)
+   oprd[1:3] = oprd[irrepswap(irrep)]
+   ounc[1:3] = ounc[irrepswap(irrep)]
    oprd[[12,14]] ./= csl
    ounc[[12,14]] ./= csl
    return oprd, ounc
 end
 
 
-function secordinp(molnam::String)
+function secordinp(molnam::String,irp)
    findstr = `grep -n 2NDORDER $molnam.inp`
    strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
    findstr = `grep -n '^$' $molnam.inp`
@@ -140,6 +160,7 @@ function secordinp(molnam::String)
       val[ind] = file[i,2]
       err[ind] = file[i,3]
    end
+   val[1:3] = val[irrepswap(irp)]
    val = sod2prep(val)
    return val, err
 end
