@@ -685,11 +685,14 @@ function szop(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
 end
 
 function szelem(j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
-   return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*nred(s)*(-1)^(s+j-kb+1)
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+              )::SparseMatrixCSC{Float64, Int64}
+   return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*
+             nred(s)*(-1)^(s+j-kb+1)
 end
 function szop2(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
-              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+              kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
+              )::SparseMatrixCSC{Float64, Int64}
    if p==zero(p)||s==zero(s)
       return eye(size(nb,1))
    else
@@ -699,7 +702,8 @@ end
 function szelem3(j::Float64,s::Float64,nb::Array{Int,2},
               kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
                  )::SparseMatrixCSC{Float64, Int64}
-   return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*nred(s)*(-1)^(s+j-kb+1)
+   return @. jnred(nb,nk)*wig6j(s,nb,j,nk,s,1)*wig3j(nb,1,nk,-kb,0,kk)*
+             nred(s)*(-1)^(s+j-kb+1)
 end
 function szop3(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
               kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
@@ -716,7 +720,7 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
    op *= sparse(npmp(c,nb,kb,nk,kk))
    op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
    op *= sparse(szop2(e,j,s,nb,kb,nk,kk))
-   op += transpose(op)
+   #op += transpose(op)
    return 0.25 * op
 end
 
@@ -733,14 +737,14 @@ end
 function torop(pr::Float64,p::Int,c::Int,s::Int,
                mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    op = paop(p,mb,mk)
-   op *= sparse(cosp(c,mb,mk)*sinp(s,mb,mk))
-   op .+= transpose(op)
+   op *= cosp(c,mb,mk)*sinp(s,mb,mk)
+   #op .+= transpose(op)
    #out = symm('L','U',pa,sc) + symm('R','U',pa,sc)
    #out = (pa*sc + sc*pa)
    #if true ∈ isnan.(op)
    #   println("FUCK!!! error from torop")
    #end
-   return (pr*0.5) * op
+   return pr*op
 end
 function cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
    am = ntop(Int(sum(cdo[1,:])>0),nb,kb,nk,kk)
@@ -754,7 +758,8 @@ function cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
    hy = sparse(nyop(Int(sum(cdo[8,:])>0),nb,kb,nk,kk))
    out = zeros(size(mk).*size(nk))
    @simd for i in eachindex(cdf)
-      rop = am^cdo[1,i] * bm^cdo[2,i] * cm^cdo[3,i] * dm^cdo[4,i] * em^cdo[5,i] * hy^*(1-δ(cdo[8,i],0))
+      rop = am^cdo[1,i] * bm^cdo[2,i] * cm^cdo[3,i] * dm^cdo[4,i] *
+            em^cdo[5,i] * hy^*(1-δ(cdo[8,i],0))
       rop += rop'
       top = fm^cdo[6,i] * gm^cdo[7,i] * hs^cdo[8,i]
       top += top'
@@ -764,25 +769,29 @@ function cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
    return out
 end
 
-function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
-               mb::Array{Int,2},mk::Array{Int,2})#::Array{Float64,2}
-   out = torop(pr[1],p[1],c[1],s[1],mb,mk)
-   for i in 2:length(pr)
-      out .+= torop(pr[1]*pr[i],p[i],c[i],s[i],mb,mk)
-   end
-   return out
-end
-function torop(pr::Float64,p::Int,c::Int,
-               mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
-   op = paop(p,mb,mk)*sparse(cosp(c,mb,mk))
-   return (op + transpose(op)) .* (pr/2.0)
-end
+#function torop(pr::Tuple,p::Tuple,c::Tuple,s::Tuple,
+#               mb::Array{Int,2},mk::Array{Int,2}
+#               )::SparseMatrixCSC{Float64, Int64}
+#   out = torop(pr[1],p[1],c[1],s[1],mb,mk)
+#   for i in 2:length(pr)
+#      out .+= torop(pr[1]*pr[i],p[i],c[i],s[i],mb,mk)
+#   end
+#   return out
+#end
+#function torop(pr::Float64,p::Int,c::Int,
+#               mb::Array{Int,2},mk::Array{Int,2}
+#               )::SparseMatrixCSC{Float64, Int64}
+#   op = paop(p,mb,mk)*sparse(cosp(c,mb,mk))
+#   return (op + transpose(op)) .* (pr/2.0)
+#end
 
 function tsrop(pr::Float64,a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                j::Float64,s::Float64,nb::Array{Int,2},kb::Array{Int,2},
                mb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2},
                mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
-   return dropzeros!(kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk)))
+   out = kron(torop(pr,f,g,h,mb,mk),rsrop(a,b,c,d,e,h,j,s,nb,kb,nk,kk))
+   out = dropzeros!(out)
+   return out + out'
 end
 
 function tsrop(pr,op::Array,j::Float64,s::Float64,
@@ -830,8 +839,8 @@ end
 function htor(sof,nf,mcalc,σ) #this is the current one being called by the code
    mk = mgen(nf,mcalc,σ)
    mb = permutedims(mk)
-   out = torop(sof[12],2,0,mb,mk)
-   out += sof[14]*eye(size(out,1)) - torop(sof[14],0,nf,mb,mk)
+   out = sof[12]*paop(2,mb,mk)
+   out += sof[14]*(I(size(out,1)) - cosp(nf,mb,mk))
    return out, mk, mb
 end
 function httest(nf,mcalc,σ)

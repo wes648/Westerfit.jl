@@ -8,36 +8,38 @@ using LaTeXStrings
 #lower Ns are file[:,7]
 #ofreq is file[:,10]
 
+Plots.default(fontfamily = "Computer Modern")
+
 function lnplot(molnam::String,lns,lka,omc,rms)
-   scatter(lns,omc,mz=lka,mc=cgrad(:roma,rev=true),label=false,xlabel=L"Lower $N$",
+   scatter(lns,omc,mz=lka,label=false,xlabel=L"Lower $N$",mc=cgrad(:Spectral_6,rev=true),
       ylabel="Residuals (kHz)",cb=:right,cbtitle=L"Lower $K_{a}$",dpi=500)
-   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[2])
+   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[4])
    savefig("$molnam-n.png")
 end
 function lnplot(molnam::String,lnsa,lkaa,omca,lnse,lkae,omce,rms)
-   scatter(lnsa,omca,mz=lkaa,mc=cgrad(:roma,rev=true),label=L"$A$ States",
-      xlabel=L"Lower $N$",shape=:utriangle,
+   scatter(lnsa,omca,mz=lkaa,label=L"$A$ States",
+      xlabel=L"Lower $N$",shape=:utriangle,mc=cgrad(:Spectral_6,rev=true),
       ylabel="Residuals (kHz)",cb=:right,cbtitle=L"Lower $K_{a}$",dpi=500)
-   scatter!(lnse,omce,mz=lkae,label=L"$E$ States",mc=cgrad(:roma,rev=true),
+   scatter!(lnse,omce,mz=lkae,label=L"$E$ States",mc=cgrad(:Spectral_6,rev=true),
       shape=:dtriangle)
-   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[2])
+   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[4])
    savefig("$molnam-n.png")
 end
 
 function frplot(molnam::String,fre,lka,omc,rms)
-   scatter(fre,omc,mz=lka,mc=cgrad(:roma,rev=true),label=false,
+   scatter(fre,omc,mz=lka,label=false,mc=cgrad(:Spectral_6,rev=true),
        xlabel="Observed Frequency (GHz)",ylabel="Residuals (kHz)",
        cb=:right,cbtitle=L"Lower $K_{a}$",dpi=500)
-   hline!([-rms,rms],label="RMSE (kHz)")
+   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[4])
    savefig("$molnam-nu.png")
 end
 function frplot(molnam::String,frea,lkaa,omca,free,lkae,omce,rms)
-   scatter(frea,omca,mz=lkaa,mc=cgrad(:roma,rev=true),label=L"$A$ States",
+   scatter(frea,omca,mz=lkaa,label=L"$A$ States",mc=cgrad(:Spectral_6,rev=true),
       xlabel="Observed Frequency (GHz)",shape=:utriangle,
       ylabel="Residuals (kHz)",cb=:right,cbtitle=L"Lower $K_{a}$",dpi=500)
-   scatter!(free,omce,mz=lkae,label=L"$E$ States",mc=cgrad(:roma,rev=true),
+   scatter!(free,omce,mz=lkae,label=L"$E$ States",mc=cgrad(:Spectral_6,rev=true),
       shape=:dtriangle)
-   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[2])
+   hline!([-rms,rms],label="RMSE (kHz)",color=palette(:default)[4])
    savefig("$molnam-nu.png")
 end
 
