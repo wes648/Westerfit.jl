@@ -10,12 +10,30 @@ function ctrlinit()
       "assign"=>"expect", "REJECT"=>1.0e+1, "Irrep"=>"Ir")
    return ctrl
 end
+function blockfind(molnam::String,blknam::String)
+   out = (0,0)
+   inblock = false
+   for i in eachline(open("pickett.inp"))
+      count += 1
+      if contains(i,"CNTRLS")
+         out[1] = count
+         inblock = true
+      elseif isempty( filter(x -> !isspace(x), i) )&& inblock==true
+         out[2] = count
+         break
+      end
+   end
+   return out
+end
+
 function ctrlinp(molnam::String)
-   findstr = `grep -n CNTRLS $molnam.inp`
-   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   findstr = `grep -n '^$' $molnam.inp`
-   enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[1]
-   len = parse(Int, enln) - strln - 1
+   #findstr = `grep -n CNTRLS $molnam.inp`
+   #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
+   #findstr = `grep -n '^$' $molnam.inp`
+   #enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[1]
+   #len = parse(Int, enln) - strln - 1
+   blk = blockfind(molnam, "%CNTRLS")
+   len = blk[2] - blk[1] + 1
    ctrl = ctrlinit()
    file = readdlm(pwd()*"/"*molnam*".inp",'=', skipstart=strln,comments=true,comment_char='#')
    for i in 1:len
@@ -143,13 +161,14 @@ function fullrecov(prd,unc,irrep)
    return oprd, ounc
 end
 
-
 function secordinp(molnam::String,irp)
-   findstr = `grep -n 2NDORDER $molnam.inp`
-   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   findstr = `grep -n '^$' $molnam.inp`
-   enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[2]
-   len = parse(Int, enln) - strln - 1
+   #findstr = `grep -n 2NDORDER $molnam.inp`
+   #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
+   #findstr = `grep -n '^$' $molnam.inp`
+   #enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[2]
+   #len = parse(Int, enln) - strln - 1
+   blk = blockfind(molnam, "%2NDORDER")
+   len = blk[2] - blk[1] + 1
    #println(len)
    secns = secordinit()
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=strln,comments=true,comment_char='#')
@@ -172,8 +191,10 @@ parsetuple(s::Int) = s
 parsetuple(T::Type,s::Float64) = s
 
 function opinp(molnam::String)
-   findstr = `grep -n PARAMS $molnam.inp`
-   strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`))) + 1
+   #findstr = `grep -n PARAMS $molnam.inp`
+   #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`))) + 1
+   blk = blockfind(molnam, "%PARAMS")
+   len = blk[2] - blk[1]
    file = try
       readdlm(pwd()*"/"*molnam*".inp",';', skipstart=strln,comments=true,comment_char='#')
    catch
