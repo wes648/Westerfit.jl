@@ -82,20 +82,22 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 westerfit is now available in the Julia package manager!
 
 To install westerfit, you will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup).
-Then type `julia` into your command line to enter a REPL session and hit `]` to enter package mode.
+You also need to have a C compiler available for the WIGXJPF dependency.
+Once Julia is installed, type `julia` into your command line to enter a REPL session and hit `]` to enter package mode.
 Simply type `add Westerfit` and you should be good to go!
 
 This will add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Julia installation.
-The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and I don't know if the install script will work on Windows.
-You may have to manually place the shared library in the packages deps directory and I ask that you let me know if that's the case.
+The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and is currently the main point of failure in the install process.
+It should be smoothed up thanks to the BinaryBuilder.jl based install script but I've only tested it on Linux.
+You may have to manually compile and place the libwigxjpf_shared.so library in the package's deps directory and I ask that you let me know if that's the case.
 You may also have better luck using WSL on Windows if you don't have access to a Linux machine.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
 
 Lastly, I recommend making a simple runner script called `westerfit` somewhere in your path.
 This script just needs the following few lines:
 ```
- #!/PATH/TO/julia -tX
- using Westerfit
+#!/PATH/TO/julia -tX
+using Westerfit
 westerfit(ARGS[1])
 ```
 Set X to be the number of threads you want westerfit to run on (more is better!) and fill in your full path to the julia.
