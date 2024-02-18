@@ -11,7 +11,8 @@ using Dates
 using WIGXJPFjl
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../common.jl")
-include("@__DIR__/../filehandling.jl")
+include("@__DIR__/../files_in.jl")
+include("@__DIR__/../files_out.jl")
 include("@__DIR__/../jacobi.jl")
 include("@__DIR__/../optimizer.jl")
 include("@__DIR__/../transitions.jl")

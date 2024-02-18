@@ -851,8 +851,8 @@ function httest(nf,mcalc,σ)
    return out
 end
 function htorq(sof,nf,mb,mk)
-   out = torop(sof[1],2,0,mb,mk)
-   out += sof[3]*eye(size(out,1)) - torop(sof[3],0,nf,mb,mk)
+   out = torop(sof[1],2,0,0,mb,mk)
+   out += sof[3]*eye(size(out,1)) - torop(sof[3],0,0,nf,mb,mk)
    return out
 end
 function hjbuild(sof,cdf::Array,cdo::Array,tormat,j,s,mb,mk)
