@@ -422,7 +422,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    println("Initial λ = $λlm")
    Δlm = nrm2(params[perm])/length(perm)
    counter = 0
-   BAD = 1
+   BAD = 0
 
    io = open("$molnam.out", "a")
    println(io,"Initial RMS = $rms MHz")
@@ -466,7 +466,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       nrms, nomc = rmscalc(vals,inds,ofreqs)=#
       #oparams = copy(params)
       λlm = λgen(μlm, rms) 
-   βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,J,
+      βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_turducken!(H,J,
          jtw,omc,λlm,Δlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       check = abs(nrms-rms)/rms
       #println(βf)
@@ -474,12 +474,13 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #println()
    #println(ρlm)
    #println()
-      if nrms < rms#*(1.0 + 0.1^BAD)
-         #if nrms < rms
-         #   BAD = max(1,BAD-1)
-         #else
-         #   BAD += 1
-         #end
+      if nrms < rms#*(0.95 + 0.3*exp(-0.6*BAD))
+         if nrms < rms
+            BAD = max(0,BAD-1)
+         else
+            println("This might be a bad step")
+            BAD += 1
+         end
    #    if ρlm > 0.0#-1.0e-7 #
          #println(βf)
 	 #μlm *= (nrms/rms)^2
@@ -506,12 +507,12 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #println(params)
          #println(diag(H))
          #λlm = λgen(μlm, rms) 
-         if λlm < oλlm
-            μlm /= 20.0
-         #   μlm /= 5.0
+         #=if λlm < oλlm
+            μlm /= 30.0
          else
-            μlm /= 1.25 #20.0
-         end
+            μlm /= 3.0 #20.0
+         end=#
+         μlm /= 30.0
          #oλlm = λlm
          #Δlm *= 6.0
       else

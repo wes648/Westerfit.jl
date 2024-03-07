@@ -189,12 +189,8 @@ function gh(x,y)::Float64
    out = □rt((x-y)*(x-y-1.0))
    return out
 end
-function □rt(x)::Float64
-   if x ≤ zero(x)
-      return 0.0
-   else
-      return √x
-   end
+function □rt(x::Number)::Float64
+   return √(x*(x>zero(x)))
 end
 function θ(j,n,s)
    if s==zero(s)#||n==zero(n)
@@ -559,6 +555,7 @@ function qured(j,s,nb,nk)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
+#             δ(nb,nk)* #This line can be used to emulate the perturbative 
              wig3j( nb, 2,nk,
                    -kb, q,kk)*(-1.0)^(nb+nk-kb+s+j)
 end
@@ -910,7 +907,8 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ###H = permute!(H,perm,perm)
    ###H, rvecs = jacobisparse(H, 3)#Int(j+s)+mcalc)
    ###rvecs = U*rvecs
-   vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
+   #@time vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
+   vals, vecs = eigen!(Symmetric(Matrix(H)))
    #println(vals)
    #nk = kron(I(size(tormat,1)),ngen(j,s,))
    #nb = permutedims(nk)

@@ -708,6 +708,12 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    fullnam = vcat(secnam, highnam)
 
    io = open("$molnam.out", "a")
+   if counter==0
+      #This is a super sloppy bug fix for a bug when zero iterations occur
+      println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
+      println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
+   end
+
 
       if endpoint == "converge"
          println(io," A miracle has come to pass. The fit has converged.")

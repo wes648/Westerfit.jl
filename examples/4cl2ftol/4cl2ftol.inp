@@ -3,12 +3,12 @@ molnam
 NFOLD = 3
 S = 1.5
 TK = 25.0
-RUNmode = EF
+RUNmode = E
 mcalc = 5
 vtmax = 0
 assign = RAM36
 turducken = 2
-Jmax = 6.5
+Jmax = 16.5
 νmin = 4.0
 νmax = 23.0
 
