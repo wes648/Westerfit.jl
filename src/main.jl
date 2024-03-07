@@ -112,8 +112,8 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    outputinit(molnam,prm,err,linelength,ctrl)
 
    tsrp, puncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
-   println(tsrp)
-   println(puncs)
+   #println(tsrp)
+   #println(puncs)
    reswritter(molnam,lines,omcs,cfrqs)
    #println("New Parameter Vector:")
    #println("New Energy levels")
@@ -129,6 +129,7 @@ function westerfit(molnam::String)
    #read input file
    ctrl = ctrlinp(molnam)
    if occursin("T",ctrl["RUNmode"])
+      println("This RUNmode is probably not what you want")
       westersim(molnam,nothing, ctrl)
       westerfit(molnam, ctrl)
    else

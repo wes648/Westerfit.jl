@@ -2,14 +2,14 @@
 %CNTRLS
 NFOLD = 3
 S = 0.0
-RUNmode = EF
+RUNmode = E
 TK = 25.0
 mcalc = 8
 assign = RAM36
 LIMIT = 100
 INTThresh = 0.0
 vtmax = 0
-Jmax = 5
+Jmax = 16
 turducken = 2
 νmax = 20.0
 
