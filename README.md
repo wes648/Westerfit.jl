@@ -29,7 +29,7 @@ Below are control settings, their meanings, and default values::Type
 
 **Jmax** (0.0::Float64): Largest J value in the simulation. The code will automatically adjust if S is a half integer and print a warning.
 
-**νmin** (0.0::Float64): Lowest frequency in the simulation in GHz
+**νmin** (0.0::Float64): Lowest frequency in the simulation in GHz. The first character is a *nu* not a v so be careful
 
 **νmax** (40.::Float64): Highest frequency in the simulation in GHz. Make sure this is larger than νmin or the code will crash
 
@@ -41,7 +41,7 @@ Below are control settings, their meanings, and default values::Type
 
 **turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
 
-**assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, expect, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. RAM36 uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. expectk is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, eeo does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally expect is recommended but RAM36 works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in eeo but find its performance lacking.
+**assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, **expect**, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. **RAM36** uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. **expectk** is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, **eeo** does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally **expect** is recommended but **RAM36** works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in **eeo** but find its performance lacking.
 
 
 ### Second Order Parameters
