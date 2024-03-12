@@ -90,7 +90,7 @@ This will add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Jul
 The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and is currently the main point of failure in the install process.
 It should be smoothed up thanks to the BinaryBuilder.jl based install script but I've only tested it on Linux.
 You may have to manually compile and place the libwigxjpf_shared.so library in the package's deps directory and I ask that you let me know if that's the case.
-You may also have better luck using WSL on Windows if you don't have access to a Linux machine.
+You may also have better luck using the Ubuntu terminal from the Microsoft Store on Windows if you don't have access to a Linux machine.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
 
 Lastly, I recommend making a simple runner script called `westerfit` somewhere in your path.
