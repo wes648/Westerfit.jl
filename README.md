@@ -79,6 +79,8 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 
 
 ## Installation
+Unfortuantely the WIGXJPFjl installer seems to be broken again. I'm working on it but manual installation of WIGXJPF may be necessary at the current time
+
 westerfit is now available in the Julia package manager!
 
 To install westerfit, you will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup).
