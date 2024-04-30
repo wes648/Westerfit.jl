@@ -112,13 +112,14 @@ function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec)
    return out
 end
 
-function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
-   sd = Int(2*s+1)
+function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
+   #sd = Int(2*s+1)
+   s = ctrl["S"]
    mcalc = ctrl["mcalc"]
-   jmin = 0.5*iseven(sd)
+   jmin = 0.5*iseven(Int(2*s+1))
    #println(jlist)
    jmax = jlist[end,1]
-   jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   jfd = Int(2*s+1)*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
    vtd = Int(ctrl["vtmax"]+1)
    σcnt = σcount(nf)
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
@@ -127,9 +128,9 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
       σ = sc - 1
       mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       σt = σtype(nf,σ)
-      msd = sd*mcd
+      msd = Int(2*s+1)*mcd
       mstrt, mstop = mslimit(nf,mcalc,σ)
-      jmsd = Int(mcd*sd*(2*jmax+1))
+      jmsd = Int(mcd*(2*s+1)*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       mk = mgen(nf,mcalc,σ)
       mb = permutedims(mk)
@@ -143,7 +144,7 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
          nb = permutedims(nk)
          kb = permutedims(kk)
          vec = vecs[1:jd*msd,sind:find,sc]
-         @simd for i in 1:length(perm)
+         for i in 1:length(perm)
             pid = perm[i]
             ders = diag(anaderiv(prm,scl,stg,pid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
             derivs[sind:find,sc,i] = ders
@@ -153,12 +154,12 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,prm,scl,stg)
    return derivs
 end#function
 
-function build_jcbn2!(jcbn,ops,jlist,inds,s,ctrl,vecs,params,perm,scals,stg)
+function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds)[1],length(perm))
-   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,s,params,scals,stg)
+   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,params,scals,stg)
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
@@ -351,25 +352,11 @@ function lbmq_turducken!(H,J,jtw,omc,λ,Δ,nlist,inds,nparams,scls,perm,ofreqs,r
    A = cholesky!(A)
    β = zeros(Float64,length(perm),tdncount)
    β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
-   #β[:,1] .= trfilter!(β[:,1],H,Δ)
-   #β[:,1] = harshfilt!(β[:,1],nparams[perm],scls[perm])
    for i in 2:tdncount
       nparams[perm] .+= β[:,i-1]
-      #vals, nvecs = limeigcalc(nlist, inds, nparams)
       vals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, omc, = rmscalc(vals,inds,ofreqs)
-      #println()
-      #println(β[:,i-1])
-      #omc += tsrapprox(J,β[:,i-1])
-      #nrms = BLAS.nrm2(omc)/√length(omc)
       β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
-      #β[:,i] .= trfilter!(β[:,i],H,Δ)
-      #println(β[:,i])
-      #println()
-      #β[:,i] = harshfilt(β[:,i],nparams,scls,perm)
-      #α = 1.1 #turducken_acc(λ,β[:,i],H)
-      #println(α)
-      #β[:,i] *= α#turducken_acc(λ,β[:,i],H)
    end
    βf = sum(β,dims=2)
    nparams[perm] .+= β[:,end]
@@ -392,9 +379,9 @@ end
 
 function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #vals,vecs = limeigcalc(nlist, inds, params)
-   S = ctrl["S"]
+   #S = ctrl["S"]
    #println(inds)
-   sd = Int(2*S+1)
+   #sd = Int(2*S+1)
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    LIMIT = ctrl["maxiter"]
 
@@ -430,19 +417,14 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    println(io,"")
    println(io,"-------------------------------------")
    println(io,"")
+   close(io)
 
-   #println("Initial Δ = $Δlm")
-   #println(omc)
    nparams = copy(params)
    puncs = zero(perm)
    βf = zero(perm) #step
    J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
    jtw = zero(omc) #jtwient
-   #K = zero(omc) #acceleration correction
-   #H = zeros(Float64,length(perm),length(perm)) #Hessian
-   #D = zero(H) #Elliptical Trust Region
-   #J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-   J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales,stg)
+   J = build_jcbn2!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    H, jtw = build_hess(jtw,J,W)
    #println(H)
@@ -490,7 +472,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn2!(J,cdo,nlist,inds,S,ctrl,vecs,params,perm,scales,stg)
+         @time J = build_jcbn2!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
          H, jtw = build_hess(jtw,J,W)
          #println(diag(H))

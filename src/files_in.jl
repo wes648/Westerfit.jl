@@ -67,7 +67,7 @@ function secordinit()
    return prd
 end
 
-function irrepswap(irrep)
+function irrepswap(irrep::String)::Array{Int}
    if irrep=="Il"
       perm = [1;3;2]
    elseif irrep=="IIr"
@@ -105,7 +105,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    return out
 end
 
-function secordinp(molnam::String,irp)
+function secordinp(molnam::String,irp::String)
    #findstr = `grep -n 2NDORDER $molnam.inp`
    #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
    #findstr = `grep -n '^$' $molnam.inp`

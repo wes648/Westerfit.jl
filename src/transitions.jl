@@ -35,7 +35,7 @@ function μmat(μs,s,jb,jk)
    kbs = kgeni(jb,s,lk)
    out = zeros(lb,lk)
    @simd for q in -1:1
-      out += μelem(μs[T(1,q)],q,s,jb,nbs,kbs,jk,nks,kks)
+      out += μelem(μs[Tμ(q)],q,s,jb,nbs,kbs,jk,nks,kks)
    end
    return out
 end

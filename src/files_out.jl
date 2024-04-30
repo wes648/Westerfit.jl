@@ -30,25 +30,27 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
 
    if prd[12] != 0.0
       out[13] = (0.5*unc[13]/prd[12])^2 +
-                (prd[13]*unc[12]/prd[12])^2      #σρ
+                (0.5*prd[13]*unc[12]/prd[12]^2)^2      #σρ
    else
       out[13] = 0.0
    end
+#   out[1] = unc[1]^2 + unc[2]^2 + (0.25unc[12]*prd[13]^2/prd[12]^2)^2 +
+#            (0.5*prd[13]*unc[13]/prd[12])^2          #σA
    out[1] = unc[1]^2 + unc[2]^2 + (unc[12]*prd[13]^2)^2 +
-            (2*prd[12]*prd[13]*out[13])^2          #σA
-   out[2] = unc[2]^2 + 4.0*unc[3]^2                #σB
-   out[3] = unc[2]^2 + 4.0*unc[3]^2                #σC
-   out[4] = unc[4]^2                               #σDab
-   out[5] = (unc[5]^2 + 2*unc[6]^2)/3              #σϵzz
-   out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2 #σϵxx
-   out[7] = unc[7]^2                               #σϵxz
-   out[8] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2 #σϵyy
-   out[9] = unc[9]^2                               #σχzz
-   out[10] = 1.5*unc[10]^2                         #σχxz
-   out[11] = 6.0*unc[11]^2                         #σχxx-χyy
-   out[12] = unc[12]^2 #/csl                       #σF
-   out[14] = 4.0*unc[14]^2 #/ csl                  #σV3
-   out[15] = unc[15]^2                             #ση
+            (2*prd[12]*prd[13]*out[13])^2               #σA
+   out[2] = unc[2]^2 + 4.0*unc[3]^2                     #σB
+   out[3] = unc[2]^2 + 4.0*unc[3]^2                     #σC
+   out[4] = unc[4]^2                                    #σDab
+   out[5] = (unc[5]^2 + 2*unc[6]^2)/3                   #σϵzz
+   out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2        #σϵxx
+   out[7] = unc[7]^2                                    #σϵxz
+   out[8] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2        #σϵyy
+   out[9] = unc[9]^2                                    #σχzz
+   out[10] = 1.5*unc[10]^2                              #σχxz
+   out[11] = 6.0*unc[11]^2                              #σχxx-χyy
+   out[12] = unc[12]^2 #/csl                            #σF
+   out[14] = 4.0*unc[14]^2 #/ csl                       #σV3
+   out[15] = unc[15]^2                                  #ση
    return sqrt.(out)
 end
 function fullrecov(prd,unc,irrep)
@@ -423,7 +425,10 @@ function inpwriter(molnam::String, values)
 
    for i in 1:length(higherord)
       ln = 30 - length(highnam[i])
-      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
+      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",
+         lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",
+         lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",
+         lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
    end
 
    time = now()
@@ -710,8 +715,9 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    io = open("$molnam.out", "a")
    if counter==0
       #This is a super sloppy bug fix for a bug when zero iterations occur
-      println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
-      println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
+      #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
+      #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
+      println(io,"hi!! this is to fix a bug in which the first 111 characters appended to a file vanish I don't have a better fix")
    end
 
 

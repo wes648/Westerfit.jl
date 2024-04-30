@@ -135,6 +135,7 @@ function qngen(j,s,nf,m,σ)
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,md),out)
    marray = kron(msbuilder(nf,m,σ),ones(Int,jsd))
+   #[2j n ka kc m s]
    out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
    return out
 end
@@ -156,6 +157,22 @@ function qngenv(j,s,nf,vtm,σ)
    out = kron(ones(Int,vd),out)
    vtrray = kron(nf .* vtcoll(vtm,σt) .+ σ,ones(Int,jsd))
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
+   return out
+end
+function qngen(j,s)
+   nlist = Δlist(j,s)
+   jsd = Int((2*j+1)*(2*s+1))
+   out = zeros(Int,0,3)
+   for n in nlist
+      nd = Int(2*n+1)
+      part = zeros(Int,nd,3)
+      part[:,1] = fill(n,nd)
+      part[:,2] = collect(Int,-n:n)
+      out = vcat(out,part)
+   end
+   out = kron(ones(Int,md),out)
+   #[2j n ka kc m s]
+   #out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
    return out
 end
 #function k2kc(n,k)
@@ -335,6 +352,7 @@ function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    end
 end
 
+nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
 nred(n::Int)::Float64 = √(n*(n+1)*(2*n+1))
 nred(n::Float64)::Float64 = √(n*(n+1.0)*(2.0*n+1.0))
 nnred(n::Int)::Float64 = n*(n+1)*(2*n+1)
@@ -398,6 +416,7 @@ function hrot2v2(pr,nb,kb,nk,kk)::SparseMatrixCSC{Float64, Int64}#fastest
    #println(out)
    return out
 end
+
 function hrtest(n)::SparseMatrixCSC{Float64, Int64}
    pr = [1.75; 1.25; 0.25; 0.02]
    nk = ngen(n)
@@ -551,7 +570,7 @@ end
 function qured(j,s,nb,nk)
    @. return 0.25*jnred(nb,nk)*
                   wig6j(j, s,nb,
-                        2,nk, s)#*δ(nb,nk)
+                        2,nk, s)
 end
 function quelem(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    @. return pr*qured(j,s,nb,nk)*
@@ -695,6 +714,13 @@ function szop2(p::Int,j::Float64,s::Float64,nb::Array{Int,2},
    else
       return szelem(j,s,nb,kb,nk,kk)^p
    end
+end
+function szoptest(j::Float64,s::Float64)
+   nk = ngen(j,s)
+   kk = kgen(j,s)
+   nb = permutedims(nk)
+   kb = permutedims(kk)
+   return szop2(1,j,s,nb,kb,nk,kk)
 end
 function szelem3(j::Float64,s::Float64,nb::Array{Int,2},
               kb::Array{Int,2},nk::Array{Int,2},kk::Array{Int,2}
@@ -843,8 +869,8 @@ end
 function httest(nf,mcalc,σ)
    mk = mgen(nf,mcalc,σ)
    mb = permutedims(mk)
-   out = torop(150.0,2,0,mb,mk)
-   out += 6000.0*eye(size(out,1)) - torop(6000.0,0,nf,mb,mk)
+   out = torop(150.0,2,0,0,mb,mk)
+   out += 6000.0*eye(size(out,1)) - torop(6000.0,0,nf,0,mb,mk)
    return out
 end
 function htorq(sof,nf,mb,mk)
@@ -973,28 +999,28 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    s = ctrl["S"]
    mcalc = ctrl["mcalc"]
    vtm = ctrl["vtmax"]
-   sd = Int(2*s + 1)
+   #sd = Int(2*s + 1)
    sof = prm[1:15]
    cdf = prmsetter(prm[16:end],stg)
    #println(cdf)
    vtd = Int(vtm+1)
-   jmin = 0.5*iseven(sd)
+   jmin = 0.5*iseven((2*s + 1))
    jmax = jlist[end,1]
-   jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   jfd = Int((2s+1)*sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
    σcnt = σcount(nf)
    mcd = Int(2*mcalc+(iseven(nf))+1)
    fvls = zeros(Float64,jfd*vtd,σcnt)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
-   fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
-   @time @simd for sc in 1:σcnt
+   fvcs = zeros(Float64,Int((2*s + 1)*(2*jmax+2)*mcd),jfd*vtd,σcnt)
+   @time for sc in 1:σcnt
       σ = sc - 1
       #mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       tormat, mk, mb = htor(sof,nf,mcalc,σ)
       mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
       σt = σtype(nf,σ)
-      msd = sd*mcd
+      msd = Int(2*s + 1)*mcd
       mstrt, mstop = mslimit(nf,mcalc,σ)
-      jmsd = Int(mcd*sd*(2*jmax+1))
+      jmsd = Int(mcd*(2s+1)*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       @threads for j in jsublist

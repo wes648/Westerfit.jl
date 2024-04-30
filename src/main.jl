@@ -22,12 +22,12 @@ BLAS.set_num_threads(Threads.nthreads())
 
 const csl = 29979.2458
 
-function westersim(molnam::String, prm, ctrl)
+function westereng(molnam::String, prm, ctrl)
    println("westersim!")
    molnam = String(split(molnam,'.')[1])
    #molnam = replace(molnam, r".inp"=>"")
    #read input file
-   sof, ser = secordinp(molnam,ctrl["Irrep"])
+   sof, ser = secordinp(molnam,String(ctrl["Irrep"]))
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    if prm==nothing
       prm = vcat(sof,cdf)
@@ -47,7 +47,7 @@ function westersim(molnam::String, prm, ctrl)
    fpasz = zeros(Float64,jfd*vtd,σcnt)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
    fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
-   @time @simd for sc in 1:σcnt
+   @time for sc in 1:σcnt
       σ = sc - 1
 	   mcd = Int(2*ctrl["mcalc"]+(σtype(ctrl["NFOLD"],σ)==2)+1)
 	   jmsd = Int(mcd*sd*(2*jmax+1))
@@ -65,8 +65,14 @@ function westersim(molnam::String, prm, ctrl)
    if occursin("E",ctrl["RUNmode"])
       engwriter(molnam,ctrl,fvls,fqns,fpasz)
    end
+   return fvls, fvcs, fqns, μs
+end
+function westersim(molnam::String, prm, ctrl, fvls,fvcs,fqns,μs)
    #calculate transitions
-   if occursin("S",ctrl["RUNmode"])
+#   if occursin("S",ctrl["RUNmode"])
+      σcnt = σcount(ctrl["NFOLD"])
+      jmax = ctrl["Jmax"]
+
       kbT = ctrl["TK"]*20836.61912 #MHz/K
       Qrt = sum(exp.(fvls ./ -kbT))/3
       finfrq = zeros(0,3)
@@ -82,13 +88,13 @@ function westersim(molnam::String, prm, ctrl)
       end
    #write transitions to file
    TraWriter(molnam, ctrl["S"], finfrq, finqns)
-   end
+   return finfrq, finqns
+#   end
 end
 
 function westerfit(molnam::String,ctrl::Dict{String,Any})
 """
-   The fitter! It's called that for westerfit_function to differentiate from the westerfit
-   module. I wanted these to be  the same but alas.
+   The fitter!
 """
    println("westerfit!")
    prm, ser = secordinp(molnam,ctrl["Irrep"])
@@ -139,7 +145,10 @@ function westerfit(molnam::String)
          prm = nothing
       end
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
-         westersim(molnam, prm, ctrl)
+         vas, ves, qns, μs = westereng(molnam, prm, ctrl)
+         if occursin("S", ctrl["RUNmode"])
+            westersim(molnam, prm, ctrl, vas, ves, qns,μs)
+         end
       end
    end
 end

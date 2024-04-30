@@ -3,28 +3,28 @@
 #QN Related Functions
 ################################################################################
 
-function Δlist(J,S)
 """
 This generates a list of all J₃ values that satisfy the Triangle Conditions with
    inputs J₁ and J₂. This is typically used to determine N values for a given
    J and S.
 """
+function Δlist(J,S)
    return collect(Int(abs(J-S)):Int(J+S))
 end
 
-function Δtest(a,b,c)
 """
 This confirms that inputs J₁, J₂, and J₃ satisfy the Triangle Conditions with one another
 """
+function Δtest(a,b,c)
    return c ⊆ collect(abs(a-b):abs(a+b))
 end
 
-function klist(n)
 """
 This function determines the signed K values that correspond to the A₁ and A₂
    irreducible representations of the Cₛ point group for a given N.
    The arrays are returned as a tuple of A₁ then A₂
 """
+function klist(n)
    Γ1 = sort([collect(-1:-2:-n); collect(0:2:n)]) .+ (n + 1)
    Γ2 = sort([collect(-2:-2:-n); collect(1:2:n)]) .+ (n + 1)
    if iseven(n)
@@ -33,13 +33,13 @@ This function determines the signed K values that correspond to the A₁ and A�
       return Γ2, Γ1
    end
 end
-function klist(n,m)
 """
 This function determines the signed Kₐ values that correspond to the A₁ and A₂
    irreducible representations of the Cₛ point group for a given N and m pair.
    The arrays are returned as a tuple of A₁ then A₂. This should only be used
    for the A states of a G₆ molecule.
 """
+function klist(n,m)
    Γ1 = sort([collect(-1:-2:-n); collect(0:2:n)]) .+ (n + 1)
    Γ2 = sort([collect(-2:-2:-n); collect(1:2:n)]) .+ (n + 1)
    if iseven(n)&&(m≥0)||isodd(n)&&(m<0)
@@ -48,13 +48,13 @@ This function determines the signed Kₐ values that correspond to the A₁ and 
       return Γ2, Γ1
    end
 end
-function mklist(n,mcalc)
 """
 This function determines the signed Kₐ values that correspond to the A₁ and A₂
    irreducible representations of the Cₛ point group across an entire -m:m range
    a given N.
    The arrays are returned as a tuple of A₁ then A₂.
 """
+function mklist(n,mcalc)
    A1, A2 = klist(n,-mcalc)
    nd = convert(Int,2*n+1)
    shift = nd
@@ -67,54 +67,10 @@ This function determines the signed Kₐ values that correspond to the A₁ and 
    return A1, A2
 end
 
-#=function qngen(n,m,σ)
-"""
-This generates a list of all the torsion-rotation quantum numbers across a
-   -m:m range for a given N and σ pair. Be aware that this uses the signed Kₐ
-   convention. Kc is provided for user convenience but not generally used by
-   the program as the sign of Kₐ accounts for this.The output columns are
-   ordered as N, Kₐ, Kc, m, σ
-"""
-   nd = Int(2*n+1)
-   md = Int(2*m+1)
-   narray = fill(n,nd*md)
-   karray = kron(ones(Int,md),collect(Int,-n:n))
-   kcarray = k2kc.(narray,karray)
-   marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,nd))
-   σarray = fill(σ,nd*md)
-   out = hcat(narray,karray,kcarray,marray,σarray)
-end
-function qngen(j,s,m,σ)
-"""
-This generates a list of all the spin-torsion-rotation quantum numbers across a
-   -m:m range for a given J, S, and σ set. Be aware that this uses the signed Kₐ
-   convention. Kc is provided for user convenience but not generally used by
-   the program as the sign of Kₐ accounts for this. The output columns are
-   ordered as J, N, Kₐ, Kc, m, σ. S is not included under the hope that it is
-   recorded by the user elsewhere
-"""
-   nlist = Δlist(j,s)
-   jsd = Int((2*j+1)*(2*s+1))
-   md = Int(2*m+1)
-   out = zeros(0,3)
-   for n in nlist
-      nd = Int(2*n+1)
-      part = zeros(nd,3)
-      part[:,1] = fill(n,nd)
-      part[:,2] = collect(Int,-n:n)
-      part[:,3] = k2kc.(part[:,1],part[:,2])
-      out = vcat(out,part)
-   end
-   out = kron(ones(Int,md),out)
-   marray = kron(NFOLD .* collect(Int,-m:m) .+ σ,ones(Int,jsd))
-   out = hcat(fill(j,size(out)[1]),out,marray,fill(σ,jsd*md))
-   return out
-end=#
-
-function k2kc(n,k)
 """
 Determines the value of Kc based on the value of N and |Kₐ|
 """
+function k2kc(n,k)
    ka = abs(k)
    if k < 0
       kc = n - ka + 1 - isodd(n + k)
@@ -134,19 +90,19 @@ function kakc2k(n,ka,kc)
    end
 end
 
-function qn2ind(n,ka,kc)
 """
 This determines the specific index of a N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
+function qn2ind(n,ka,kc)
    ka = kakc2k(n,ka,kc)
    ind = convert(Int,n*(n+1) + ka +1)
 end
-function qn2ind(j,s,n,ka,kc)
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
+function qn2ind(j,s,n,ka,kc)
    jp = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)
    np = sum(2 .* collect((j-s):(n-1)) .+ 1)
    kp = n + kakc2k(n,ka,kc) + 1
@@ -154,12 +110,12 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    ind = convert(Int,ind)
    return ind
 end
-function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
    This is the old version based on the torsional
 """
+function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
    if nf!=zero(nf)
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
@@ -171,11 +127,11 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    return qn2ind(j,s,n,ka,kc)
    end
 end
-function qn2ind(nf,vtm,m,j,s,n,ka,kc)
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
+function qn2ind(nf,vtm,m,j,s,n,ka,kc)
    if (nf!=zero(nf))&&(vtm != 0)
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
@@ -188,13 +144,13 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    end
 end
 
-function σcount(nfold)
 """
 Determines the number of σ values that will result in unique values a provided
    nfold value. So for nfold = 3, it returns 2 since we have the A states of
    σ=0 and E states of σ=1. It will also return 2 for nfold = 2 since we have A
    and B states.
 """
+function σcount(nfold)
    out = floor(Int,nfold/2)+1
 end
 
@@ -230,7 +186,6 @@ function msbuilder(mcalc,σ,nfold)
    return marray
 end
 
-function srprep(J,S)
 """
 This calculates a lot of values helpful for the spin-rotation matrix structure:
    the list of n values, the number of K states for each n, an array of the
@@ -238,6 +193,7 @@ This calculates a lot of values helpful for the spin-rotation matrix structure:
    the given J and S pair. The array of indices has starts on the [:,1] values
    and the ends on the [:,2] values.
 """
+function srprep(J,S)
    ns = Δlist(J,S)
    nd = 2 .* Int.(ns) .+ 1
    ni = ones(Int, length(ns),2)
@@ -249,11 +205,11 @@ This calculates a lot of values helpful for the spin-rotation matrix structure:
    jd = Int((2.0*S+1.0)*(2.0*J+1.0))
    return ns, nd, ni, jd
 end
-function srprep(J,S,md)
 """
 This expands the srprep function to the spin-torsion-rotation matrix structure
    by including the number of m values, md = 2*mcalc+1
 """
+function srprep(J,S,md)
    ns = Δlist(J,S)
    nd = 2 .* Int.(ns) .+ 1
    out = ones(Int, length(ns),2)
@@ -266,20 +222,20 @@ This expands the srprep function to the spin-torsion-rotation matrix structure
    return ns, nd, out, jd
 end
 
-function jinds(j,s)
 """
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
+function jinds(j,s)
    snd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
    fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
    return snd,fnd
 end
-function jlinds(j,s)
 """
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
+function jlinds(j,s)
    snd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
    fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
    return collect(snd:fnd)
