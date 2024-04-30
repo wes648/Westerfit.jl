@@ -1,7 +1,7 @@
 # westerfit
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
 
-The pre-print of the paper is available [here]<https://dx.doi.org/10.2139/ssrn.4807560>.
+The pre-print of the paper is available [here](https://dx.doi.org/10.2139/ssrn.4807560).
 
 Please feel free to direct any questions about the program to wes.harper2@gmail.com
 
