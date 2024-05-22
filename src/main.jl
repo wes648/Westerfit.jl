@@ -32,7 +32,10 @@ function westereng(molnam::String, prm, ctrl)
    if prm==nothing
       prm = vcat(sof,cdf)
    else
-      prm[1:15] = sod2prep(prm[1:15])
+      #this occurs when westerfit is called before thus feeing the new
+      # parameters in to the function in their natural form
+      #the parameters aren't being double transformed. it's fine i swear
+      prm[1:18] = sod2prep(prm[1:18])
    end
    #calculate energy levels
    σcnt = σcount(ctrl["NFOLD"])

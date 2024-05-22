@@ -18,7 +18,7 @@ function srprep(J,S)
 end
 function qngen(j,s)
    ns, nd, ni, jsd = srprep(j,s)
-   out = zeros(Int,jsd,3)
+   out = zeros(Int,jsd,2)
    for i in 1:length(ns)
       out[ni[i,1]:ni[i,2],1] .= ns[i]
       out[ni[i,1]:ni[i,2],2] = collect(Int,-ns[i]:ns[i])
@@ -34,38 +34,33 @@ function szpart(j,s,bqn,kqn)
    kk = kqn[2]
    return wig3j(nb,1,nk,-kb,0,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*(-1)^(-kb)
 end
-
-function sz_comp(j,s)
-   l = Int((2*j+1)*(2*s+1))
-   out = spzeros(l,l)
-   qns = qngen(j,s)
-   out .= sparse([szpart(j,s,qns[b,:],qns[a,:]) for a ∈ 1:l, b ∈ 1:l ])
-   out = nred(s).*dropzeros!(out)
-   return out
+function szpart(j,s,nk,kk,nb,nb)
+   return wig3j(nb,1,nk,-kb,0,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*(-1)^(-kb)
 end
+
 #loop methods are faster, less memory, but more allocations than whats in use
 #=
 julia> @benchmark sz_loop(100.0,1.0)
-BenchmarkTools.Trial: 10000 samples with 1 evaluation.
- Range (min … max):  468.828 μs …  1.436 ms  ┊ GC (min … max): 0.00% … 60.61%
- Time  (median):     479.858 μs              ┊ GC (median):    0.00%
- Time  (mean ± σ):   486.222 μs ± 51.259 μs  ┊ GC (mean ± σ):  0.54% ±  3.42%
+BenchmarkTools.Trial: 5872 samples with 1 evaluation.
+ Range (min … max):  821.871 μs …  1.401 ms  ┊ GC (min … max): 0.00% … 35.45%
+ Time  (median):     845.693 μs              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   850.674 μs ± 25.744 μs  ┊ GC (mean ± σ):  0.09% ±  1.39%
 
-         ▂▆▆█▇▆▄▁                                               
-  ▁▁▂▂▄▆█████████▇▅▄▃▂▂▂▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▂▂▂▁▁▁▁▁▁▁▁▁▁▁▁▂▂▂▂▂▁▁▁ ▂
-  469 μs          Histogram: frequency by time          526 μs <
+            ▃▆██▇▇▄▂▁                                           
+  ▂▂▂▂▂▂▃▄▆▇█████████▇▆▇▇██▇▇▆▆▅▄▄▃▃▃▃▂▃▃▂▂▂▂▂▂▂▂▂▂▂▁▂▂▂▂▂▂▂▂▂ ▄
+  822 μs          Histogram: frequency by time          910 μs <
 
- Memory estimate: 144.06 KiB, allocs estimate: 1230.
+ Memory estimate: 84.47 KiB, allocs estimate: 23.
+
 =#
 function sz_loop(j,s) 
    l = Int((2*j+1)*(2*s+1))
    out = spzeros(l,l)
    if s != zero(s)
-      out = spzeros(l,l)
       qns = qngen(j,s)
       for a ∈ 1:l, b ∈ a:l
          if abs(qns[a,1]-qns[b,1])≤1 && (abs(qns[a,2]-qns[b,2]))==0
-            out[a,b] = szpart(j,s,qns[b,:],qns[a,:])
+            @views out[b,a] = szpart(j,s,qns[b,:],qns[a,:])
          end
       end
       dropzeros!(out)
@@ -73,26 +68,34 @@ function sz_loop(j,s)
    else
       out[diagind(out)] .+= 1.0
    end
-   return Symmetric(out)
+   return Symmetric(out,:L)
 end
 
-function sz_loop2(j,s) 
+function sz_loop2(j,s) #this is astronomically worse
    l = Int((2*j+1)*(2*s+1))
    out = spzeros(l,l)
    if s != zero(s)
-      out = spzeros(l,l)
       qns = qngen(j,s)
-      for a ∈ 1:l#, b ∈ a:l
-         f = (abs.(qns[a,1].-qns[:,1]).≤1) .* (abs.(qns[a,2].-qns[:,2]).==0)
-         @show f
-         out[a,f] .= szpart(j,s,qns[f,:],qns[a,:])
+      for a ∈ 1:l
+         f = collect(a:l)[(abs.(qns[a,1].-qns[a:l,1]).≤1).*
+                          ((abs.(qns[a,2].-qns[a:l,2])).==0)]
+         out[f,a] = szpart.(j,s,qns[a,1],qns[a,2],qns[f,1],qns[f,2])
       end
       dropzeros!(out)
       out .*= nred(s)*(-1)^(s+j+1)
    else
       out[diagind(out)] .+= 1.0
    end
-   return Symmetric(out)
+   return out#Symmetric(out)
+end
+# ϕ θ
+function sz_comp(j,s)
+   l = Int((2*j+1)*(2*s+1))
+   out = spzeros(l,l)
+   qns = qngen(j,s)
+   out .= sparse([szpart(j,s,qns[b,:],qns[a,:]) for a ∈ 1:l, b ∈ 1:l ])
+   out = nred(s).*dropzeros!(out)
+   return out
 end
 
 function sz_broad(j,s)#aggressively slower

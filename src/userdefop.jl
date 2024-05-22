@@ -68,47 +68,6 @@ This returns the first and final indices for a certain J value for a given S.
    return collect(snd:fnd)
 end
 
-#function Δlist(J,S)
-#   max = Int(J+S)
-#   min = Int(abs(J-S))
-#   return collect(min:max)
-#end
-
-#function kperm(n::Int)::Array{Int}
-#   sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-#end
-#function kperm(j,s)::Array{Int}
-#   perm = zeros(Int,Int((2*j+1)*(2*s+1)))
-#   shift = 0
-#   for n in Δlist(j,s)
-#      nd = 2*n+1
-#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-#      shift += nd
-#   end
-#   return perm
-#end
-#function kperm(j,s,shift::Int,jsd::Int,Δl::Array,perm)::Array{Int}
-#   #perm = zeros(Int,jsd)
-#   for n in Δl
-#      nd = 2*n+1
-#      perm[(1+shift):(nd+shift)] = kperm(n) .+ shift
-#      shift += nd
-#   end
-#   return perm#, shift
-#end
-#function kperm(j,s,m)
-#   jsd = Int((2*j+1)*(2*s+1))
-#   Δlst = Δlist(j,s)
-#   shift = 0
-#   perm = zeros(Int,jsd*(2*m+1))
-#   for i in 0:(2*m)
-#      perm = kperm(j,s,shift,jsd,Δlst,perm)
-#      shift += jsd
-#   end
-#   return perm
-#end
-
-
 function qngen(n,nf,m,σ)
    nd = Int(2*n+1)
    md = Int(2*m+(σtype(nf,σ)==2)+1)
@@ -650,6 +609,20 @@ end
 function nmel(nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    return @. δ(nb,nk)*δ(kb,kk+1)*fh(nk,kk)
+end
+function nptest(j,s)
+   nk = ngen(j,s)
+   kk = kgen(j,s)
+   nb = permutedims(nk)
+   kb = permutedims(kk)
+   out = npel(nb,kb,nk,kk)
+end
+function nptest(n)
+   nk = ngen(n)
+   kk = kgen(n)
+   nb = permutedims(nk)
+   kb = permutedims(kk)
+   out = npel(nb,kb,nk,kk)
 end
 function npel(nb::Array{Int,2},kb::Array{Int,2},
               nk::Array{Int,2},kk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}

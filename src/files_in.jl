@@ -29,11 +29,6 @@ function blockfind(molnam::String,blknam::String)
 end
 
 function ctrlinp(molnam::String)
-   #findstr = `grep -n CNTRLS $molnam.inp`
-   #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   #findstr = `grep -n '^$' $molnam.inp`
-   #enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[1]
-   #len = parse(Int, enln) - strln - 1
    blk = blockfind(molnam, "%CNTRLS")
    len = blk[2] - blk[1] - 1
    ctrl = ctrlinit()
@@ -66,6 +61,15 @@ function secordinit()
       "χzz"=> 9, "χxmy"=> 11, "χxz"=> 10)
    return prd
 end
+function secordinit_full()
+   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, 
+      "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 9,
+      "χzz"=> 10, "χxz"=> 11, "χxmy"=> 12, 
+      "F" => 13, "ρz" => 14, "ρ" => 14, "ρx" =>15, "Vn" => 16, "V3" =>16,
+      "ηz" => 17, "η" => 17, "ηx" => 18
+      )
+   return prd
+end
 
 function irrepswap(irrep::String)::Array{Int}
    if irrep=="Il"
@@ -92,7 +96,7 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
    out[5] = -(prd[5] + prd[6] + prd[8]) / √3      #T⁰₀(ϵ)
-   out[6] = (2*prd[5] - prd[6] - prd[8]) / √6     #T²₀(ϵ)
+   out[6] = (2*prd[5] - prd[6] - prd[8]) / √6     #T²₀(ϵ) 
    out[7] = -prd[7]                               #T²₁(ϵ)
    out[8] = (prd[6] - prd[8])*0.5                 #T²₂(ϵ)
    out[9] = prd[9]                                #T²₀(χ)
@@ -104,13 +108,43 @@ function sod2prep(prd::Array{Float64})::Array{Float64}
    out[15] = prd[15]                              #η
    return out
 end
+function sod2prep_full(prd::Array{Float64})::Array{Float64}
+   out = zeros(18)
+   tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρx²
+   tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρz²
+   out[2] = 0.5*(tempb + prd[3])                  #BN
+   out[1] = tempa - 0.5*(tempb + prd[3])          #BK
+   out[3] = 0.25*(tempb - prd[3])                 #B±
+   out[4] = prd[4] + 2*csl*prd[14]*prd[15]        #Dab
+
+   out[5] = -(prd[5] + prd[6] + prd[7]) / √3      #T⁰₀(ϵ)
+   out[6] = 0.5*(prd[8] - prd[9])                 #T¹₁(ϵ)
+   out[7] = (2*prd[5] - prd[6] - prd[7]) / √6     #T²₀(ϵ)
+   out[8] = -0.5*(prd[8] + prd[9])                #T²₁(ϵ)
+   out[9] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
+   
+   out[10] = prd[10]                              #T²₀(χ)
+   out[11] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
+   out[12] = prd[12] / √(6.0)                     #T²₂(χ)
+
+   out[13] = prd[13]*csl                          #F
+   out[14] = -2.0*prd[13]*prd[14]*csl             #ρzF
+   out[15] = -2.0*prd[13]*prd[15]*csl             #ρxF
+   out[16] = prd[16]*0.5*csl                      #Vn/2
+   out[17] = prd[17]                              #ηz
+   out[18] = prd[18]                              #ηx
+   return out
+end
+
+function epszxcheck!(prd::Array{Float64},scl::Array{Float64})::Tuple(Array{Float64},Array{Float64})
+   if -prd[6]==prd[8]
+      prd[6] = 0.0
+      scl[6] = 0.0
+   end
+   return prd, scl
+end
 
 function secordinp(molnam::String,irp::String)
-   #findstr = `grep -n 2NDORDER $molnam.inp`
-   #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`)))
-   #findstr = `grep -n '^$' $molnam.inp`
-   #enln = split(readchomp(pipeline(findstr,`cut -d : -f1`)), "\n")[2]
-   #len = parse(Int, enln) - strln - 1
    blk = blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
    #println(len)
@@ -126,7 +160,8 @@ function secordinp(molnam::String,irp::String)
       err[ind] = file[i,3]
    end
    val[1:3] = val[irrepswap(irp)]
-   val = sod2prep(val)
+   val = sod2prep_full(val)
+   val, err = epszxcheck!(val,err)
    return val, err
 end
 
