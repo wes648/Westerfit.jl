@@ -112,8 +112,8 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
    out = zeros(18)
    tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρx²
    tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρz²
-   out[2] = 0.5*(tempb + prd[3])                  #BN
    out[1] = tempa - 0.5*(tempb + prd[3])          #BK
+   out[2] = 0.5*(tempb + prd[3])                  #BN
    out[3] = 0.25*(tempb - prd[3])                 #B±
    out[4] = prd[4] + 2*csl*prd[14]*prd[15]        #Dab
 
@@ -126,13 +126,13 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
    out[10] = prd[10]                              #T²₀(χ)
    out[11] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
    out[12] = prd[12] / √(6.0)                     #T²₂(χ)
-
+   #the factor of 0.5 on the x terms is from 2lₓ = l_+ + l_-
    out[13] = prd[13]*csl                          #F
    out[14] = -2.0*prd[13]*prd[14]*csl             #ρzF
-   out[15] = -2.0*prd[13]*prd[15]*csl             #ρxF
+   out[15] = -prd[13]*prd[15]*csl                 #ρxF
    out[16] = prd[16]*0.5*csl                      #Vn/2
    out[17] = prd[17]                              #ηz
-   out[18] = prd[18]                              #ηx
+   out[18] = 0.5*prd[18]                          #ηx
    return out
 end
 
