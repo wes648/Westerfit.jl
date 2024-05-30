@@ -68,7 +68,7 @@ This returns the first and final indices for a certain J value for a given S.
    return collect(snd:fnd)
 end
 
-function qngen(n,nf,m,σ)
+function qnlab(n,nf,m,σ)
    nd = Int(2*n+1)
    md = Int(2*m+(σtype(nf,σ)==2)+1)
    narray = fill(n,nd*md)
@@ -78,7 +78,7 @@ function qngen(n,nf,m,σ)
    σarray = fill(σ,nd*md)
    out = hcat(narray,abs.(karray),kcarray,marray,σarray)
 end
-function qngen(j,s,nf,m,σ)
+function qnlab(j,s,nf,m,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
    md = Int(2*m+(σtype(nf,σ)==2)+1)
@@ -98,7 +98,7 @@ function qngen(j,s,nf,m,σ)
    out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
    return out
 end
-function qngenv(j,s,nf,vtm,σ)
+function qnlabv(j,s,nf,vtm,σ)
    σt = σtype(nf,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
@@ -118,7 +118,7 @@ function qngenv(j,s,nf,vtm,σ)
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
    return out
 end
-function qngen(j,s)
+function qnlab(j,s)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
    out = zeros(Int,0,3)

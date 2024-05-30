@@ -41,7 +41,26 @@ function qngen(j,s)
    #[n k]
    return out
 end
-
+function qnlabv(j,s,nf,vtm,σ)
+   σt = σtype(nf,σ)
+   nlist = Δlist(j,s)
+   jsd = Int((2*j+1)*(2*s+1))
+   vd = Int(vtm+1)
+   out = zeros(Int,0,3)
+   for n in nlist
+      nd = Int(2*n+1)
+      part = zeros(Int,nd,3)
+      part[:,1] = fill(n,nd)
+      part[:,2] = collect(Int,-n:n)
+      part[:,3] = k2kc.(part[:,1],part[:,2])
+      out = vcat(out,part)
+   end
+   out[:,2] = abs.(out[:,2])
+   out = kron(ones(Int,vd),out)
+   vtrray = kron(nf .* vtcoll(vtm,σt) .+ σ,ones(Int,jsd))
+   out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
+   return out
+end
 ####   new 2nd order   ####
 hr2on(ns,ks,bk,bn) = @. bn*eh2(ns) + bk*ks^2 
 hr2of1(ns,ks,dab) = @. dab*(ks+0.5)*fh(ns,ks)
@@ -190,6 +209,11 @@ function np_op(qns,p)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 npm_op(qns::Matrix{Int64},p::Int) = Symmetric(np_op(qns,p),:L)
+function iny_op(qns::Matrix{Int64},p::Int)
+   out = np_op(qns,1-δ(p,0))
+   out .-= permutedims(out)
+   return dropzeros!(out)
+end
 
 function sqpart(j,s,q,bqn,kqn)::Float64
    nb = bqn[1]
@@ -245,37 +269,40 @@ function cos_op(ms,p)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 function sin_op(ms,p)::SparseMatrixCSC{Float64, Int64}
-   out = fill(0.5, length(ns)-p)
+   #this is actually sin/2i as we are moving immediately multiplying it by
+   #the i from Ny
+   out = fill(0.25, length(ns)-p)
    out = spdiagm(-p=>out, p=>out)
    return out
 end
 
 ####   collected operators   ####
 
-function rsr_op(j::Number,s::Number,qns::Array{Int,2},
-      a::Int,b::Int,c::Int,d::Int,e::Int,f::Int)::SparseMatrixCSC{Float64, Int64}
+function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
+         c::Int,d::Int,e::Int,f::Int,j::Int)::SparseMatrixCSC{Float64, Int64}
    out = np_op(qns,e)*sp_op(j,s,qns,f)
    tplus!(out)
-   out = sz_op(j,s,qns,d)*out
+   out = sz_op(j,s,qns,d)*out*iny_op(qns,j)
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)*out
    return dropzeros!(out)
 end
 
-tor_op(ms,g,h)::SparseMatrixCSC{Float64, Int64} = pa_op(ms,g)*cos_op(ms,h)
+tor_op(ms,g,h,j)::SparseMatrixCSC{Float64, Int64} = pa_op(ms,g)*
+                                                      cos_op(ms,h)*sin_op(ms,j)
 
 function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},ms::Array{Int},
                   a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int
-                  )::SparseMatrixCSC{Float64, Int64}
-   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f)
-   out = kron(tor_op(ms,g,h),out)
+                  j::Int)::SparseMatrixCSC{Float64, Int64}
+   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,j)
+   out = kron(tor_op(ms,g,h,j),out)
    return dropzeros!(out)
 end
 function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},
             ms::Array{Int},plist::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    #1/2 from a+a', 1/2 from np^0 + nm^0
    out = 0.25*prm*rsr_op(j,s,qns,plist[1],plist[2],plist[3],
-                           plist[4],plist[5],plist[6])
-   out = kron(tor_op(ms,plist[7],plist[8]),out)
+                           plist[4],plist[5],plist[6],plist[9])
+   out = kron(tor_op(ms,plist[7],plist[8],plist[9]),out)
    return dropzeros!(out)
 end
 
@@ -295,15 +322,15 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,mc,σ)
    return dropzeros!(ℋ)
 end
 
-function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
-   H = hjbuild(sof,cdf,cdo,tormat,j,s,mb,mk)
+function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
+   H = hjbuild(sof,cdf,cdo,j,s,mc,σ)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
    if σtype(nf,σ) != 1 #A & B states have more symmetry
-      U = ur(j,s,mcalc,σt)*ut(mcalc,σt,j,s)
+      U = ur(j,s,mcalc,σtype(nf,σ))*ut(mcalc,σtype(nf,σ),j,s)
    else
-      U = ur(j,s,mcalc,σt)
+      U = ur(j,s,mcalc,σtype(nf,σ))
    end
    H = (U*H*U)
    ### All lines commented with ### are for the Jacobi routine
@@ -314,7 +341,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    vals, vecs = eigen!(Symmetric(Matrix(H)))
    ###perm = assignperm(vecs)
    if ctrl["assign"]=="RAM36"
-      perm = ramassign(vecs,j,s,mcalc,σt,vtm)
+      perm = ramassign(vecs,j,s,mcalc,σtype(nf,σ),vtm)
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
@@ -333,4 +360,73 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
          permutedims(kgen(j,s)),mb,ngen(j,s),kgen(j,s),mk) * vecs)
    end
    return vals, vecs, pasz
+end
+
+
+function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
+   sof = prm[1:18]
+   cdf = prmsetter(prm[19:end],stg)
+   mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+   vtd = Int(vtm+1)
+   σt = σtype(nf,σ)
+   jmin = 0.5*iseven(sd)
+   jmax = jlist[end]
+   jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   msd = sd*mcd
+   mstrt, mstop = mslimit(nf,mcalc,σ)
+   outvals = zeros(Float64,jfd*vtd)
+   outpasz = zeros(Float64,jfd*vtd)
+   outquns = zeros(Int,jfd*vtd,6)
+   outvecs = zeros(Float64,Int(sd*(2*jmax+1)*mcd),jfd*vtd)
+   for j in jlist #thread removed for troubleshooting purposes
+#   @threads for j in jlist
+      jd = Int(2.0*j) + 1
+      sind, find = jvdest(j,s,vtm) 
+      tvals, tvecs, tpasz = tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
+      outvals[sind:find] = tvals
+      outpasz[sind:find] = tpasz
+      outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
+      outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
+   end
+   return outvals, outvecs, outquns, outpasz
+end
+
+function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
+   s = ctrl["S"]
+   mcalc = ctrl["mcalc"]
+   vtm = ctrl["vtmax"]
+   #sd = Int(2*s + 1)
+   sof = prm[1:18]
+   cdf = prmsetter(prm[19:end],stg)
+   #println(cdf)
+   vtd = Int(vtm+1)
+   jmin = 0.5*iseven((2*s + 1))
+   jmax = jlist[end,1]
+   jfd = Int((2s+1)*sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   σcnt = σcount(nf)
+   mcd = Int(2*mcalc+(iseven(nf))+1)
+   fvls = zeros(Float64,jfd*vtd,σcnt)
+   fqns = zeros(Int,jfd*vtd,6,σcnt)
+   fvcs = zeros(Float64,Int((2*s + 1)*(2*jmax+2)*mcd),jfd*vtd,σcnt)
+   @time for sc in 1:σcnt
+      σ = sc - 1
+      #mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+      mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+      msd = Int(2*s + 1)*mcd
+      mstrt, mstop = mslimit(nf,mcalc,σ)
+      jmsd = Int(mcd*(2s+1)*(2*jmax+1))
+      jsvd = Int(jfd*vtd)
+      jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
+      @threads for j in jsublist
+         jd = Int(2.0*j) + 1
+         #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
+         sind, find = jvdest(j,s,vtm) 
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc], = tsrdiag(ctrl,
+            sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
+         #fvls[sind:find,sc] = tvals#[pull]
+         #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
+         fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)
+      end
+   end
+   return fvls, fvcs, fqns
 end

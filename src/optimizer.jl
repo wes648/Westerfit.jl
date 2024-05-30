@@ -247,7 +247,7 @@ function approx2dirdrv!(K,β,jcbn,weights,nlist,inds,params,perm,omc,ofreqs)
    h = 0.1
    params[perm] += h*β
    #pvals,pvecs = limeigcalc(nlist, inds, params)
-   pvals,pvecs, = tsrcalc(prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
+   pvals,pvecs, = tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    prms, pomc, = rmscalc(pvals, inds, ofreqs)
    K = (2/h)*((pomc-omc)/h - jcbn*β)
    return K

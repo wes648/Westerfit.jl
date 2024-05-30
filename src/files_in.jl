@@ -182,13 +182,16 @@ function opinp(molnam::String)
       zeros(0,0)
    end
    len = size(file,1) #might be wrong index
+   if size(file,2)==12
+   @warn "You are using a deprecated input format! Check the github for the new structure"
+   end
    if len !=zero(len) #normal behavior for added parameters
    nams = fill("nam",len)
    vals = zeros(Float64,len)
    #vals = Array{Any}(nothing,len)
    errs = zeros(Float64,len)
    #oprs = Array{Any}(nothing,8,len)
-   oprs = zeros(Int,8,len)
+   oprs = zeros(Int,9,len)
    stgs = zeros(Int,len)
    col = collect(1:len)
    for i in col
