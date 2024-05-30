@@ -79,21 +79,26 @@ The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian o
 
 
 ## Installation
-Unfortuantely the WIGXJPFjl installer seems to be broken again. I'm working on it but manual installation of WIGXJPF may be necessary at the current time
+Unfortuantely, westerfit installation is a bit of a mess. 
+Part of this is from the dev team both running the same Linux distribution and not having other machines for testing. 
+I'm afraid the WIGXJPFjl installer seems to be broken again. I'm working on it but manual installation of WIGXJPF may be necessary at the current time
 
 westerfit is now available in the Julia package manager!
 
 To install westerfit, you will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup).
 You also need to have a C compiler available for the WIGXJPF dependency.
-Once Julia is installed, type `julia` into your command line to enter a REPL session and hit `]` to enter package mode.
+Ideally, once Julia is installed, type `julia` into your command line to enter a REPL session and hit `]` to enter package mode.
 Simply type `add Westerfit` and you should be good to go!
 
-This will add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Julia installation.
+The automated installation will add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Julia installation.
 The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and is currently the main point of failure in the install process.
 It should be smoothed up thanks to the BinaryBuilder.jl based install script but I've only tested it on Linux.
 You may have to manually compile and place the libwigxjpf_shared.so library in the package's deps directory and I ask that you let me know if that's the case.
 You may also have better luck using the Ubuntu terminal from the Microsoft Store on Windows if you don't have access to a Linux machine.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
+
+If the automated installation method fails, please shoot me an email.
+I'll gladly help you troubleshoot the installation and hopefully fix it so it installs smoothly for the next person.
 
 Lastly, I recommend making a simple runner script called `westerfit` somewhere in your path.
 This script just needs the following few lines:
