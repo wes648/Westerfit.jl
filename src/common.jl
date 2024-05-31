@@ -393,6 +393,27 @@ This builds the rotational Wang Transformation matrix for every n in Δlist(j,s)
    return out
 end
 
+vt2m(vtm)::Int = ceil(vtm/2)*cospi(vtm)
+vt2m(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
+function vtlist(vtm,σt) 
+   if vtm == zero(vtm)
+      return [vt2m(vtm,σt)]
+   else
+      return sort([vt2m(vtm,σt); vt2m(vtm-1,σt)])
+   end
+end
+function vtcoll(vtm,σt) 
+   if vtm == zero(vtm)
+      return [vt2m(vtm,σt)]
+   else
+      a = vt2m(vtm,σt)
+      b = vt2m(vtm-1,σt)
+      ref = sort([a; b])
+      return collect(ref[1]:ref[2])
+   end
+end
+
+
 ################################################################################
 # Parameter shifting functions
 ################################################################################

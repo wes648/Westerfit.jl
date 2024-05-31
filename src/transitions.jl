@@ -1,4 +1,5 @@
 
+
 Tμ(q::Int)::Int = q + 2
 
 function μproc(μf,μo)
@@ -24,7 +25,7 @@ end
 function μelem(pr::Float64,q,s::Float64,jb::Float64,nb,kb,jk::Float64,nk,kk)::Array{Float64,2}
    @. return pr*wig3j( nb,1,nk,
                       -kb,q,kk)*μred(s,jb,nb,jk,nk)*
-               (-1)^(s+jb-kb+nb+nk)
+            powneg1(s+jb-kb+nb+nk)
 end
 function μmat(μs,s,jb,jk)
    lb = Int((2.0*s+1.0)*(2.0*jb+1.0))
@@ -188,6 +189,20 @@ end
 
 function tracalc_nocat(μ::Nothing,kbT,Qrt,nf,s,jmax,mcalc,vtm,
                        rvals,rvecs,rqns,σr,cvals,cvecs,cqns,σc)
-   println("Yikes! Hard to do intensity calculations with out dipole components")
+   println("Yikes! Hard to do intensity calculations without dipole components")
    return nothing,nothing
 end
+
+
+function traerrs(J,σu)
+   J = J.^2
+   σu = σu.^2
+   return .√sum(J .* σu',dims=2)
+end
+
+function unccalc_no_fit(ctrl,frqs,quns)
+   
+   J = build_jcbn2!([0.0],ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
+   uncs = paramunc(H,W,perm,omc)
+end
+

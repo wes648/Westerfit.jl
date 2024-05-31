@@ -8,8 +8,9 @@ fh(x::Number,y::Number)::Float64 = □rt((x-y)*(x+y+1))
 jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
 nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
 powneg1(k::Number)::Int = isodd(k) ? -1 : 1
-Δlist(J,S)::Array{Int64} = collect(Int(abs(J-S)):Int(J+S))
+#Δlist(J,S)::Array{Int64} = collect(Int(abs(J-S)):Int(J+S))
 δ(x::Number,y::Number)::Float64 = x==y
+δi(x::Number,y::Number)::Int = x==y
 T(l::Int,q::Int)::Int = l*(l+1) + q + 1
 Tq(q::Int)::Int = 3 + q #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
@@ -19,18 +20,6 @@ function tplus!(a::SparseMatrixCSC{Float64, Int64})::SparseMatrixCSC{Float64, In
    a .+= permutedims(a)
 end
 
-function srprep(J,S)
-   ns = Δlist(J,S)
-   nd = 2 .* Int.(ns) .+ 1
-   ni = ones(Int, length(ns),2)
-   ni[1,2] = nd[1]
-   for i in 2:length(ns)
-      ni[i,1] = ni[i-1,2] + 1
-      ni[i,2] = ni[i,1] + nd[i] - 1
-   end
-   jd = Int((2.0*S+1.0)*(2.0*J+1.0))
-   return ns, nd, ni, jd
-end
 function qngen(j,s)
    ns, nd, ni, jsd = srprep(j,s)
    out = zeros(Int,jsd,2)
@@ -69,8 +58,8 @@ function hrot2(pr,qns)
    ns = view(qns,:,1)
    ks = view(qns,:,2)
    p0 = hr2on(ns,ks,pr[1],pr[2])
-   p1 = hr2of1(ns,view(ks,2:end), pr[3])
-   p2 = hr2of2(ns,view(ks,3:end), pr[4])
+   p1 = hr2of1(ns,ks[2:end], pr[3])
+   p2 = hr2of2(ns,ks[3:end], pr[4])
    out = spdiagm(0=>p0,1=>p1,2=>p2)
    return Symmetric(dropzeros!(out))
 end
@@ -112,7 +101,7 @@ function hsr(pr,j,s,qns)
          nk = ns[a]
          kk = ks[a]
          if abs(nb-nk)≤1 && (tv[2]+kk-kb)==0
-            out[b,a] += srlm(prm,tv[1],tv[2] j,s,nb,kb,nk,kk)
+            out[b,a] += srlm(prm,tv[1],tv[2], j,s,nb,kb,nk,kk)
          end#selection rule if
       end#sr ind for loop
       end#prm chck if
@@ -161,7 +150,7 @@ function hqu(pr,j,s,qns)
          nk = ns[a]
          kk = ks[a]
          if abs(nb-nk)≤2 && (tv[2]+kk-kb)==0
-            out[b,a] += qulm(prm,tv[1],tv[2] j,s,nb,kb,nk,kk)
+            out[b,a] += qulm(prm,tv[1],tv[2], j,s,nb,kb,nk,kk)
          end#selection rule if
       end#qu ind for loop
       end#prm chck if
@@ -172,8 +161,8 @@ function hqu(pr,j,s,qns)
 end
 
 function htor2(sof,nf, ms)
-   out = sof[13]*pa_op(ms,2)
-   out .+= sof[16].*(I(size(out,1)) .- cosp(ms,nf))
+   out = sof[1]*pa_op(ms,2)
+   out .+= sof[4].*(I(size(out,1)) .- cosp(ms,nf))
    return out
 end
 
@@ -279,10 +268,10 @@ end
 ####   collected operators   ####
 
 function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
-         c::Int,d::Int,e::Int,f::Int,j::Int)::SparseMatrixCSC{Float64, Int64}
-   out = np_op(qns,e)*sp_op(j,s,qns,f)
+         c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
+   out = np_op(qns,e)*sp_op(jp,s,qns,f)
    tplus!(out)
-   out = sz_op(j,s,qns,d)*out*iny_op(qns,j)
+   out = sz_op(j,s,qns,d)*out*iny_op(qns,jp)
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)*out
    return dropzeros!(out)
 end
@@ -291,10 +280,10 @@ tor_op(ms,g,h,j)::SparseMatrixCSC{Float64, Int64} = pa_op(ms,g)*
                                                       cos_op(ms,h)*sin_op(ms,j)
 
 function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},ms::Array{Int},
-                  a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int
-                  j::Int)::SparseMatrixCSC{Float64, Int64}
-   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,j)
-   out = kron(tor_op(ms,g,h,j),out)
+                  a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
+                  jp::Int)::SparseMatrixCSC{Float64, Int64}
+   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
+   out = kron(tor_op(ms,g,h,jp),out)
    return dropzeros!(out)
 end
 function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},
@@ -311,11 +300,11 @@ end
 function hjbuild(sof,cdf::Array,cdo::Array,j,s,mc,σ)
    qns = qngen(j,s)
    ms = msgen(mc,σ)
-   ℋ = hrot2(pr[1:4],qns) .+ hsr(pr[5:9],j,s,qns) .+ hqu(pr[10:12],j,s,qns)
+   ℋ = hrot2(sof[1:4],qns) .+ hsr(sof[5:9],j,s,qns) .+ hqu(sof[10:12],j,s,qns)
    ℋ = kron(I(length(ms)), ℋ)
-   ℋ .+= kron(htor, I(size(qns,1)))
+   ℋ .+= kron(htor2(sof[13:16],nf, ms), I(size(qns,1)))
    ℋ .+= kron(pa_op(1,ms),sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) 
-            .+ sof[17].*sz_op(j,s,qns,1) + sof[18].*spm_op(j,s,qns,1))
+            .+ sof[17].*sz_op(j,s,qns,1) .+ sof[18].*spm_op(j,s,qns,1))
    for i in 1:length(cdf)
       ℋ .+= tsr_op(cdf[i],j,s,qns,ms,view(cdo, :, i) )
    end

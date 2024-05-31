@@ -16,6 +16,7 @@ include("@__DIR__/../files_out.jl")
 include("@__DIR__/../jacobi.jl")
 include("@__DIR__/../new_ham.jl")
 include("@__DIR__/../optimizer.jl")
+include("@__DIR__/../remnant.jl")
 include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../userdefop.jl")
 

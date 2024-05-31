@@ -3,9 +3,9 @@ module Westerfit
 
 include("@__DIR__/../main.jl")
 
-precompile(westerfit, String)
+precompile(westerfit, (String,))
 
-export westerfit, westersim, westereng, ctrlinp
+#export westerfit, westersim, westereng, ctrlinp
 
 """
 Hi! If you are trying to read the source code, I recommend you start in main.jl
@@ -13,7 +13,9 @@ It's broken up like this so for easier testing on my end as I just include
 main.jl rather than calling the whole module when I need something quick.
 
 The key files are:
-userdefop.jl or "User Defineable Operators" has most of the Hamiltonian
+main.jl has the big functions of westerfit (fitter), westereng (energy calculator)
+   and westersim (simulator)
+new_ham.jl has most of the Hamiltonian
 common.jl is a collection of a lot of the smaller functions, especially the ones
    that relate to quantum numbers
 assign.jl contains the routines for assigning quantum numbers after 

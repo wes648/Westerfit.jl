@@ -12,7 +12,7 @@ function jlister(inds)
    js = vcat(inds[:,1],inds[:,4])
    σs = vcat(inds[:,2],inds[:,5])
    temp = fill((0,0),size(js))
-   for i in 1:size(js)[1]
+   for i in 1:size(js,1)
       temp[i] = (js[i],σs[i])
    end
    temp = unique(temp)
@@ -43,18 +43,18 @@ end
 #   return cfreqs
 #end
 #construct jacobian
-function anaderiv(j,s,σ,vec,rp,rpid)
-   rp = zero(rp)
-   rp[rpid] = 1.0
-   U = ur(j,s,mcalc)
-   if σ==zero(σ)
-      U *= ut(mcalc,j,s)
-   end
-   mat = Matrix(U*Htsrmat(rp,j,s,mcalc,σ)*U)
-   out = transpose(vec)*mat*vec
-   return out
-end
-function sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
+#function anaderiv(j,s,σ,vec,rp,rpid)
+#   rp = zero(rp)
+#   rp[rpid] = 1.0
+#   U = ur(j,s,mcalc)
+#   if σ==zero(σ)
+#      U *= ut(mcalc,j,s)
+#   end
+#   mat = Matrix(U*Htsrmat(rp,j,s,mcalc,σ)*U)
+#   out = transpose(vec)*mat*vec
+#   return out
+#end
+function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    ind = rpid+1
    if ind ≤ length(stg)+15
       check = stg[ind-15]
@@ -62,7 +62,8 @@ function sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
          pm = prm[ind]
          #println(pm)
          #println(ops[:,ind-15])
-         out .+= tsrop(pm,ops[:,ind-15],j,s,nb,kb,mb,nk,kk,mk)
+         #out .+= tsrop(pm,ops[:,ind-15],j,s,nb,kb,mb,nk,kk,mk)
+         out .+= tsr_op(1.0,j,s,qns,ms,view(cdo, :, rpid-15) )
          ind += 1
          if ind-15 ≤ length(stg)
             check = stg[ind-15]
@@ -74,7 +75,7 @@ function sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
    return out
 end
 
-function derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
+function derivmat_old(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
    #println(prm)
    if scl[rpid] < 0
    elseif rpid ≤ 4 #pure rot
@@ -106,8 +107,46 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
    end
    return out
 end
-function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec)
-   mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
+function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
+   #println(prm)
+   if scl[rpid] < 0 #should this be ≤ 0 ???
+   elseif rpid ≤ 4 #pure rot
+      pr = zeros(4)
+      pr[rpid] = 1.0
+      out = hrot2(pr,qns)
+      out = kron(I(length(ms)),out)
+   elseif 5 ≤ rpid ≤ 9 #spin-rot
+      pr = zeros(4)
+      pr[rpid-4] = 1.0
+      out = hsr(pr,j,s,qns)
+      out = kron(I(length(ms)),out)
+   elseif 10 ≤ rpid ≤ 12 #qua
+      pr = zeros(3)
+      pr[rpid-9] = 1.0
+      out = hqu(pr,j,s,qns)
+      out = kron(I(length(ms)),out)
+   elseif (rpid==13)||(rpid==16) # F or Vnf
+      pr = zeros(4)
+      pr[rpid-12] = 1.0
+      out = kron(htor2(pr,nf, ms), I(size(nk,1)))
+   elseif rpid==14 # ρzF
+      out = kron(pa_op(1,ms), nz_op(qns,1))
+   elseif rpid==15 # ρxF
+      out = kron(pa_op(1,ms), npm_op(qns,1)) 
+   elseif rpid==17 # ηz
+      out = kron(pa_op(1,ms), sz_op(j,s,qns,1)) 
+   elseif rpid==18 # ηx
+      out = kron(pa_op(1,ms), spm_op(j,s,qns,1))
+   else #user def
+      #out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
+      out = tsr_op(1.0,j,s,qns,ms,view(cdo, :, rpid-15) )
+      out .= sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
+   end
+   return out
+end
+
+function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec)
+   mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
    out = transpose(vec)*mat*vec
    return out
 end
@@ -139,14 +178,12 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
          #println(j)
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,ctrl["vtmax"]) 
-         nk = ngen(j,s)
-         kk = kgen(j,s)
-         nb = permutedims(nk)
-         kb = permutedims(kk)
+         qns = qngen(j,s)
+         ms = msgen(mc,σ)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
-            ders = diag(anaderiv(prm,scl,stg,pid,ops,j,s,nf,nb,kb,mb,nk,kk,mk,vec))
+            ders = diag(anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec))
             derivs[sind:find,sc,i] = ders
          end#perm loop
       end #j loop
@@ -157,6 +194,20 @@ end#function
 function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
+   #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
+   jcbn = zeros(Float64,size(inds,1),length(perm))
+   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,params,scals,stg)
+   @threads for p in 1:length(perm)
+   @simd for a in 1:size(inds,1)
+      jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
+   end
+   end
+   return jcbn
+end
+function build_jcbn_sim(ops,inds,ctrl,vecs,params,perm,scals,stg)
+   nf = ctrl["NFOLD"]
+   mcalc = ctrl["mcalc"]
+   jlist = #copy from tsrcalc
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds)[1],length(perm))
    deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,params,scals,stg)
@@ -345,7 +396,7 @@ function lbmq_turducken!(H,J,jtw,omc,λ,Δ,nlist,inds,nparams,scls,perm,ofreqs,r
       A = Hermitian(H + λ*Diagonal(H))
    end
    if isinf(λ)
-      println("LVMB Matrix not pos-def!") 
+      println("LB-MQ Matrix not pos-def!") 
       println("Make sure you aren't trying to optimize a parameter with value of 0.0.")
       println("This code is about to crash")
    end
@@ -368,7 +419,7 @@ end
 function aitkenδ(γ)#this was a weird accelerator idea
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
-function paramunc!(uncs,H,W,perm,omc)
+function paramunc(H,W,perm,omc)
    uncs = diag(inv(Symmetric(H)))
    uncs .*= (omc' * W * omc)/(length(omc)-length(perm))
    return □rt.(uncs)
@@ -420,9 +471,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    close(io)
 
    nparams = copy(params)
-   puncs = zero(perm)
+   #puncs = zero(perm)
    βf = zero(perm) #step
-   J = zeros(Float64,size(inds)[1],length(perm)) #Jacobian
+   J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zero(omc) #jtwient
    J = build_jcbn2!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
@@ -431,7 +482,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
-   #uncs = paramunc!(uncs,H,perm,omc)
+   #uncs = paramunc(uncs,H,perm,omc)
    endpoint = "not yet"
    converged=false
    while converged==false
@@ -514,7 +565,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          break
       elseif (check < ϵ0)
          println("The RMS has stopped decreasing. Hopefully it is low")
-         #uncs = paramunc!(uncs,H,perm,omc)
+         #uncs = paramunc(uncs,H,perm,omc)
          #println(omc)
          #println(uncs)
          endpoint = "RMS"
@@ -522,7 +573,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       elseif (norm(βf))<ϵ1*(norm(params[perm])+ϵ1)
          slλ = (@sprintf("%0.4f", log10(λlm)))
          println("It would appear step size has converged. log₁₀(λ) = $slλ")
-         #uncs = paramunc!(uncs,H,perm,omc)
+         #uncs = paramunc(uncs,H,perm,omc)
          #println(uncs)
          endpoint = "step size"
          break
@@ -540,8 +591,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
-   puncs = zeros(size(params))
-   puncs[perm] = paramunc!(puncs,H,W,perm,omc)
+   #puncs = zeros(size(params))
+   puncs[perm] = paramunc(H,W,perm,omc)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15],ctrl["Irrep"])
