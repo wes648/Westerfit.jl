@@ -25,6 +25,35 @@ function paramrecov(prd::Array{Float64})::Array{Float64}
    out[15] = prd[15]                             #η
    return out
 end
+
+function paramrecov_full(prd::Array{Float64})::Array{Float64}
+   out = zeros(18)
+   if prd[13] != 0.0
+      out[14] = prd[14]/(-2.0*prd[13])                #ρ
+      out[15] = prd[15]/(-1*prd[13])                  #ρx
+   else
+      out[14] = 0.0
+      out[15] = 0.0
+   end
+   out[1] = prd[1] + prd[2] - prd[13]*out[14]^2        #A
+   out[2] = prd[2] + 2.0*prd[3] - prd[13]*out[15]^2    #B
+   out[3] = prd[2] - 2.0*prd[3]                        #C
+   out[4] = prd[4] - 2*out[14]*out[15]*csl             #Dab
+   out[5] = (-prd[5] + √2*prd[7])/√3                   #ϵzz
+   out[6] = -(prd[5]/√3 + prd[7]/√6) + prd[9]          #ϵxx
+   out[7] = -(prd[5]/√3 + prd[7]/√6) - prd[9]          #ϵyy
+   out[8] = (prd[6]-prd[8])                            #ezx
+   out[9] = -(prd[6]+prd[8])                           #ϵxz
+   out[10] = prd[10]                                   #χzz
+   out[11] = -√(1.5)*prd[11]                           #χxz
+   out[12] = √6*prd[12]                                #χxx-χyy
+   out[13] = prd[13]#/csl                               #F (MHz)
+   out[16] = 2.0*prd[16] #/ csl                         #V3
+   out[17] = prd[17]                                   #η
+   out[18] = 2*prd[18]                                 #ηx
+   return out
+end
+
 function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out = zeros(15)
 
@@ -53,13 +82,51 @@ function uncrecov(unc,prd::Array{Float64})::Array{Float64}
    out[15] = unc[15]^2                                  #ση
    return sqrt.(out)
 end
+
+
+function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
+   out = zeros(18)
+
+   if prd[13] != 0.0
+      out[14] = (0.5*unc[14]/prd[13])^2 +
+                (0.5*prd[14]*unc[13]/prd[13]^2)^2      #σρ
+      out[15] = (0.5*unc[15]/prd[13])^2 +
+                (0.5*prd[15]*unc[13]/prd[13]^2)^2      #σρ
+   else
+      out[14] = 0.0
+      out[15] = 0.0
+   end
+#   out[1] = unc[1]^2 + unc[2]^2 + (0.25unc[12]*prd[13]^2/prd[12]^2)^2 +
+#            (0.5*prd[13]*unc[13]/prd[12])^2          #σA
+   out[1] = unc[1]^2 + unc[2]^2 + (unc[12]*prd[13]^2)^2 +
+            (2*prd[12]*prd[13]*out[13])^2               #σA
+   out[2] = unc[2]^2 + 4.0*unc[3]^2+ (unc[12]*prd[13]^2)^2 +
+            (2*prd[12]*prd[13]*out[13])^2               #σB
+   out[3] = unc[2]^2 + 4.0*unc[3]^2                     #σC
+   out[4] = (unc[4]^2 + 4.0*+ (unc[12]*prd[13]^2)^2 +
+            (prd[12]*prd[13]*out[13])^2)/csl            #σDab
+   out[5] = (unc[5]^2 + 2*unc[6]^2)/3                   #σϵzz
+   out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[8]^2        #σϵxx
+   out[7] = (2*unc[5]^2 + unc[6]^2)/6 + unc[9]^2        #σϵyy
+   out[8] = unc[6]^2 + unc[8]^2                         #σϵzx
+   out[9] = unc[6]^2 + unc[8]^2                         #σϵxz
+   out[10] = unc[10]^2                                  #σχzz
+   out[11] = 1.5*unc[11]^2                              #σχxz
+   out[12] = 6.0*unc[12]^2                              #σχxx-χyy
+   out[13] = unc[13]^2 #/csl                            #σF
+   out[16] = 4.0*unc[16]^2 #/ csl                       #σV3
+   out[17] = unc[17]^2                                  #ση
+   out[18] = 4.0*unc[18]^2                              #σρx
+   return sqrt.(out)
+end
+
 function fullrecov(prd,unc,irrep)
-   oprd = paramrecov(prd)
-   ounc = uncrecov(unc,oprd)
+   oprd = paramrecov_full(prd)
+   ounc = uncrecov_full(unc,oprd)
    oprd[1:3] = oprd[irrepswap(irrep)]
    ounc[1:3] = ounc[irrepswap(irrep)]
-   oprd[[12,14]] ./= csl
-   ounc[[12,14]] ./= csl
+   oprd[[13,16]] ./= csl
+   ounc[[13,16]] ./= csl
    return oprd, ounc
 end
 
