@@ -75,22 +75,25 @@ end
 function westersim(molnam::String, prm, ctrl, fvls,fvcs,fqns,μs)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
-      σcnt = σcount(ctrl["NFOLD"])
-      jmax = ctrl["Jmax"]
+   σcnt = σcount(ctrl["NFOLD"])
+   jmax = ctrl["Jmax"]
 
-      kbT = ctrl["TK"]*20836.61912 #MHz/K
-      Qrt = sum(exp.(fvls ./ -kbT))/3
-      finfrq = zeros(0,3)
-      finqns = zeros(Int,0,12)
-      @time for sc in 1:σcnt
-         σ = sc - 1
-         vals = fvls[:,sc]
-         vecs = fvcs[:,:,sc]
-         quns = fqns[:,:,sc]
-         fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,vals,vecs,quns,σ)
-         finfrq = vcat(finfrq,fr)
-         finqns = vcat(finqns,qn)
-      end
+   kbT = ctrl["TK"]*20836.61912 #MHz/K
+   Qrt = sum(exp.(fvls ./ -kbT))/3
+   finfrq = zeros(0,3)
+   finqns = zeros(Int,0,12)
+   @time for sc in 1:σcnt
+      σ = sc - 1
+      vals = fvls[:,sc]
+      vecs = fvcs[:,:,sc]
+      quns = fqns[:,:,sc]
+      fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,vals,vecs,quns,σ)
+      finfrq = vcat(finfrq,fr)
+      finqns = vcat(finqns,qn)
+   end
+   #calculate uncertainties
+   uncs = unccalc_no_fit(ctrl,quns,prms,scals,stg,ops,pσ)
+   finfrq = hcat(finfrq,uncs)
    #write transitions to file
    TraWriter(molnam, ctrl["S"], finfrq, finqns)
    return finfrq, finqns
@@ -102,7 +105,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    The fitter!
 """
    println("westerfit!")
-   prm, ser = secordinp(molnam,ctrl["Irrep"])
+   prm, ser = secordinp(molnam,String(ctrl["Irrep"]))
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)

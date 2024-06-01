@@ -52,16 +52,25 @@ function qnlabv(j,s,nf,vtm,σ)
 end
 ####   new 2nd order   ####
 hr2on(ns,ks,bk,bn) = @. bn*eh2(ns) + bk*ks^2 
-hr2of1(ns,ks,dab) = @. dab*(ks+0.5)*fh(ns,ks)
-hr2of2(ns,ks,bpm) = @. bpm*fh(ns,ks)*fh(ns,ks+1)
-function hrot2(pr,qns)
+hr2of1(ns,ks,dab) = @. dab*(ks-0.5)*fh(ns,ks-1)
+hr2of2(ns,ks,bpm) = @. bpm*fh(ns,ks-1)*fh(ns,ks-2)
+function hrot2(pr,qns)::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
-   p0 = hr2on(ns,ks,pr[1],pr[2])
-   p1 = hr2of1(ns,ks[2:end], pr[3])
-   p2 = hr2of2(ns,ks[3:end], pr[4])
-   out = spdiagm(0=>p0,1=>p1,2=>p2)
+   out = spzeros(size(ns,1),size(ns,1))
+   #p0 = hr2on(ns,ks,pr[1],pr[2])
+   out[diagind(out)] .= hr2on(ns,ks,pr[1],pr[2])
+   #p1 = hr2of1(ns[2:end],ks[2:end], pr[4])
+   out[diagind(out,1)] .= hr2of1(ns[2:end],ks[2:end], pr[4])
+   #p2 = hr2of2(ns[3:end],ks[3:end], pr[3])
+   out[diagind(out,2)] .= hr2of2(ns[3:end],ks[3:end], pr[3])
+   #out = spdiagm(0=>p0,1=>p1,2=>p2)
    return Symmetric(dropzeros!(out))
+end
+function hrotest(pr,j,s)
+   qns = qngen(j,s)
+   out = hrot2(pr,qns)
+   return out
 end
 
 function nsred(l::Int,nb,nk)
@@ -82,10 +91,10 @@ function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
                    -kb,q,kk)*√(2*l+1)*
        nsred(l,nb,nk)*jsred(j,s,nb,nk)*powneg1(nb-nk-kb)
 end
-function hsr(pr,j,s,qns)
-   le = size(ns,1)
+function hsr(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
+   le = size(ns,1)
    out = spzeros(le,le)
    #awkward special array of rank, component, prm ind, & sign
    #each col is a different parameter
@@ -94,7 +103,7 @@ function hsr(pr,j,s,qns)
    for i in 1:8
       tv = view(Ts,:,i)
       prm = pr[tv[3]]*tv[4]
-      if pm ≠ 0.0
+      if prm ≠ 0.0
       for a in 1:le, b in 1:le
          nb = ns[b]
          kb = ks[b]
@@ -130,27 +139,27 @@ function qulm(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
              wig3j( nb, 2,nk,
                    -kb, q,kk)*powneg1(nb+nk-kb+s+j)
 end
-function hqu(pr,j,s,qns)
-   le = size(ns,1)
+function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
+   le = size(ns,1)
    out = spzeros(le,le)
    #awkward special array of rank, component, prm ind, & sign
    #each col is a different parameter
    Tq = SA[0 -1 1 -2 2; 
            1  2 2  3 3;
            1  1 1  1 1]
-   for i in 1:8
+   for i in 1:5
       tv = view(Tq,:,i)
-      prm = pr[tv[3]]*tv[4]
-      if pm ≠ 0.0
+      prm = pr[tv[2]]*tv[3]
+      if prm ≠ 0.0
       for a in 1:le, b in 1:le
          nb = ns[b]
          kb = ks[b]
          nk = ns[a]
          kk = ks[a]
          if abs(nb-nk)≤2 && (tv[2]+kk-kb)==0
-            out[b,a] += qulm(prm,tv[1],tv[2], j,s,nb,kb,nk,kk)
+            out[b,a] += qulm(prm,tv[1], j,s,nb,kb,nk,kk)
          end#selection rule if
       end#qu ind for loop
       end#prm chck if
@@ -160,9 +169,9 @@ function hqu(pr,j,s,qns)
    return out
 end
 
-function htor2(sof,nf, ms)
+function htor2(sof,nf, ms)::SparseMatrixCSC{Float64, Int64}
    out = sof[1]*pa_op(ms,2)
-   out .+= sof[4].*(I(size(out,1)) .- cosp(ms,nf))
+   out += sof[4].*(I(size(out,1)) .- cos_op(ms,nf))
    return out
 end
 
@@ -184,23 +193,26 @@ end
 
 nz_op(qns,p)::Diagonal{Float64, Vector{Float64}} = @views out = Diagonal(qns[:,2].^p)
 
-function np_op(qns,p)::SparseMatrixCSC{Float64, Int64}
+function np_op(qns,p::Int)::SparseMatrixCSC{Float64, Int64}
    ns = qns[1+p:end,1]
-   out = ones(length(ns))
+   part = ones(length(ns))
    if p ≤ length(ns)
       ks = qns[1+p:end,2]
-      out = ones(length(ks))
+      part = ones(length(ks))
       for o in 1:p
-         out .*= fh.(ns,ks.-o)
+         part .*= fh.(ns,ks.-o)
       end
    end
-   out = spdiagm(-p=>out)
+   out = spzeros(size(qns,1),size(qns,1))
+   out[diagind(out,-p)] = part
    return out
 end
 npm_op(qns::Matrix{Int64},p::Int) = Symmetric(np_op(qns,p),:L)
 function iny_op(qns::Matrix{Int64},p::Int)
-   out = np_op(qns,1-δ(p,0))
-   out .-= permutedims(out)
+   out = np_op(qns,1-δi(p,0))
+   if p≠0
+      out .-= permutedims(out)
+   end
    return dropzeros!(out)
 end
 
@@ -211,7 +223,7 @@ function sqpart(j,s,q,bqn,kqn)::Float64
    kk = kqn[2]
    return wig3j(nb,1,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*powneg1(-kb)
 end
-function sz_op(j,s,qns)#::SparseMatrixCSC{Float64, Int64}
+function sz_op(j,s,qns,p)#::SparseMatrixCSC{Float64, Int64}
    l = size(qns,1)
    out = spzeros(l,l)
    if s != zero(s)
@@ -225,7 +237,7 @@ function sz_op(j,s,qns)#::SparseMatrixCSC{Float64, Int64}
    else
       out[diagind(out)] .+= 1.0
    end
-   return Symmetric(out,:L)
+   return Symmetric(out,:L)^p
 end
 
 function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
@@ -246,21 +258,21 @@ function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-sz_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = Symmetric(sz_op(j,s,qns),:L)^p
-sp_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,1)^p
-sm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,-1)^p
-spm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sp_op(j,s,1)^p + sm_op(j,s,1)^p
+#sz_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = Symmetric(sz_op(j,s,qns),:L)^p
+sp_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,1,qns)^p
+sm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,-1,qns)^p
+spm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
 
 pa_op(ms,p)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
 function cos_op(ms,p)::SparseMatrixCSC{Float64, Int64}
-   out = fill(0.5, length(ns)-p)
+   out = fill(0.5, length(ms)-p)
    out = spdiagm(-p=>out, p=>out)
    return out
 end
 function sin_op(ms,p)::SparseMatrixCSC{Float64, Int64}
    #this is actually sin/2i as we are moving immediately multiplying it by
    #the i from Ny
-   out = fill(0.25, length(ns)-p)
+   out = fill(0.25, length(ms)-p)
    out = spdiagm(-p=>out, p=>out)
    return out
 end
@@ -269,7 +281,8 @@ end
 
 function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
          c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
-   out = np_op(qns,e)*sp_op(jp,s,qns,f)
+   out = np_op(qns,e)
+   out *= sp_op(j,s,qns,f)
    tplus!(out)
    out = sz_op(j,s,qns,d)*out*iny_op(qns,jp)
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)*out
@@ -284,35 +297,35 @@ function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},ms::Array{Int
                   jp::Int)::SparseMatrixCSC{Float64, Int64}
    out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
    out = kron(tor_op(ms,g,h,jp),out)
-   return dropzeros!(out)
+   return dropzeros!(tplus!(out))
 end
 function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},
-            ms::Array{Int},plist::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+            ms::Array{Int},plist::Array{Int})::SparseMatrixCSC{Float64, Int64}
    #1/2 from a+a', 1/2 from np^0 + nm^0
    out = 0.25*prm*rsr_op(j,s,qns,plist[1],plist[2],plist[3],
                            plist[4],plist[5],plist[6],plist[9])
    out = kron(tor_op(ms,plist[7],plist[8],plist[9]),out)
-   return dropzeros!(out)
+   return dropzeros!(tplus!(out))
 end
 
 ####   final construction and collection functions   ####
 
-function hjbuild(sof,cdf::Array,cdo::Array,j,s,mc,σ)
+function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,mc,σ)
    qns = qngen(j,s)
-   ms = msgen(mc,σ)
+   ms = msgen(mc,nf,σ)
    ℋ = hrot2(sof[1:4],qns) .+ hsr(sof[5:9],j,s,qns) .+ hqu(sof[10:12],j,s,qns)
    ℋ = kron(I(length(ms)), ℋ)
    ℋ .+= kron(htor2(sof[13:16],nf, ms), I(size(qns,1)))
-   ℋ .+= kron(pa_op(1,ms),sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) 
-            .+ sof[17].*sz_op(j,s,qns,1) .+ sof[18].*spm_op(j,s,qns,1))
+   ℋ .+= kron(pa_op(1,ms),sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) .+ 
+               sof[17].*sz_op(j,s,qns,1) .+ sof[18].*spm_op(j,s,qns,1))
    for i in 1:length(cdf)
-      ℋ .+= tsr_op(cdf[i],j,s,qns,ms,view(cdo, :, i) )
+      ℋ .+= tsr_op(cdf[i],j,s,qns,ms,cdo[:,i] )
    end
    return dropzeros!(ℋ)
 end
 
 function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
-   H = hjbuild(sof,cdf,cdo,j,s,mc,σ)
+   H = hjbuild(sof,cdf,cdo,j,s,nf,mcalc,σ)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
@@ -414,7 +427,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
             sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
          #fvls[sind:find,sc] = tvals#[pull]
          #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
-         fqns[sind:find,:,sc] = qngenv(j,s,nf,vtm,σ)
+         fqns[sind:find,:,sc] = qnlabv(j,s,nf,vtm,σ)
       end
    end
    return fvls, fvcs, fqns

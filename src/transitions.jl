@@ -200,9 +200,18 @@ function traerrs(J,σu)
    return .√sum(J .* σu',dims=2)
 end
 
-function unccalc_no_fit(ctrl,frqs,quns)
-   
+function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ)
+   #(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
+   inds = qnconv(quns,nf,s,vtm)
+   jlist = jlister(inds)
+   perm = permdeterm(scals,stg)
    J = build_jcbn2!([0.0],ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
-   uncs = paramunc(H,W,perm,omc)
+   if pσ==nothing
+      H = J' * J
+      W = I(size(H,1))
+      omc = ones(size(J,1))
+      pσ = paramunc(H,W,perm,omc)
+   end
+   uncs = traerrs(J,pσ)
 end
 

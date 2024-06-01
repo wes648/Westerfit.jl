@@ -253,7 +253,8 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*"," #Kc
       part *= lpad(qunl[11],3)*"," #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.6f", frql[2])*","
+      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    else
       part  = lpad(qunl[1]*0.5,4)*","
@@ -267,10 +268,112 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*","
       part *= lpad(qunl[11],3)*","
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.6f", frql[2])*","
+      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    end
    return part
+end
+function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
+   c = 29979.2458
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   for i in 1:size(freqs,1)
+      #freq
+#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
+      part = @sprintf("%13.4f", freqs[i,1])
+      #error
+      part = string(part,@sprintf("%8.4f", 0.00))
+      #-log(Intensity)
+      modint = log(freqs[i,2])#*.1
+      #modint = -abs(rand(1)[1])
+      part = string(part, @sprintf("%8.4f", modint))
+      #Degrees of Rotational Freedom
+      part = string(part, lpad(3,2))
+      #E_lower
+      modEl = freqs[i,3]/c
+      part = string(part, @sprintf("%10.4f", modEl))
+      #Upper State degeneracy
+      part = string(part, lpad(1,3))
+      #Tag
+      part = string(part, lpad(0,7))
+      #QNFMT
+      part = string(part, lpad(1415,4))
+      #J N Ka Kc σ vt is the order in the array
+      #N Ka Kc v J is the order for SPCAT
+      #qunus for upper
+      part = string(part, lpad(qunus[i,2],2),lpad(qunus[i,3],2),
+      #lpad(qunus[i,4],2), lpad(qunus[i,6],2), lpad(qunus[i,5],2))
+      lpad(qunus[i,4],2), lpad(qunus[i,5],2), lpad(qunus[i,1],2), lpad(qunus[i,6],2))
+      #qunus for lower
+      out[i] = string(part, lpad(qunus[i,8],2),lpad(qunus[i,9],2),
+      lpad(qunus[i,10],2), lpad(qunus[i,11],2),  lpad(qunus[i,7],2), lpad(qunus[i,12],2))
+      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))
+   end
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
+end
+function TraWriter(molnam,s, freqs, qunus)
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   for i in 1:size(freqs,1)
+      out[i] = linestrng(s, freqs[i,:], qunus[i,:])
+   end
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
+end
+
+
+function TraWriterold(molnam,freqs, qunus)
+   c = 29979.2458
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   counter = 0
+   for i in 1:size(freqs,1)
+      #J N Ka Kc sigma vt is the order in the array
+      #qunus for upper
+      ju = @sprintf("%2.1f", 0.5*qunus[i,1])
+      part = string(" ", lpad(ju,5),",", lpad(qunus[i,2],3),",", lpad(qunus[i,3],3),",",
+      lpad(qunus[i,4],3),",", lpad(qunus[i,5],3),",", lpad(qunus[i,6],3))
+      #qunus for lower
+      jl = @sprintf("%2.1f", 0.5*qunus[i,7])
+      part = string(part,",", lpad(jl,5),",", lpad(qunus[i,8],3),",", lpad(qunus[i,9],3),
+      ",", lpad(qunus[i,10],3),",", lpad(qunus[i,11],3),",", lpad(qunus[i,12],3))
+      #freq
+#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
+      freq = @sprintf("%13.4f", freqs[i,1])
+      #error
+      part = string(part,",", freq,",", @sprintf("%8.4f", 0.02))
+      #-log(Intensity)
+      #modint = log(freqs[i,2])#*.1
+      modint = freqs[i,2]#*.1
+      part = string(part, @sprintf("%8.4f", modint))
+      if modint ≥ 0.0001
+         counter += 1
+         out[counter] = part
+      end
+   end
+   out = out[1:counter]
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
 end
 
 """START CODE FOR UNCERTAINTY PRINTER THINGY"""
@@ -519,110 +622,6 @@ function inpwriter(molnam::String, values)
 end
 
 """END CODE FOR INPUT FILE WRITER"""
-
-
-function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
-   c = 29979.2458
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   for i in 1:size(freqs,1)
-      #freq
-#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
-      part = @sprintf("%13.4f", freqs[i,1])
-      #error
-      part = string(part,@sprintf("%8.4f", 0.00))
-      #-log(Intensity)
-      modint = log(freqs[i,2])#*.1
-      #modint = -abs(rand(1)[1])
-      part = string(part, @sprintf("%8.4f", modint))
-      #Degrees of Rotational Freedom
-      part = string(part, lpad(3,2))
-      #E_lower
-      modEl = freqs[i,3]/c
-      part = string(part, @sprintf("%10.4f", modEl))
-      #Upper State degeneracy
-      part = string(part, lpad(1,3))
-      #Tag
-      part = string(part, lpad(0,7))
-      #QNFMT
-      part = string(part, lpad(1415,4))
-      #J N Ka Kc σ vt is the order in the array
-      #N Ka Kc v J is the order for SPCAT
-      #qunus for upper
-      part = string(part, lpad(qunus[i,2],2),lpad(qunus[i,3],2),
-      #lpad(qunus[i,4],2), lpad(qunus[i,6],2), lpad(qunus[i,5],2))
-      lpad(qunus[i,4],2), lpad(qunus[i,5],2), lpad(qunus[i,1],2), lpad(qunus[i,6],2))
-      #qunus for lower
-      out[i] = string(part, lpad(qunus[i,8],2),lpad(qunus[i,9],2),
-      lpad(qunus[i,10],2), lpad(qunus[i,11],2),  lpad(qunus[i,7],2), lpad(qunus[i,12],2))
-      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))
-   end
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
-
-function TraWriter(molnam,s, freqs, qunus)
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   for i in 1:size(freqs,1)
-      out[i] = linestrng(s, freqs[i,:], qunus[i,:])
-   end
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
-
-
-function TraWriterold(molnam,freqs, qunus)
-   c = 29979.2458
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   counter = 0
-   for i in 1:size(freqs,1)
-      #J N Ka Kc sigma vt is the order in the array
-      #qunus for upper
-      ju = @sprintf("%2.1f", 0.5*qunus[i,1])
-      part = string(" ", lpad(ju,5),",", lpad(qunus[i,2],3),",", lpad(qunus[i,3],3),",",
-      lpad(qunus[i,4],3),",", lpad(qunus[i,5],3),",", lpad(qunus[i,6],3))
-      #qunus for lower
-      jl = @sprintf("%2.1f", 0.5*qunus[i,7])
-      part = string(part,",", lpad(jl,5),",", lpad(qunus[i,8],3),",", lpad(qunus[i,9],3),
-      ",", lpad(qunus[i,10],3),",", lpad(qunus[i,11],3),",", lpad(qunus[i,12],3))
-      #freq
-#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
-      freq = @sprintf("%13.4f", freqs[i,1])
-      #error
-      part = string(part,",", freq,",", @sprintf("%8.4f", 0.02))
-      #-log(Intensity)
-      #modint = log(freqs[i,2])#*.1
-      modint = freqs[i,2]#*.1
-      part = string(part, @sprintf("%8.4f", modint))
-      if modint ≥ 0.0001
-         counter += 1
-         out[counter] = part
-      end
-   end
-   out = out[1:counter]
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
 
 function findstrinput(molnam)
    #findctrl = `grep -n CNTRLS $molnam.inp`

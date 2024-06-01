@@ -108,7 +108,6 @@ function derivmat_old(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
    return out
 end
 function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
-   #println(prm)
    if scl[rpid] < 0 #should this be ≤ 0 ???
    elseif rpid ≤ 4 #pure rot
       pr = zeros(4)
@@ -128,7 +127,7 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
    elseif (rpid==13)||(rpid==16) # F or Vnf
       pr = zeros(4)
       pr[rpid-12] = 1.0
-      out = kron(htor2(pr,nf, ms), I(size(nk,1)))
+      out = kron(htor2(pr,nf, ms), I(size(qns,1)))
    elseif rpid==14 # ρzF
       out = kron(pa_op(1,ms), nz_op(qns,1))
    elseif rpid==15 # ρxF
@@ -139,7 +138,7 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
       out = kron(pa_op(1,ms), spm_op(j,s,qns,1))
    else #user def
       #out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
-      out = tsr_op(1.0,j,s,qns,ms,view(cdo, :, rpid-15) )
+      out = tsr_op(1.0,j,s,qns,ms,ops[:,rpid-18] )
       out .= sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    end
    return out
@@ -171,15 +170,14 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
       mstrt, mstop = mslimit(nf,mcalc,σ)
       jmsd = Int(mcd*(2*s+1)*(2*jmax+1))
       jsvd = Int(jfd*vtd)
-      mk = mgen(nf,mcalc,σ)
-      mb = permutedims(mk)
+      mk = msgen(mcalc,nf,σ)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      @threads for j in jsublist
+      for j in jsublist
          #println(j)
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,ctrl["vtmax"]) 
          qns = qngen(j,s)
-         ms = msgen(mc,σ)
+         ms = msgen(mcalc,nf,σ)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
@@ -396,7 +394,7 @@ function lbmq_turducken!(H,J,jtw,omc,λ,Δ,nlist,inds,nparams,scls,perm,ofreqs,r
       A = Hermitian(H + λ*Diagonal(H))
    end
    if isinf(λ)
-      println("LB-MQ Matrix not pos-def!") 
+      @warn "LB-MQ Matrix not pos-def!"
       println("Make sure you aren't trying to optimize a parameter with value of 0.0.")
       println("This code is about to crash")
    end
@@ -425,7 +423,7 @@ function paramunc(H,W,perm,omc)
    return □rt.(uncs)
 end
 function permdeterm(scls,stgs)
-   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(15),stgs) .> 0)]
+   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]
 end
 
 function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)

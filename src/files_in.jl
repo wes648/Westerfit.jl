@@ -136,7 +136,7 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
    return out
 end
 
-function epszxcheck!(prd::Array{Float64},scl::Array{Float64})::Tuple(Array{Float64},Array{Float64})
+function epszxcheck!(prd::Array{Float64},scl::Array{Float64})
    if -prd[6]==prd[8]
       prd[6] = 0.0
       scl[6] = 0.0
@@ -148,11 +148,11 @@ function secordinp(molnam::String,irp::String)
    blk = blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
    #println(len)
-   secns = secordinit()
+   secns = secordinit_full()
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,comment_char='#')
    #println(file)
-   val = zeros(Float64,15)
-   err = zeros(Float64,15)
+   val = zeros(Float64,18)
+   err = zeros(Float64,18)
    for i in 1:len
       nam = strip(file[i,1])
       ind = secns[nam]
@@ -160,7 +160,9 @@ function secordinp(molnam::String,irp::String)
       err[ind] = file[i,3]
    end
    val[1:3] = val[irrepswap(irp)]
+   @show val
    val = sod2prep_full(val)
+   @show val
    val, err = epszxcheck!(val,err)
    return val, err
 end
@@ -211,6 +213,7 @@ function opinp(molnam::String)
    oerr = errs[prm1]#, errs[prm2])
    oopr = oprs[:,prm1]#, oprs[:,prm2])
    ostg = stgs[prm1]
+   @show oopr
    return μset, opvls, onams, oerr, oopr, ostg
    else #exception for if none
       println("No higher order operators found. Continuing w/ only H^(2)")
@@ -263,6 +266,37 @@ else
    inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
 end
    return inds, freqs, uncs
+end
+
+function qnconv(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
+   #converts the simulator quantum numbers into the derivative format
+   #           1  2  3   4   5  6  7  8   9  10 
+   #input  = [ju nu kau kcu mu jl nl kal kcl ml]
+   #           1  2   3   4  5   6
+   #output = [ju σu indu jl σl indl]
+if length(lns[1,:]) != 10
+    println("Wrong number of columns in qns")
+end
+if nf != zero(nf)
+   qunus = lns[:,1:10]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] = Int.(mod.(qunus[:,5],nf))
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] = Int.(mod.(qunus[:,10],nf))
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+else
+   qunus = lns[:,1:10]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] .= 0
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] .= 0
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+end
+   return inds
 end
 
 

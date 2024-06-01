@@ -199,10 +199,33 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-
-msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
-mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,2*mc+1)' )
-
+function σtype(nfold,σ)
+   if σ==zero(σ) # A state
+      return 0
+   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+      return 2
+   else # E state
+      return 1
+   end
+end
+function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+   if nfold==0
+      return [1.]
+   else
+   σt = σtype(nfold,σ)
+   lim = mcalc*nfold
+   if σt==0
+      marray = collect(T,-lim:nfold:lim)
+   elseif σt==2
+      lim += σ
+      marray = collect(T,-lim:nfold:lim)
+   else
+      marray = collect(T,(-lim+σ):nfold:(lim+σ))
+   end
+   return marray
+   end
+end
+msgen(mc::Int,nf::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)
    lim = mcalc*nfold
@@ -216,3 +239,25 @@ function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    end
 end
 
+
+
+function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
+   out = zeros(9)
+   out[1] = -sum(diag(inp))/√3
+   out[2] = 0.5*(inp[1,2] - inp[2,1])
+   out[3] = 0.0
+   out[4] = 0.5*(inp[1,2] - inp[2,1])
+   out[5] = 0.5*(inp[2,2] - inp[3,3])
+   out[6] = 0.5*(inp[1,2] + inp[2,1])
+   out[7] = (3.0*inp[1,1] - sum(diag(inp)))/√6
+   out[8] = -0.5*(inp[1,2] + inp[2,1])
+   out[9] = 0.5*(inp[2,2] - inp[3,3])
+   return out
+end
+function cart2sphr(inp::Array{Float64,1})::Array{Float64,1}
+   out = zeros(3)
+   out[1] = (inp[3]+inp[1])/√2
+   out[2] = inp[2]
+   out[3] = -(inp[3]-inp[1])/√2
+   return out
+end
