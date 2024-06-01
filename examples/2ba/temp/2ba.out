@@ -1,0 +1,49 @@
+2ba   @   2024-05-31T22:28:27.806
+
+Control Parameters
+mcalc = 8
+νmax = 20.0
+maxiter = 60
+overwrite = false
+Irrep = Ir
+λlm0 = 0.0001
+apology = true
+Jmax = 16
+S = 0.0
+assign = RAM36
+turducken = 2
+REJECT = 10.0
+TK = 25.0
+RUNmode =  EF
+INTThresh = 0.0
+vtmax = 0
+NFOLD = 3
+νmin = 0.0
+INTthres = 1.0e-5
+LIMIT = 100
+
+Initial Parameters
+ BK;           10497.17271263465;   1.0
+ BN;           1640.883354759931;   1.0
+ B⨦;          55.651263349423516;   1.0
+ Dab;         -16.18461087425677;   1.0
+ T⁰₀(ϵ);                    -0.0;   0.0
+ T²₀(ϵ);                     0.0;   0.0
+ T²₁(ϵ);                     0.0;   0.0
+ T²₂(ϵ);                    -0.0;   0.0
+ T²₀(χ);                     0.0;   0.0
+ T²₁(χ);                     0.0;   0.0
+ T²₂(χ);                    -0.0;   0.0
+ F;                          0.0;   0.0
+ -2ρF;             169682.531228;   0.0
+ V3/2;       -24274.340880572883;   1.0
+ η;                         -0.0;   0.0
+
+
+Number of lines = 89
+
+Initial RMS = 16059.970146558238 MHz
+Initial λ = 0.0008500676698428248
+
+-------------------------------------
+
