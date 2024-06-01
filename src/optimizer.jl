@@ -591,6 +591,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    #puncs = zeros(size(params))
    puncs[perm] = paramunc(H,W,perm,omc)
+   puncs_forsim = copy(puncs)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15],ctrl["Irrep"])
@@ -600,5 +601,5 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
       inpwriter(molnam, params)
    end
-   return params, puncs, fomc, fcfrqs, vals
+   return params, puncs_forsim, fomc, fcfrqs, vals
 end

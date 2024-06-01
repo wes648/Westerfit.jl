@@ -70,9 +70,10 @@ function westereng(molnam::String, prm, ctrl)
    if occursin("E",ctrl["RUNmode"])
       engwriter(molnam,ctrl,fvls,fqns,fpasz)
    end
-   return fvls, fvcs, fqns, μs
+   scls = vcat(ser,cde)
+   return fvls, fvcs, fqns, μs, prm, scls, stg, cdo
 end
-function westersim(molnam::String, prm, ctrl, fvls,fvcs,fqns,μs)
+function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,scls,stg,ops,pσ)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
    σcnt = σcount(ctrl["NFOLD"])
@@ -92,7 +93,7 @@ function westersim(molnam::String, prm, ctrl, fvls,fvcs,fqns,μs)
       finqns = vcat(finqns,qn)
    end
    #calculate uncertainties
-   uncs = unccalc_no_fit(ctrl,quns,prms,scals,stg,ops,pσ)
+   uncs = unccalc_no_fit(ctrl,quns,prms,scls,stg,ops,pσ)
    finfrq = hcat(finfrq,uncs)
    #write transitions to file
    TraWriter(molnam, ctrl["S"], finfrq, finqns)
@@ -135,7 +136,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #   vals, vecs = rotdiag(Nmax,n,rotparams)
    #   println(vals)
    #end
-   return tsrp
+   return tsrp, puncs
 end
 
 function westerfit(molnam::String)
@@ -148,14 +149,15 @@ function westerfit(molnam::String)
       westerfit(molnam, ctrl)
    else
       if occursin("F",ctrl["RUNmode"])
-         prm = westerfit(molnam, ctrl)
+         prm, puncs = westerfit(molnam, ctrl)
       else
          prm = nothing
+         puncs = nothing
       end
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
-         vas, ves, qns, μs = westereng(molnam, prm, ctrl)
+         vas, ves, qns, μs, prm, scls, stg, cdo = westereng(molnam, prm, ctrl)
          if occursin("S", ctrl["RUNmode"])
-            westersim(molnam, prm, ctrl, vas, ves, qns,μs)
+            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,puncs)
          end
       end
    end
