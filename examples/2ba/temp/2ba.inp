@@ -34,7 +34,7 @@ Vn;            1.008993472315399;   1.0
 ηz;                          0.0;   0.0
 ηx;                          0.0;   0.0
 
-%PARAMS N^a S^b Nz^c Sz^d (N₊^e S₊^f + S₋^f N₋^e)  Pₐ^g cos(h*α) sin(j*α) Ny^(1-δ(0,j))
+%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))
 %Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;   j;  stg
 μa;                          2.3;   0.0;   0;   0;   1;   0;   0;   0;   0;   0;   0;   0
 μa(3);                     0.008;   0.0;   0;   0;   1;   0;   0;   0;   0;   3;   0;   0
