@@ -558,7 +558,7 @@ function inpwriter(molnam::String, values)
 
    strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
    strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
-   strlnhigh = first(findall(isequal("%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))"),file[:,1]))
+   strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
 
    secvalues = values[1:15]
 
@@ -613,8 +613,8 @@ function inpwriter(molnam::String, values)
          println(io, secondord[i])
       end
       println(io,"")
-      println(io,"%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))")
-      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;  stg")
+      println(io,"%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))")
+      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;   j;  stg")
       for i in 1:length(higherord)
          println(io, higherord[i])
       end
@@ -653,8 +653,9 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    highstg= file[strlnhigh:end,12]
 
 
-   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
-             " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
+   secnam = [" BK", " BN", " B⨦", " Dab", " T¹₁(ϵ)", " T⁰₀(ϵ)"," T²₀(ϵ)",
+             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
+             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -710,8 +711,9 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    
    highervalues = prd[16:end]
    
-   secnam = ["BK", "BN", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)",
-             "T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   secnam = [" BK", " BN", " B⨦", " Dab", " T¹₁(ϵ)", " T⁰₀(ϵ)"," T²₀(ϵ)",
+             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
+             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -772,7 +774,8 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    scounter = lpad(counter,3)
 
 
-   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵxz","ϵyy","χzz","χxz","χxx-χyy","F","ρ","V3","η"]
+   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
+             "χxx-χyy","F","ρz", "ρx", "V3","ηz","ηx"]
    highnamall = file[strlnhigh:end,1]
    highstg= file[strlnhigh:end,12]
    highnam = highnamall[highstg .!= 0.0]
