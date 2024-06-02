@@ -562,7 +562,7 @@ function inpwriter(molnam::String, values)
 
    secvalues = values[1:15]
 
-   highstg= file[strlnhigh+2:end,12]
+   highstg= file[strlnhigh+2:end,end]
    ohighval = file[strlnhigh+2:end,2]
    uval = ohighval[highstg .== 0.0]
    newhighval = values[19:end]
@@ -650,7 +650,7 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    highervalues = params[19:end]
    secscale = scls[1:18]
    highscale = scls[19:end]
-   highstg= file[strlnhigh:end,12]
+   highstg= file[strlnhigh:end,end]
 
 
    secnam = [" BK", " BN", " B⨦", " Dab", " T¹₁(ϵ)", " T⁰₀(ϵ)"," T²₀(ϵ)",
@@ -706,7 +706,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
 
    prd = paramarray[:,counter+1]
    prdold = paramarray[:,counter]
-   highstg= file[strlnhigh:end,12]
+   highstg= file[strlnhigh:end,end]
 
    
    highervalues = prd[19:end]
@@ -777,7 +777,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
              "χxx-χyy","F","ρz", "ρx", "V3","ηz","ηx"]
    highnamall = file[strlnhigh:end,1]
-   highstg= file[strlnhigh:end,12]
+   highstg= file[strlnhigh:end,end]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
 
