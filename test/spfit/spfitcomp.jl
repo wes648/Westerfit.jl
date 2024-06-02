@@ -25,7 +25,10 @@
 using DelimitedFiles
 using Plots
 using LinearAlgebra
+using LaTeXStrings
 include("@__DIR__/../../../src/main.jl")
+Plots.default(fontfamily = "Computer Modern")
+
 
 qns = ["J", "N", "Ka", "Kc", "E"]
 csl = 29979.2458
@@ -46,11 +49,11 @@ function setvars(nams,vals,s) #sets all the variables to the values in nams and 
          val *= 1.5
       elseif nam=="chixmy"
          val *= 0.25
-      elseif nam=="chixz"
-         val *= -1.0
+      #elseif nam=="chixz"
+      #   val *= -1.0
       #elseif nam=="epxz"
       #   val *= -1.0
-      #else
+      else
       end
       sedstr = "s/$nam/$val/g"
       sp = `sed -i $sedstr test.var`
@@ -114,9 +117,10 @@ end
 function runtest()
    nams = ["Av"; "Bv"; "Cv"; "Dabv"; "chizz"; "chixmy"; "chixz"; "epzz"; "epxx"; "epyy"; "epxz"]
    #vals = [3000.0; 1500.0; 1000.0; 50.0; -30.; 20.; 50.; 000.; 00.; 0.; 00.] #just qua
-   vals = [3000.0; 1500.0; 1000.0; 50.0; -30.; -20.; 50.; 300.; 80.; 13.; 100.] #all
+   #vals = [3000.0; 1500.0; 1000.0; 50.0; -30.;  20.; 50.; 300.; 80.; 13.; 100.] #all
    #vals = [3000.0; 1500.0; 1000.0; 50.0; -00.; 00.; 00.; 300.; 80.; 13.; 100.] #just sr
-   #vals = [3000.0; 1500.0; 1000.0; 0.0; -30.; 20.; 0.; 300.; 80.; 13.; 00.] #on-diag
+   vals = [3000.0; 1500.0; 1000.0; 0.0; -30.; 20.; 0.; 300.; 80.; 13.; 00.] #on-diag
+   vals = [3000.0; 1500.0; 1000.0; 0.0; -30.; 20.; 0.; .300; 0.; 0.; 00.] #on-diag
    s = 1.0
    setvars(nams, vals, s)
    runspfit()
@@ -125,9 +129,9 @@ function runtest()
    spfit = procspfit()
    westvspfit(spfit,west)
 #   println([west[:,1] spfit[:,1]])
-   plot(west[:,5],(spfit[:,5].-west[:,5]).*csl,seriestype=:scatter,label=false,ylab="ΔE (MHz)",
-      xlab="westerfit Energy (cm⁻¹)",dpi=500)
-   hline!([-1e-6,1e-6],label=false)
+   plot(west[:,5],(spfit[:,5].-west[:,5]).*csl.*1e6,seriestype=:scatter,label=false,ylab="ΔE (Hz)",
+      xlab="westerfit Energy (cm"*L"^{-1}"*")",dpi=500)
+   hline!([-1e-6,1e-6].*1e6,label=false)
    savefig("wesvspft.png")
 end
 

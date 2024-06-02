@@ -1,5 +1,8 @@
 
 using DelimitedFiles
+using Plots
+Plots.default(fontfamily = "Computer Modern")
+
 include("@__DIR__/../../../src/main.jl")
 
 
