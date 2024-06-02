@@ -1,25 +1,52 @@
 
 #using LinearAlgebra, SparseArrays, WIGXJPFjl, BenchmarkTools
-
+"""
+eh(N) returns the square root of the N²|NK⟩ matrix element, √(N(N+1)). See eh2
+for the non-square rooted version.
+"""
 eh(x::Number)::Float64 = √(x*(x+1))
+"""
+eh2(N) returns the the N²|NK⟩ matrix element, N(N+1). See eh for the
+automatically square rooted version.
+"""
 eh2(x::Number)::Float64 = x*(x+1)
 □rt(x::Number)::Float64 =√(x*(x>zero(x)))
 fh(x::Number,y::Number)::Float64 = □rt((x-y)*(x+y+1))
 jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
 nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
+"""
+powneg1(x) takes a number and returns (-1)^x. I realize this is a stupid looking
+function to have but it evalutes every so slightly faster than just (-1)^x
+"""
 powneg1(k::Number)::Int = isodd(k) ? -1 : 1
-#Δlist(J,S)::Array{Int64} = collect(Int(abs(J-S)):Int(J+S))
+"""
+δ(x,y) takes two number and returns the Kronecker delta as a float. See δi for
+the integer version
+"""
 δ(x::Number,y::Number)::Float64 = x==y
+"""
+δi(x,y) takes two number and returns the Kronecker delta as an integer. See δ
+for the float version
+"""
 δi(x::Number,y::Number)::Int = x==y
 T(l::Int,q::Int)::Int = l*(l+1) + q + 1
 Tq(q::Int)::Int = 3 + q #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
 
+"""
+tplus!(a) replaces the matrix a with the sum of it and it's transpose. A dense
+and sparse variant are available
+"""
 tplus!(a::Array{Float64,2})::Array{Float64,2} = a .+= permutedims(a)
 function tplus!(a::SparseMatrixCSC{Float64, Int64})::SparseMatrixCSC{Float64, Int64}
    a .+= permutedims(a)
 end
 
+"""
+qngen(j,s) generates the quantum numbers that the J dependent parts of the 
+Hamiltonian processes. J is the total angular moment and S is the spin.
+Returns a 2D array with Ns in the first column and Ks in the second 
+"""
 function qngen(j,s)
    ns, nd, ni, jsd = srprep(j,s)
    out = zeros(Int,jsd,2)
@@ -67,6 +94,11 @@ function hrot2(pr,qns)::SparseMatrixCSC{Float64, Int64}
    #out = spdiagm(0=>p0,1=>p1,2=>p2)
    return Symmetric(dropzeros!(out))
 end
+"""
+hrotest(pr,j,s) generates the 2nd order rotational Hamiltonian for the given J
+and S pair. pr is an array of length 4 with values of BK, BN, B±, and Dab 
+respectively
+"""
 function hrotest(pr,j,s)
    qns = qngen(j,s)
    out = hrot2(pr,qns)
@@ -182,7 +214,7 @@ function nnss_check(a,b)::Int
    b = b*iseven(b) + (b-1)*isodd(b)
    return min(a,b)
 end
-ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
+ns_el(j,s,p,n)::Float64 = (0.5*eh2(j) - eh2(n) - eh2(s))^p
 function nnss_op(j,s,qns,a,b)::Diagonal{Float64, Vector{Float64}}
    c = nnss_check(a,b)
    a -= c
@@ -258,7 +290,6 @@ function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-#sz_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = Symmetric(sz_op(j,s,qns),:L)^p
 sp_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,1,qns)^p
 sm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,-1,qns)^p
 spm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sp_op(j,s,qns,p) + sm_op(j,s,qns,p)

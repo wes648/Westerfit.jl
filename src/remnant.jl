@@ -199,32 +199,32 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-function σtype(nfold,σ)
-   if σ==zero(σ) # A state
-      return 0
-   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
-      return 2
-   else # E state
-      return 1
-   end
-end
-function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
-   if nfold==0
-      return [1.]
-   else
-   σt = σtype(nfold,σ)
-   lim = mcalc*nfold
-   if σt==0
-      marray = collect(T,-lim:nfold:lim)
-   elseif σt==2
-      lim += σ
-      marray = collect(T,-lim:nfold:lim)
-   else
-      marray = collect(T,(-lim+σ):nfold:(lim+σ))
-   end
-   return marray
-   end
-end
+#function σtype(nfold,σ)
+#   if σ==zero(σ) # A state
+#      return 0
+#   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+#      return 2
+#   else # E state
+#      return 1
+#   end
+#end
+#function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+#   if nfold==0
+#      return [1.]
+#   else
+#   σt = σtype(nfold,σ)
+#   lim = mcalc*nfold
+#   if σt==0
+#      marray = collect(T,-lim:nfold:lim)
+#   elseif σt==2
+#      lim += σ
+#      marray = collect(T,-lim:nfold:lim)
+#   else
+#      marray = collect(T,(-lim+σ):nfold:(lim+σ))
+#   end
+#   return marray
+#   end
+#end
 msgen(mc::Int,nf::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)
