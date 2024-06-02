@@ -92,7 +92,8 @@ Simply type `add Westerfit` and you should be good to go!
 
 The automated installation will add the SparseArrays, StaticArrays, and WIGXJPFjl packages to your Julia installation.
 The WIGXJPFjl package is a wrapper for [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) and is currently the main point of failure in the install process.
-It should be smoothed up thanks to the BinaryBuilder.jl based install script but I've only tested it on Linux.
+It was suppoed be smoothed up thanks to the BinaryBuilder.jl based install script but it only seems to work on my system.
+I'm trying to set up a new method with Yggdrasil.
 You may have to manually compile and place the libwigxjpf_shared.so library in the package's deps directory and I ask that you let me know if that's the case.
 You may also have better luck using the Ubuntu terminal from the Microsoft Store on Windows if you don't have access to a Linux machine.
 The code also uses DelimitedFiles, LinearAlgebra, Printf, and Dates but I believe all of those are included in Base.
