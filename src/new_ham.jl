@@ -295,12 +295,21 @@ function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-sp_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,1,qns)^p
-sm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sq_op(j,s,-1,qns)^p
-spm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+function sp_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+         )::SparseMatrixCSC{Float64, Int64} 
+   return sq_op(j,s,1,qns)^p
+end
+function sm_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+         )::SparseMatrixCSC{Float64, Int64} 
+   return sq_op(j,s,-1,qns)^p
+end
+function spm_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+         )::SparseMatrixCSC{Float64, Int64} 
+   return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+end
 
-pa_op(ms,p)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
-function cos_op(ms,p)::SparseMatrixCSC{Float64, Int64}
+pa_op(ms::Array{Int},p::Int)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
+function cos_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    if p==0
    out = I(size(ms,1))
    else
@@ -309,7 +318,7 @@ function cos_op(ms,p)::SparseMatrixCSC{Float64, Int64}
    end
    return out
 end
-function sin_op(ms,p)::SparseMatrixCSC{Float64, Int64}
+function sin_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    #this is actually sin/2i as we are moving immediately multiplying it by
    #the i from Ny
    out = fill(0.25, length(ms)-p)
