@@ -104,6 +104,11 @@ function hrotest(pr,j,s)
    out = hrot2(pr,qns)
    return out
 end
+function hrotest(pr,n)
+   qns = qngen(n,0)
+   out = hrot2(pr,qns)
+   return out
+end
 
 function nsred(l::Int,nb,nk)
    return 0.5*( 
@@ -142,7 +147,7 @@ function hsr(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
          nk = ns[a]
          kk = ks[a]
          if abs(nb-nk)≤1 && (tv[2]+kk-kb)==0
-            out[b,a] += srlm(prm,tv[1],tv[2], j,s,nb,kb,nk,kk)
+            out[b,a] += srelem(prm,tv[1],tv[2], j,s,nb,kb,nk,kk)
          end#selection rule if
       end#sr ind for loop
       end#prm chck if
@@ -201,9 +206,9 @@ function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-function htor2(sof,nf, ms)::SparseMatrixCSC{Float64, Int64}
+function htor2(sof::Array{Float64},ms::Array{Int})::SparseMatrixCSC{Float64, Int64}
    out = sof[1]*pa_op(ms,2)
-   out += sof[4].*(I(size(out,1)) .- cos_op(ms,nf))
+   out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
    return out
 end
 
@@ -344,11 +349,21 @@ end
 function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,mc,σ)
    qns = qngen(j,s)
    ms = msgen(mc,nf,σ)
-   ℋ = hrot2(sof[1:4],qns) .+ hsr(sof[5:9],j,s,qns) .+ hqu(sof[10:12],j,s,qns)
+   ℋ = hrot2(sof[1:4],qns) 
+   if s==0.5
+      ℋ .+= hsr(sof[5:9],j,s,qns)
+   elseif s≥1
+      ℋ .+= hsr(sof[5:9],j,s,qns)
+      ℋ .+= hqu(sof[10:12],j,s,qns)
+   end
    ℋ = kron(I(length(ms)), ℋ)
-   ℋ .+= kron(htor2(sof[13:16],nf, ms), I(size(qns,1)))
-   ℋ .+= kron(pa_op(1,ms),sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) .+ 
+   ℋ .+= kron(htor2(sof[13:16], ms), I(size(qns,1)))
+   if s≥0.5
+   ℋ .+= kron(pa_op(1,ms), sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) .+ 
                sof[17].*sz_op(j,s,qns,1) .+ sof[18].*spm_op(j,s,qns,1))
+   else
+   ℋ .+= kron(pa_op(1,ms), sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1)) 
+   end
    for i in 1:length(cdf)
       ℋ .+= tsr_op(cdf[i],j,s,qns,ms,cdo[:,i] )
    end
@@ -395,7 +410,6 @@ function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
    return vals, vecs, pasz
 end
 
-
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
@@ -406,7 +420,7 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    jmax = jlist[end]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
    msd = sd*mcd
-   mstrt, mstop = mslimit(nf,mcalc,σ)
+   #mstrt, mstop = mslimit(nf,mcalc,σ)
    outvals = zeros(Float64,jfd*vtd)
    outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
@@ -418,7 +432,7 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       tvals, tvecs, tpasz = tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
       outvals[sind:find] = tvals
       outpasz[sind:find] = tpasz
-      outquns[sind:find,:] = qngenv(j,s,nf,vtm,σ)
+      outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
    end
    return outvals, outvecs, outquns, outpasz

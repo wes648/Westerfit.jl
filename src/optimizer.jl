@@ -63,7 +63,7 @@ function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
          #println(pm)
          #println(ops[:,ind-15])
          #out .+= tsrop(pm,ops[:,ind-15],j,s,nb,kb,mb,nk,kk,mk)
-         out .+= tsr_op(1.0,j,s,qns,ms,view(cdo, :, rpid-15) )
+         out .+= tsr_op(1.0,j,s,qns,ms, ops[:, rpid-15] )
          ind += 1
          if ind-15 ≤ length(stg)
             check = stg[ind-15]
@@ -124,10 +124,12 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
       pr[rpid-9] = 1.0
       out = hqu(pr,j,s,qns)
       out = kron(I(length(ms)),out)
-   elseif (rpid==13)||(rpid==16) # F or Vnf
-      pr = zeros(4)
-      pr[rpid-12] = 1.0
-      out = kron(htor2(pr,nf, ms), I(size(qns,1)))
+   elseif rpid==13 # F
+      pr = [1.;0.;0.;0.]
+      out = kron(htor2(pr,ms), I(size(qns,1)))
+   elseif rpid==16 # Vnf
+      pr = [0.;0.;0.;1.]
+      out = kron(htor2(pr,ms), I(size(qns,1)))
    elseif rpid==14 # ρzF
       out = kron(pa_op(1,ms), nz_op(qns,1))
    elseif rpid==15 # ρxF
@@ -589,12 +591,12 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       end #check if
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
-   #puncs = zeros(size(params))
+   puncs = zeros(size(params))
    puncs[perm] = paramunc(H,W,perm,omc)
    puncs_forsim = copy(puncs)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
-   params[1:15], puncs[1:15] = fullrecov(params[1:15],puncs[1:15],ctrl["Irrep"])
+   params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl["Irrep"])
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    if ctrl["overwrite"]==true

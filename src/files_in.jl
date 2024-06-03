@@ -24,7 +24,7 @@ function blockfind(molnam::String,blknam::String)
          break
       end
    end
-   #println(out)
+   @show out
    return out
 end
 
@@ -50,12 +50,12 @@ function ctrlinp(molnam::String)
       println("Jmax must be integer for interger S. Adding 1/2")
    end
    ctrl["assign"] = strip(ctrl["assign"])
-   ctrl["Irrep"] = strip(ctrl["Irrep"])
+   ctrl["Irrep"] = String(strip(ctrl["Irrep"]))
    #println(ctrl)
    return ctrl
 end
 
-function secordinit()
+function secordinit_old()
    prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, "F" => 12, "ρ" => 13,
       "Vn" => 14, "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 8, "ϵxz" => 7, "η" => 15,
       "χzz"=> 9, "χxmy"=> 11, "χxz"=> 10)
@@ -66,8 +66,7 @@ function secordinit_full()
       "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 9,
       "χzz"=> 10, "χxz"=> 11, "χxmy"=> 12, 
       "F" => 13, "ρz" => 14, "ρ" => 14, "ρx" =>15, "Vn" => 16, "V3" =>16,
-      "ηz" => 17, "η" => 17, "ηx" => 18
-      )
+      "ηz" => 17, "η" => 17, "ηx" => 18)
    return prd
 end
 
@@ -88,7 +87,7 @@ function irrepswap(irrep::String)::Array{Int}
    return perm
 end
 
-function sod2prep(prd::Array{Float64})::Array{Float64}
+function sod2prep_old(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    tempa = prd[1] + csl*prd[12]*prd[13]^2         #Aeff = A + Fρ²
    out[2] = 0.5*(prd[2] + prd[3])                 #BN
@@ -149,20 +148,22 @@ function secordinp(molnam::String,irp::String)
    len = blk[2] - blk[1] - 1
    #println(len)
    secns = secordinit_full()
-   file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,comment_char='#')
+   file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
    #println(file)
-   val = zeros(Float64,18)
-   err = zeros(Float64,18)
+   val = zeros(Float64,19)
+   err = zeros(Float64,19)
    for i in 1:len
       nam = strip(file[i,1])
-      ind = secns[nam]
+      #ind = secns[nam]
+      ind = get(secns, nam, 19)
       val[ind] = file[i,2]
       err[ind] = file[i,3]
    end
    val[1:3] = val[irrepswap(irp)]
-   @show val
+   val = val[1:18]
+   err = err[1:18]
    val = sod2prep_full(val)
-   @show val
+   @show val[[1;2;3;4;13;14;16]]
    val, err = epszxcheck!(val,err)
    return val, err
 end
@@ -213,7 +214,7 @@ function opinp(molnam::String)
    oerr = errs[prm1]#, errs[prm2])
    oopr = oprs[:,prm1]#, oprs[:,prm2])
    ostg = stgs[prm1]
-   @show oopr
+   #@show oopr
    return μset, opvls, onams, oerr, oopr, ostg
    else #exception for if none
       println("No higher order operators found. Continuing w/ only H^(2)")

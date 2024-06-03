@@ -37,7 +37,7 @@ function westereng(molnam::String, prm, ctrl)
       #this occurs when westerfit is called before thus feeing the new
       # parameters in to the function in their natural form
       #the parameters aren't being double transformed. it's fine i swear
-      prm[1:18] = sod2prep(prm[1:18])
+      prm[1:18] = sod2prep_full(prm[1:18])
    end
    #calculate energy levels
    σcnt = σcount(ctrl["NFOLD"])
@@ -73,7 +73,7 @@ function westereng(molnam::String, prm, ctrl)
    scls = vcat(ser,cde)
    return fvls, fvcs, fqns, μs, prm, scls, stg, cdo
 end
-function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,scls,stg,ops,pσ)
+function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pσ)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
    σcnt = σcount(ctrl["NFOLD"])

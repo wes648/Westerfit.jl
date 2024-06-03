@@ -181,8 +181,8 @@ function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
    return marray
    end
 end
-function msbuilder(mcalc,σ,nfold)
-   marray = msbuilder(Int,mcalc,σ,nfold)
+function msbuilder(nfold,mcalc,σ)
+   marray = msbuilder(Int,nfold,mcalc,σ)
    return marray
 end
 
