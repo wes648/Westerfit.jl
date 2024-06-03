@@ -24,7 +24,7 @@ function blockfind(molnam::String,blknam::String)
          break
       end
    end
-   @show out
+   #@show out
    return out
 end
 
@@ -160,10 +160,10 @@ function secordinp(molnam::String,irp::String)
       err[ind] = file[i,3]
    end
    val[1:3] = val[irrepswap(irp)]
-   val = val[1:18]
-   err = err[1:18]
+   pop!(val)
+   pop!(err)
    val = sod2prep_full(val)
-   @show val[[1;2;3;4;13;14;16]]
+   @show val
    val, err = epszxcheck!(val,err)
    return val, err
 end

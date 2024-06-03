@@ -301,8 +301,12 @@ spm_op(j,s,qns,p)::SparseMatrixCSC{Float64, Int64} = sp_op(j,s,qns,p) + sm_op(j,
 
 pa_op(ms,p)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
 function cos_op(ms,p)::SparseMatrixCSC{Float64, Int64}
+   if p==0
+   out = I(size(ms,1))
+   else
    out = fill(0.5, length(ms)-p)
    out = spdiagm(-p=>out, p=>out)
+   end
    return out
 end
 function sin_op(ms,p)::SparseMatrixCSC{Float64, Int64}
@@ -358,12 +362,15 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,mc,σ)
    end
    ℋ = kron(I(length(ms)), ℋ)
    ℋ .+= kron(htor2(sof[13:16], ms), I(size(qns,1)))
-   if s≥0.5
-   ℋ .+= kron(pa_op(1,ms), sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1) .+ 
-               sof[17].*sz_op(j,s,qns,1) .+ sof[18].*spm_op(j,s,qns,1))
-   else
-   ℋ .+= kron(pa_op(1,ms), sof[14].*nz_op(qns,1) .+ sof[15].*npm_op(qns,1)) 
-   end
+   #if s≥0.5
+   #ℋ .+= kron(pa_op(1,ms), sof[14]*nz_op(qns,1)) #+ sof[15]*npm_op(qns,1) + 
+   #            sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
+   #else
+   ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1))
+   ℋ += kron(pa_op(ms,1), sof[15]*npm_op(qns,1))
+   ℋ += kron(pa_op(ms,1), sof[17]*sz_op(j,s,qns,1))
+   ℋ += kron(pa_op(ms,1), sof[17]*spm_op(j,s,qns,1))
+   #end
    for i in 1:length(cdf)
       ℋ .+= tsr_op(cdf[i],j,s,qns,ms,cdo[:,i] )
    end
@@ -375,11 +382,12 @@ function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   if σtype(nf,σ) != 1 #A & B states have more symmetry
-      U = ur(j,s,mcalc,σtype(nf,σ))*ut(mcalc,σtype(nf,σ),j,s)
-   else
-      U = ur(j,s,mcalc,σtype(nf,σ))
-   end
+   #if σtype(nf,σ) != 1 #A & B states have more symmetry
+   #   U = ur(j,s,mcalc,σtype(nf,σ))*ut(mcalc,σtype(nf,σ),j,s)
+   #else
+   #   U = ur(j,s,mcalc,σtype(nf,σ))
+   #end
+   U = kron(ut(mcalc,σtype(nf,σ)),ur(j,s))
    H = (U*H*U)
    ### All lines commented with ### are for the Jacobi routine
    ###perm = kperm(j,s,mcalc)
@@ -387,6 +395,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
    ###H, rvecs = jacobisparse(H, 3)#Int(j+s)+mcalc)
    ###rvecs = U*rvecs
    vals, vecs = eigen!(Symmetric(Matrix(H)))
+   #@show vals[1:2*Int(2j+1)] ./csl
    ###perm = assignperm(vecs)
    if ctrl["assign"]=="RAM36"
       perm = ramassign(vecs,j,s,mcalc,σtype(nf,σ),vtm)
