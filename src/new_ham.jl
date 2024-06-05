@@ -47,7 +47,7 @@ qngen(j,s) generates the quantum numbers that the J dependent parts of the
 Hamiltonian processes. J is the total angular moment and S is the spin.
 Returns a 2D array with Ns in the first column and Ks in the second 
 """
-function qngen(j,s)
+function qngen(j,s)::Array{Int,2}
    ns, nd, ni, jsd = srprep(j,s)
    out = zeros(Int,jsd,2)
    for i in 1:length(ns)
@@ -57,7 +57,7 @@ function qngen(j,s)
    #[n k]
    return out
 end
-function qnlabv(j,s,nf,vtm,σ)
+function qnlabv(j,s,nf,vtm,σ)::Array{Int,2}
    σt = σtype(nf,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
@@ -110,7 +110,7 @@ function hrotest(pr,n)
    return out
 end
 
-function nsred(l::Int,nb,nk)
+function nsred(l::Int,nb::Int,nk::Int)::Float64
    return 0.5*( 
    √(nk*(nk+1)*(2*nk+1))*
       wig6j( 1, 1, l,
@@ -119,26 +119,32 @@ function nsred(l::Int,nb,nk)
       wig6j( 1, 1, l,
             nk,nb,nb))
 end
-function jsred(j,s,nb,nk)
+function jsred(j,s,nb::Int,nk::Int)::Float64
    return wig6j(nk, s, j,
                  s,nb, 1)*√((2*nb+1)*(2*nk+1))
 end
-function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)#::Array{Float64,2}
+function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)::Float64
    return pr*wig3j( nb,l,nk,
                    -kb,q,kk)*√(2*l+1)*
        nsred(l,nb,nk)*jsred(j,s,nb,nk)*powneg1(nb-nk-kb)
 end
-function hsr(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
+const ts = SA[0  1 1 2  2 2  2 2;
+              0 -1 1 0 -1 1 -2 2;
+              1  2 2 3  4 4  5 5;
+              1  1 1 1 -1 1  1 1]
+function hsr(pr::Array{Float64},j,s,qns::Array{Int})::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
    le = size(ns,1)
    out = spzeros(le,le)
    #awkward special array of rank, component, prm ind, & sign
    #each col is a different parameter
-   Ts = SA[0 1 1 2 2 2 2 2; 0 -1 1 0 -1 1 -2 2;
-           1 2 2 3 4 4 5 5; 1  1 1 1 -1 1  1 1]
+   #ts = SA[0  1 1 2  2 2  2 2;
+   #        0 -1 1 0 -1 1 -2 2;
+   #        1  2 2 3  4 4  5 5;
+   #        1  1 1 1 -1 1  1 1]
    for i in 1:8
-      tv = view(Ts,:,i)
+      tv = ts[:,i]
       prm = pr[tv[3]]*tv[4]
       if prm ≠ 0.0
       for a in 1:le, b in 1:le
@@ -166,9 +172,9 @@ function wiginv(s::Number)::Float64
    end
 end
 function qured(j,s,nb,nk)
-   return 0.25*jnred(nb,nk)*
-               wig6j(j, s,nb,
-                     2,nk, s)
+   return jnred(nb,nk)*
+          wig6j(j, s,nb,
+                2,nk, s)
 end
 function qulm(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    return pr*qured(j,s,nb,nk)*
@@ -176,6 +182,37 @@ function qulm(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
              wig3j( nb, 2,nk,
                    -kb, q,kk)*powneg1(nb+nk-kb+s+j)
 end
+function hqu2(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
+   ns = view(qns,:,1)
+   ks = view(qns,:,2)
+   le = size(ns,1)
+   out = spzeros(le,le)
+   #awkward special array of rank, component, prm ind, & sign
+   #each col is a different parameter
+   tq = SA[0 -1 1 -2 2; 
+           1  2 2  3 3;
+           1 -1 1  1 1]
+   for i in 1:5
+      tv = view(tq,:,i)
+      prm = pr[tv[2]]*tv[3]
+      q = tv[1]
+      if prm ≠ 0.0
+      for a in 1:le
+         nk = ns[a]
+         kk = ks[a]
+         f = (abs.(ns .- nk).≤2).*(q .- ks .+ kk).==0
+         out[f,a] .+= qulm.(prm,q, j,s,ns[f],ks[f], nk,kk)
+      end
+      end#prm chck if
+   end#qu term for loop
+   dropzeros!(out)
+   out .*= 0.25*nred(s)*wiginv(s)*powneg1(j+s)
+   #@show out
+   return out
+end
+const tq = SA[0 -1 1 -2 2; 
+              1  2 2  3 3;
+              1 -1 1  1 1]
 function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
@@ -183,11 +220,8 @@ function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    out = spzeros(le,le)
    #awkward special array of rank, component, prm ind, & sign
    #each col is a different parameter
-   Tq = SA[0 -1 1 -2 2; 
-           1  2 2  3 3;
-           1  1 1  1 1]
    for i in 1:5
-      tv = view(Tq,:,i)
+      tv = tq[:,i]
       prm = pr[tv[2]]*tv[3]
       if prm ≠ 0.0
       for a in 1:le, b in 1:le
@@ -195,14 +229,15 @@ function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
          kb = ks[b]
          nk = ns[a]
          kk = ks[a]
-         if abs(nb-nk)≤2 && (tv[2]+kk-kb)==0
+         if abs(nb-nk)≤2 && (tv[1]+kk-kb)==0
             out[b,a] += qulm(prm,tv[1], j,s,nb,kb,nk,kk)
          end#selection rule if
       end#qu ind for loop
       end#prm chck if
    end#qu term for loop
    dropzeros!(out)
-   out .*= nred(s)*wiginv(s)*powneg1(j+s)
+   out .*= 0.25*nred(s)*wiginv(s)*powneg1(j+s)
+   #@show out
    return out
 end
 
@@ -210,6 +245,17 @@ function htor2(sof::Array{Float64},ms::Array{Int})::SparseMatrixCSC{Float64, Int
    out = sof[1]*pa_op(ms,2)
    out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
    return out
+end
+function htor2v2(sof::Array{Float64},nf::Int,mc::Int,σ::Int)
+   if nf≠0
+      ms = msgen(nf,mc,σ)
+      out = sof[1]*pa_op(ms,2)
+      out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
+   else
+      out = [0.0]
+      ms = [1]
+   end
+   return out, ms
 end
 
 ####   individual operators   ####
@@ -221,36 +267,59 @@ function nnss_check(a,b)::Int
 end
 ns_el(j,s,p,n)::Float64 = (0.5*eh2(j) - eh2(n) - eh2(s))^p
 function nnss_op(j,s,qns,a,b)::Diagonal{Float64, Vector{Float64}}
-   c = nnss_check(a,b)
-   a -= c
-   b -= c
-   @views out = eh.(qns[:,1]).^a .* ns_el.(j,s,c,qns[:,1]) .* eh(s)^b
+   if (a≠0)&&(b≠0)
+      c = nnss_check(a,b)
+      a -= c
+      b -= c
+      @views out = eh.(qns[:,1]).^a .* ns_el.(j,s,c,qns[:,1]) .* eh(s)^b
+   elseif (a≠0)&&(b==0)
+      @views out = eh.(qns[:,1]).^a
+   elseif (a==0)&&(b≠0)
+      out = fill(eh(s)^b,size(qns,1))
+   else
+      out = ones(size(qns,1))
+   end
    return Diagonal(out)
 end
-
-nz_op(qns,p)::Diagonal{Float64, Vector{Float64}} = @views out = Diagonal(qns[:,2].^p)
+nt2_op(qns,p)::Diagonal{Float64, Vector{Float64}} = @views out = Diagonal(eh2.(qns[:,1]).^p)
+function nz_op(qns,p)::Diagonal{Float64, Vector{Float64}} 
+   if p≠0
+      @views out = Diagonal(qns[:,2].^p)
+   else
+      out = Diagonal(ones(size(qns,1)))
+   end
+   return out
+end
 
 function np_op(qns,p::Int)::SparseMatrixCSC{Float64, Int64}
    ns = qns[1+p:end,1]
    part = ones(length(ns))
-   if p ≤ length(ns)
+   if p ≤ length(ns) && p ≠ 0
       ks = qns[1+p:end,2]
       part = ones(length(ks))
       for o in 1:p
          part .*= fh.(ns,ks.-o)
       end
+   #end#original if
+      out = spzeros(size(qns,1),size(qns,1))
+      out[diagind(out,-p)] = part
+   elseif p > length(ns) && p ≠ 0
+      out = spzeros(size(qns,1),size(qns,1))
+      out[diagind(out,-p)] = part
+   else
+      out = spdiagm(ones(size(qns,1)))
    end
-   out = spzeros(size(qns,1),size(qns,1))
-   out[diagind(out,-p)] = part
    return out
 end
 npm_op(qns::Matrix{Int64},p::Int) = Symmetric(np_op(qns,p),:L)
-function iny_op(qns::Matrix{Int64},p::Int)
-   out = np_op(qns,1-δi(p,0))
+function iny_op(qns::Matrix{Int64},p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
+      out = np_op(qns,1-δi(p,0))
       out .-= permutedims(out)
+      return dropzeros!(out)
+   else
+      return spdiagm(ones(size(qns,1)))
    end
-   return dropzeros!(out)
 end
 
 function sqpart(j,s,q,bqn,kqn)::Float64
@@ -260,10 +329,10 @@ function sqpart(j,s,q,bqn,kqn)::Float64
    kk = kqn[2]
    return wig3j(nb,1,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*powneg1(-kb)
 end
-function sz_op(j,s,qns,p)#::SparseMatrixCSC{Float64, Int64}
+function sz_op(j::Number,s::Number,qns::Array{Int,2},p::Int)
    l = size(qns,1)
    out = spzeros(l,l)
-   if s != zero(s)
+   if s≠zero(s)&&p≠0
       for a ∈ 1:l, b ∈ a:l
          if abs(qns[a,1]-qns[b,1])≤1 && qns[a,2]==qns[b,2]
             @views out[b,a] = sqpart(j,s,0,qns[b,:],qns[a,:])
@@ -271,16 +340,17 @@ function sz_op(j,s,qns,p)#::SparseMatrixCSC{Float64, Int64}
       end
       dropzeros!(out)
       out .*= nred(s)*powneg1(s+j+1)
+      out = Symmetric(out,:L)^p
    else
       out[diagind(out)] .+= 1.0
    end
-   return Symmetric(out,:L)^p
+   return out
 end
 
 function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    l = size(qns,1)
    out = spzeros(l,l)
-   if s != zero(s)
+   if s≠zero(s)#&&p≠0
       for a ∈ 1:l, b ∈ 1:l
          if abs(qns[a,1]-qns[b,1])≤1 && (q+qns[a,2]-qns[b,2])==0
             @views out[b,a] = sqpart(j,s,q,qns[b,:],qns[a,:])
@@ -297,7 +367,11 @@ end
 
 function sp_op(j::Number,s::Number,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
-   return sq_op(j,s,1,qns)^p
+   if p≠0
+      return sq_op(j,s,1,qns)^p
+   else
+      return spdiagm(ones(size(qns,1)))
+   end
 end
 function sm_op(j::Number,s::Number,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
@@ -330,11 +404,10 @@ end
 
 function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
          c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
-   out = np_op(qns,e)
-   out *= sp_op(j,s,qns,f)
-   tplus!(out)
-   out = sz_op(j,s,qns,d)*out*iny_op(qns,jp)
-   out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)*out
+   out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)
+   out = out*sz_op(j,s,qns,d)
+   out = out*tplus!(np_op(qns,e)*sp_op(j,s,qns,f))
+   out = out*iny_op(qns,jp)
    return dropzeros!(out)
 end
 
@@ -359,9 +432,9 @@ end
 
 ####   final construction and collection functions   ####
 
-function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,mc,σ)
+function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,tormat,ms)::SparseMatrixCSC{Float64, Int64}
    qns = qngen(j,s)
-   ms = msgen(mc,nf,σ)
+   #ms = msgen(nf,mc,σ)
    ℋ = hrot2(sof[1:4],qns) 
    if s==0.5
       ℋ .+= hsr(sof[5:9],j,s,qns)
@@ -370,24 +443,23 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,mc,σ)
       ℋ .+= hqu(sof[10:12],j,s,qns)
    end
    ℋ = kron(I(length(ms)), ℋ)
-   ℋ .+= kron(htor2(sof[13:16], ms), I(size(qns,1)))
-   #if s≥0.5
-   #ℋ .+= kron(pa_op(1,ms), sof[14]*nz_op(qns,1)) #+ sof[15]*npm_op(qns,1) + 
-   #            sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
-   #else
-   ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1))
-   ℋ += kron(pa_op(ms,1), sof[15]*npm_op(qns,1))
-   ℋ += kron(pa_op(ms,1), sof[17]*sz_op(j,s,qns,1))
-   ℋ += kron(pa_op(ms,1), sof[17]*spm_op(j,s,qns,1))
-   #end
+   ℋ .+= kron(tormat, I(size(qns,1)))
+   if (s≥0.5)&&(nf≠0)
+   ℋ .+= kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
+               sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
+   elseif (s==zero(s))&&(nf≠0)
+   ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1)+ sof[15]*npm_op(qns,1))
+   else
+   end
    for i in 1:length(cdf)
       ℋ .+= tsr_op(cdf[i],j,s,qns,ms,cdo[:,i] )
    end
    return dropzeros!(ℋ)
 end
 
-function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
-   H = hjbuild(sof,cdf,cdo,j,s,nf,mcalc,σ)
+function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
+   #println("ℋ time for J=$j")
+   H = hjbuild(sof,cdf,cdo,j,s,nf,tormat,ms)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
@@ -419,77 +491,66 @@ function tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
    end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
-   pasz = zero(vals)
-   if s != zero(s)#add η
-      pasz = diag(vecs' * tsrop(1.0,0,0,0,0,1,1,0,0,
-         j,s,permutedims(ngen(j,s)),
-         permutedims(kgen(j,s)),mb,ngen(j,s),kgen(j,s),mk) * vecs)
-   end
-   return vals, vecs, pasz
+   return vals, vecs
 end
 
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
-   mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+   tormat, ms = htor2v2(sof,nf,mcalc,σ)
+   msd = sd*Int(2*mcalc+(σtype(nf,σ)==2)+1)
    vtd = Int(vtm+1)
    σt = σtype(nf,σ)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
-   msd = sd*mcd
+   #msd = sd*mcd
    #mstrt, mstop = mslimit(nf,mcalc,σ)
    outvals = zeros(Float64,jfd*vtd)
    outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
-   outvecs = zeros(Float64,Int(sd*(2*jmax+1)*mcd),jfd*vtd)
+   outvecs = zeros(Float64,Int((2*jmax+1)*msd),jfd*vtd)
    for j in jlist #thread removed for troubleshooting purposes
 #   @threads for j in jlist
       jd = Int(2.0*j) + 1
+      ###pull behavior should be move into TSRDIAG moving forward
+      ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs, tpasz = tsrdiag(ctrl,sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
+      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,σt,vtm)
       outvals[sind:find] = tvals
-      outpasz[sind:find] = tpasz
       outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
    end
-   return outvals, outvecs, outquns, outpasz
+   return outvals, outvecs, outquns
 end
 
 function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    s = ctrl["S"]
    mcalc = ctrl["mcalc"]
    vtm = ctrl["vtmax"]
-   #sd = Int(2*s + 1)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
-   #println(cdf)
    vtd = Int(vtm+1)
-   jmin = 0.5*iseven((2*s + 1))
+   jmin = 0.5*iseven((2*s+1))
    jmax = jlist[end,1]
-   jfd = Int((2s+1)*sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   jfd = Int((2s+1)*sum(2. .*collect(Float64,jmin:jmax).+1.))
    σcnt = σcount(nf)
-   mcd = Int(2*mcalc+(iseven(nf))+1)
    fvls = zeros(Float64,jfd*vtd,σcnt)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
-   fvcs = zeros(Float64,Int((2*s + 1)*(2*jmax+2)*mcd),jfd*vtd,σcnt)
+   fvcs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+(iseven(nf))+1)),
+                  jfd*vtd,σcnt)
    @time for sc in 1:σcnt
       σ = sc - 1
-      #mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
-      mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
-      msd = Int(2*s + 1)*mcd
-      mstrt, mstop = mslimit(nf,mcalc,σ)
-      jmsd = Int(mcd*(2s+1)*(2*jmax+1))
+      tormat, ms = htor2v2(sof,nf,mcalc,σ)
+      msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
+      jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      @threads for j in jsublist
+      for j in jsublist
          jd = Int(2.0*j) + 1
-         #pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
          sind, find = jvdest(j,s,vtm) 
-         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc], = tsrdiag(ctrl,
-            sof,cdf,cdo,nf,mcalc,j,s,σ,vtm)
-         #fvls[sind:find,sc] = tvals#[pull]
-         #fvcs[1:jd*msd,sind:find,sc] = tvecs#[:,pull]
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,
+            sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
          fqns[sind:find,:,sc] = qnlabv(j,s,nf,vtm,σ)
       end
    end

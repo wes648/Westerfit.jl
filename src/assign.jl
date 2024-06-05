@@ -10,7 +10,7 @@ kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* co
 keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
 function mexpect(vecs,jsd,nf,mc,σ)
-   m2 = kron(Diagonal(msbuilder(nf,mc,σ)) ^2, I(jsd))
+   m2 = kron(pa_op(msgen(nf,mc,σ),2) ^2, I(jsd))
    mlist = diag(vecs' * m2 * vecs)
    #println(mlist)
    mlist = sort(sortperm(mlist, by=abs)[1:jsd])
@@ -18,7 +18,7 @@ function mexpect(vecs,jsd,nf,mc,σ)
 end
 
 function nexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
-   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   n2 = diag(vecs' * kron(I(mcd),nt2_op(qngen(j,s),2)) * vecs)
    nlist = zeros(Int,jsd)
    for i in 1:length(ns)
       n = ns[i]
@@ -57,17 +57,17 @@ kperm2(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+iseven(n))) .* 
 kaperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm2(n)]
 
 function kexpect(vecs,mcd,n,nd,j,s)
-   nz = diag(vecs' * kron(I(mcd),nzop(2,ngen(j,s))) * vecs)
+   nz = diag(vecs' * kron(I(mcd),nz_op(qngen(j,s),2)) * vecs)
    perm = sortperm(nz, by=abs)[1:nd]
    perm = perm[kaperm(n)]
    return perm
 end
 function nkexpect(vecs,mcd,j,s,jsd,ns,nd,ni)
-   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   n2 = diag(vecs' * kron(I(mcd),nt2_op(qngen(j,s),1)) * vecs)
    nlist = zeros(Int,jsd)
    for i in 1:length(ns)
       n = ns[i]
-      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      part = sort(sortperm(n2 .- eh2(n), by=abs)[1:nd[i]])
       part = part[kexpect(vecs[:,part], mcd,n,nd[i],j,s)]
       nlist[ni[i,1]:ni[i,2]] = part[keperm(n)]
       n2[part] .= 0.0
@@ -113,11 +113,12 @@ function eeoassign!(vals,vecs,j,s,nf,mc,σ)
    return vals, vecs
 end
 function neko(vecs,mcd,j,s,jsd,ns,nd,ni)
-   n2 = diag(vecs' * kron(I(mcd),ntop(2,ngen(j,s))) * vecs)
+   n2 = diag(vecs' * kron(I(mcd),nt2_op(qngen(j,s),1)) * vecs)
    nlist = zeros(Int,jsd)
    for i in 1:length(ns)
       n = ns[i]
-      part = sort(sortperm(n2 .- eh(n)^2, by=abs)[1:nd[i]])
+      part = sort(sortperm(n2 .- eh2(n), by=abs)[1:nd[i]])
+      #@show koverlap(vecs,part,ni[i,1],ni[i,2],nd[i],n)
       part = part[koverlap(vecs,part,ni[i,1],ni[i,2],nd[i],n)]
       nlist[ni[i,1]:ni[i,2]] = part
       n2[part] .= 0.0

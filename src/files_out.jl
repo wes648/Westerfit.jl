@@ -653,7 +653,7 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    highstg= file[strlnhigh:end,end]
 
 
-   secnam = [" BK", " BN", " B⨦", " Dab", " T¹₁(ϵ)", " T⁰₀(ϵ)"," T²₀(ϵ)",
+   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
              " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
              " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
@@ -711,7 +711,7 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
    
    highervalues = prd[19:end]
    
-   secnam = [" BK", " BN", " B⨦", " Dab", " T¹₁(ϵ)", " T⁰₀(ϵ)"," T²₀(ϵ)",
+   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
              " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
              " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]

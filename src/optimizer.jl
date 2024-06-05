@@ -115,7 +115,7 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
       out = hrot2(pr,qns)
       out = kron(I(length(ms)),out)
    elseif 5 ≤ rpid ≤ 9 #spin-rot
-      pr = zeros(4)
+      pr = zeros(5)
       pr[rpid-4] = 1.0
       out = hsr(pr,j,s,qns)
       out = kron(I(length(ms)),out)
@@ -172,14 +172,13 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
       mstrt, mstop = mslimit(nf,mcalc,σ)
       jmsd = Int(mcd*(2*s+1)*(2*jmax+1))
       jsvd = Int(jfd*vtd)
-      mk = msgen(mcalc,nf,σ)
+      ms = msgen(nf,mcalc,σ)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       for j in jsublist
          #println(j)
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,ctrl["vtmax"]) 
          qns = qngen(j,s)
-         ms = msgen(mcalc,nf,σ)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
@@ -202,6 +201,7 @@ function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
+   #@show jcbn
    return jcbn
 end
 function build_jcbn_sim(ops,inds,ctrl,vecs,params,perm,scals,stg)

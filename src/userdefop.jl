@@ -466,7 +466,6 @@ function hsr(pr,j,s)
    end#sr for loop
    return dropzeros(sparse(out))
 end
-
 function hrsr(rpr,spr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
    nks = ngen(j,s,lb)

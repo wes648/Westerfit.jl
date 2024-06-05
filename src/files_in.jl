@@ -49,6 +49,10 @@ function ctrlinp(molnam::String)
       ctrl["Jmax"] += 0.5
       println("Jmax must be integer for interger S. Adding 1/2")
    end
+   if ctrl["NFOLD"]==0
+      ctrl["mcalc"] = 0
+      ctrl["vtmax"] = 0
+   end
    ctrl["assign"] = strip(ctrl["assign"])
    ctrl["Irrep"] = String(strip(ctrl["Irrep"]))
    #println(ctrl)
@@ -136,9 +140,10 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
 end
 
 function epszxcheck!(prd::Array{Float64},scl::Array{Float64})
-   if -prd[6]==prd[8]
+   if prd[6] ≈ prd[8]
       prd[6] = 0.0
       scl[6] = 0.0
+      prd[8] *= 2.0
    end
    return prd, scl
 end
@@ -163,8 +168,8 @@ function secordinp(molnam::String,irp::String)
    pop!(val)
    pop!(err)
    val = sod2prep_full(val)
-   @show val
    val, err = epszxcheck!(val,err)
+   @show val
    return val, err
 end
 

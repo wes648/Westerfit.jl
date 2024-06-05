@@ -199,7 +199,7 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
 end
 
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-msgen(mc::Int,nf::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
+msgen(nf::Int,mc::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)
    lim = mcalc*nfold
