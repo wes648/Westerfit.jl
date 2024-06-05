@@ -385,23 +385,26 @@ end
 pa_op(ms::Array{Int},p::Int)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
 function cos_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    if p==0
-   out = I(size(ms,1))
+      out = I(size(ms,1))
    else
-   out = fill(0.5, length(ms)-p)
-   out = spdiagm(-p=>out, p=>out)
+      out = fill(0.5, length(ms)-p)
+      out = spdiagm(-p=>out, p=>out)
    end
    return out
 end
 function sin_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    #this is actually sin/2i as we are moving immediately multiplying it by
    #the i from Ny
-   out = fill(0.25, length(ms)-p)
-   out = spdiagm(-p=>out, p=>out)
+   if p==0
+      out = I(size(ms,1))
+   else
+      out = fill(0.25, length(ms)-p)
+      out = spdiagm(-p=>out, p=>out)
+   end
    return out
 end
 
 ####   collected operators   ####
-
 function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
          c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)
@@ -448,7 +451,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,tormat,ms)::SparseMatrixCSC{Fl
    ℋ .+= kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-   ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1)+ sof[15]*npm_op(qns,1))
+      ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1)+ sof[15]*npm_op(qns,1))
    else
    end
    for i in 1:length(cdf)
@@ -463,11 +466,6 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   #if σtype(nf,σ) != 1 #A & B states have more symmetry
-   #   U = ur(j,s,mcalc,σtype(nf,σ))*ut(mcalc,σtype(nf,σ),j,s)
-   #else
-   #   U = ur(j,s,mcalc,σtype(nf,σ))
-   #end
    U = kron(ut(mcalc,σtype(nf,σ)),ur(j,s))
    H = (U*H*U)
    ### All lines commented with ### are for the Jacobi routine
@@ -497,7 +495,7 @@ end
 function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
-   tormat, ms = htor2v2(sof,nf,mcalc,σ)
+   tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
    msd = sd*Int(2*mcalc+(σtype(nf,σ)==2)+1)
    vtd = Int(vtm+1)
    σt = σtype(nf,σ)
@@ -516,7 +514,7 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
       sind, find = jvdest(j,s,vtm) 
-      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,σt,vtm)
+      tvals, tvecs = tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
       outvals[sind:find] = tvals
       outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = tvecs###[:,pull]
@@ -537,16 +535,15 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    σcnt = σcount(nf)
    fvls = zeros(Float64,jfd*vtd,σcnt)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
-   fvcs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+(iseven(nf))+1)),
-                  jfd*vtd,σcnt)
+   fvcs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(2*mcalc+(iseven(nf))+1)),jfd*vtd,σcnt)
    @time for sc in 1:σcnt
       σ = sc - 1
-      tormat, ms = htor2v2(sof,nf,mcalc,σ)
+      tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
       msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
       jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,vtm) 
          fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,

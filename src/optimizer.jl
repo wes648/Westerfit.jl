@@ -131,13 +131,13 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
       pr = [0.;0.;0.;1.]
       out = kron(htor2(pr,ms), I(size(qns,1)))
    elseif rpid==14 # ρzF
-      out = kron(pa_op(1,ms), nz_op(qns,1))
+      out = kron(pa_op(ms,1), nz_op(qns,1))
    elseif rpid==15 # ρxF
-      out = kron(pa_op(1,ms), npm_op(qns,1)) 
+      out = kron(pa_op(ms,1), npm_op(qns,1)) 
    elseif rpid==17 # ηz
-      out = kron(pa_op(1,ms), sz_op(j,s,qns,1)) 
+      out = kron(pa_op(ms,1), sz_op(j,s,qns,1)) 
    elseif rpid==18 # ηx
-      out = kron(pa_op(1,ms), spm_op(j,s,qns,1))
+      out = kron(pa_op(ms,1), spm_op(j,s,qns,1))
    else #user def
       #out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
       out = tsr_op(1.0,j,s,qns,ms,ops[:,rpid-18] )
@@ -166,11 +166,11 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
    for sc in 1:σcnt
       #println(sc)
       σ = sc - 1
-      mcd = Int(2*mcalc+(σtype(nf,σ)==2)+1)
+      msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
       σt = σtype(nf,σ)
-      msd = Int(2*s+1)*mcd
-      mstrt, mstop = mslimit(nf,mcalc,σ)
-      jmsd = Int(mcd*(2*s+1)*(2*jmax+1))
+      #msd = Int(2*s+1)*mcd
+      #mstrt, mstop = mslimit(nf,mcalc,σ)
+      jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       ms = msgen(nf,mcalc,σ)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5

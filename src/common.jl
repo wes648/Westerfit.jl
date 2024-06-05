@@ -312,45 +312,7 @@ This builds the torsional Wang Transformation matrix for a span of -m:m with a
    end
    return out
 end
-function ut(m,σt,j,s)
-"""
-This builds the torsional Wang Transformation matrix for a span of -m:m with
-   rotational blocks for every n in Δlist(j,s)
-"""
-   jd = Int((2*s+1)*(2*j+1))
-   if σt != 2
-   out = (1/sqrt(2)) .*  [-1*eye(m) spzeros(m) rotl90(eye(m)); spzeros(1,m) sqrt(2) spzeros(1,m);
-   rotl90(eye(m)) spzeros(m) eye(m)]
-   else
-   m += 1
-   out = (1/sqrt(2)) .*  [-1*eye(m) rotl90(eye(m)); rotl90(eye(m)) eye(m)]
-   end
-   out = kron(out,eye(jd))
-   return out
-end
-function ut(m,j,s)
-"""
-This builds the torsional Wang Transformation matrix for a span of -m:m with
-   rotational blocks for every n in Δlist(j,s)
-"""
-   jd = Int((2*s+1)*(2*j+1))
-   out = (1/sqrt(2)) .*  [-1*eye(m) spzeros(m) rotl90(eye(m)); spzeros(1,m) sqrt(2) spzeros(1,m);
-   rotl90(eye(m)) spzeros(m) eye(m)]
-   out = kron(out,eye(jd))
-   return out
-end
-#function ur(n::Int,m::Int)::SparseMatrixCSC{Float64, Int64}
-#"""
-#This builds the rotational Wang Transformation matrix for a given n. This will
-#   be kronecker producted with an identy matrix of size 2*m+1 for the
-#   torsional-rotational nature. A purely rotational form can be built using m=0
-#"""
-#   md = 2*m+1
-#   out = (1/sqrt(2)) .* [-I(n) zeros(n) rotl90(I(n)); zeros(1,n) sqrt(2) zeros(1,n);
-#      rotl90(I(n)) zeros(n) I(n)]
-#   out = kron(I(md),out)
-#   return out
-#end
+
 function eyr(x::Int)::Array{Float64,2}
    diagm(ones(x))
 end
@@ -358,20 +320,6 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int64}
    out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
    out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
    return sparse(out)
-end
-function ur(j,s,m::Int,σt::Int)::SparseMatrixCSC{Float64, Int64}
-"""
-This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
-   This will be kronecker producted with an identy matrix of size 2*m+1 for the
-   torsional-rotational nature. A purely rotational form can be built using m=0
-"""
-   ns, nd, ni, jsd = srprep(j,s)
-   out = spzeros(jsd,jsd)
-   for i in 1:length(ns)
-      out[ni[i,1]:ni[i,2], ni[i,1]:ni[i,2]] = ur(ns[i])
-   end
-   out = kron(eye(2*m + 1 + (σt==2)),out)
-   return out
 end
 function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
 """
