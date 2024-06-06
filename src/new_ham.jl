@@ -180,9 +180,12 @@ function qulm(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    return pr*qured(j,s,nb,nk)*
 #             δ(nb,nk)* #This line can be used to emulate the perturbative 
              wig3j( nb, 2,nk,
-                   -kb, q,kk)*powneg1(nb+nk-kb+s+j)
+                   -kb, q,kk)*powneg1(nb+nk-kb)
 end
-function hqu2(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
+#const tq = SA[0 -1 1 -2 2; 
+#              1  2 2  3 3;
+#              1 -1 1  1 1]
+function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
    le = size(ns,1)
@@ -192,34 +195,6 @@ function hqu2(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    tq = SA[0 -1 1 -2 2; 
            1  2 2  3 3;
            1 -1 1  1 1]
-   for i in 1:5
-      tv = view(tq,:,i)
-      prm = pr[tv[2]]*tv[3]
-      q = tv[1]
-      if prm ≠ 0.0
-      for a in 1:le
-         nk = ns[a]
-         kk = ks[a]
-         f = (abs.(ns .- nk).≤2).*(q .- ks .+ kk).==0
-         out[f,a] .+= qulm.(prm,q, j,s,ns[f],ks[f], nk,kk)
-      end
-      end#prm chck if
-   end#qu term for loop
-   dropzeros!(out)
-   out .*= 0.25*nred(s)*wiginv(s)*powneg1(j+s)
-   #@show out
-   return out
-end
-const tq = SA[0 -1 1 -2 2; 
-              1  2 2  3 3;
-              1 -1 1  1 1]
-function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
-   ns = view(qns,:,1)
-   ks = view(qns,:,2)
-   le = size(ns,1)
-   out = spzeros(le,le)
-   #awkward special array of rank, component, prm ind, & sign
-   #each col is a different parameter
    for i in 1:5
       tv = tq[:,i]
       prm = pr[tv[2]]*tv[3]
@@ -236,7 +211,7 @@ function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
       end#prm chck if
    end#qu term for loop
    dropzeros!(out)
-   out .*= 0.25*nred(s)*wiginv(s)*powneg1(j+s)
+   out .*= 0.25*wiginv(s)*powneg1(j+s)
    #@show out
    return out
 end
@@ -508,8 +483,8 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int((2*jmax+1)*msd),jfd*vtd)
-   for j in jlist #thread removed for troubleshooting purposes
-#   @threads for j in jlist
+#   for j in jlist #thread removed for troubleshooting purposes
+   @threads for j in jlist
       jd = Int(2.0*j) + 1
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))

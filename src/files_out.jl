@@ -115,8 +115,8 @@ function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
    out[12] = 6.0*unc[12]^2                              #σχxx-χyy
    out[13] = unc[13]^2 #/csl                            #σF
    out[16] = 4.0*unc[16]^2 #/ csl                       #σV3
-   out[17] = unc[17]^2                                  #ση
-   out[18] = 4.0*unc[18]^2                              #σρx
+   out[17] = unc[17]^2                                  #σηz
+   out[18] = 4.0*unc[18]^2                              #σηx
    return sqrt.(out)
 end
 

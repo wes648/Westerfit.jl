@@ -169,7 +169,7 @@ function secordinp(molnam::String,irp::String)
    pop!(err)
    val = sod2prep_full(val)
    val, err = epszxcheck!(val,err)
-   @show val
+   #@show val
    return val, err
 end
 
