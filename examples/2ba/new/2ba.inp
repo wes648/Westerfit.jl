@@ -2,7 +2,7 @@
 %CNTRLS
 NFOLD = 3
 S = 0.0
-RUNmode = EF
+RUNmode = ESF
 TK = 25.0
 mcalc = 8
 assign = RAM36

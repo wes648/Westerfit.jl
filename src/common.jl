@@ -84,9 +84,9 @@ end
 function kakc2k(n,ka,kc)
    ka = abs(ka)
    if iseven(n+ka+kc)
-      return ka*(-1)^(n+ka)
+      return ka*powneg1(n+ka)
    else isodd(n+ka+kc)
-      return -ka*(-1)^(n+ka)
+      return -ka*powneg1(n+ka)
    end
 end
 
@@ -261,7 +261,7 @@ This returns the first and final indices for a certain J value for a given S.
 end
 function mfilter(jsd,nf,mc,mm,σ)
    mlowest = σ
-   mhighst = (σ + nf*mm)*(-1)^(isodd(mm))
+   mhighst = (σ + nf*mm)*powneg1(isodd(mm))
 end
 ################################################################################
 #These are the various Wang Matrices

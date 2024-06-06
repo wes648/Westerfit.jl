@@ -1,4 +1,4 @@
-2ba   @   2024-06-05T19:50:55.958
+2ba   @   2024-06-06T12:41:46.212
 
 Control Parameters
 mcalc = 8
@@ -14,7 +14,7 @@ assign = RAM36
 turducken = 1
 REJECT = 10.0
 TK = 25.0
-RUNmode =  EF
+RUNmode =  ESF
 INTThresh = 0.0
 vtmax = 0
 NFOLD = 3
