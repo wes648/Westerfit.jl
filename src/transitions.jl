@@ -136,6 +136,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       bvecs = rvecs[1:Int(2*jb+1)*rmsd,binds]
       #calculate intensities
       μs = intmat(μ,ctrl["INTthres"],nf,ctrl["mcalc"],s,jb,σr,bvecs,jk,σc,kvecs)
+      #if the uncertainty calculator goes here, life might be easier
       if (jb==jk)&&(σr==σc)
          μs = sparse(UpperTriangular(μs))
       end
