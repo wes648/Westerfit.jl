@@ -152,15 +152,16 @@ function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec)
    return diag(out)
 end
 
-function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
+function derivcalc(jlist,ops,ctrl,perm,vecs,prm,scl,stg)#removed nf call from here, fix in references
    #sd = Int(2*s+1)
    s = ctrl["S"]
+   nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
-   jmin = 0.5*iseven(Int(2*s+1))
+   #jmin = 0.5*iseven(Int(2*s+1))
    #println(jlist)
-   jmax = jlist[end,1]
-   jfd = Int(2*s+1)*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
-   vtd = Int(ctrl["vtmax"]+1)
+   #jmax = jlist[end,1]
+   #jfd = Int(2*s+1)*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
+   #vtd = Int(ctrl["vtmax"]+1)
    σcnt = σcount(nf)
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
    for sc in 1:σcnt
@@ -170,8 +171,8 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
       σt = σtype(nf,σ)
       #msd = Int(2*s+1)*mcd
       #mstrt, mstop = mslimit(nf,mcalc,σ)
-      jmsd = Int(msd*(2*jmax+1))
-      jsvd = Int(jfd*vtd)
+      #jmsd = Int(msd*(2*jmax+1))
+      #jsvd = Int(jfd*vtd)
       ms = msgen(nf,mcalc,σ)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       for j in jsublist
@@ -189,6 +190,32 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
    end#σ loop
    return derivs
 end#function
+
+function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
+   s = ctrl["S"]
+   nf = ctrl["NFOLD"]
+   mcalc = ctrl["mcalc"]
+   derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
+   sd = Int(2.0*s+1.0)
+   jmin = 0.5*iseven(sd)
+   jmax = ctrl["Jmax"]
+   jlist = collect(Float64,jmin:jmax)
+   msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
+   for j in jlist
+      jd = Int(2.0*j) + 1
+      sind, find = jvdest(j,s,ctrl["vtmax"])
+      qns = qngen(j,s)
+      vec = veccs[1:jd*msd,sind:find,sc]
+      for i in 1:length(perm)
+         pid = perm[i]
+         ders = anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec)
+         derivs[sind:find,sc,i] = ders
+      end#perm loop
+   end#j loop
+   return derivs
+end#function
+
+
 
 function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    nf = ctrl["NFOLD"]
