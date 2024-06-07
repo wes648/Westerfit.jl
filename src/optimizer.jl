@@ -195,7 +195,7 @@ function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
    s = ctrl["S"]
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
-   derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
+   derivs = zeros(Float64,size(vecs,2),length(perm))
    sd = Int(2.0*s+1.0)
    jmin = 0.5*iseven(sd)
    jmax = ctrl["Jmax"]
@@ -209,13 +209,11 @@ function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
       for i in 1:length(perm)
          pid = perm[i]
          ders = anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec)
-         derivs[sind:find,sc,i] = ders
+         derivs[sind:find,i] = ders
       end#perm loop
    end#j loop
    return derivs
 end#function
-
-
 
 function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    nf = ctrl["NFOLD"]

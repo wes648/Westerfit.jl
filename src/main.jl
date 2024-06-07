@@ -86,6 +86,8 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
       vals = fvls[:,sc]
       vecs = fvcs[:,:,sc]
       quns = fqns[:,:,sc]
+      J = derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
+      traerrs = traerrs(J,σu)
       fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,vals,vecs,quns,σ)
       finfrq = vcat(finfrq,fr)
       finqns = vcat(finqns,qn)
