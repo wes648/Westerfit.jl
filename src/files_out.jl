@@ -89,9 +89,9 @@ function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
 
    if prd[13] != 0.0
       out[14] = (0.5*unc[14]/prd[13])^2 +
-                (0.5*prd[14]*unc[13]/prd[13]^2)^2      #σρ
+                (0.5*prd[14]*unc[13]/prd[13]^2)^2      #σρz
       out[15] = (0.5*unc[15]/prd[13])^2 +
-                (0.5*prd[15]*unc[13]/prd[13]^2)^2      #σρ
+                (0.5*prd[15]*unc[13]/prd[13]^2)^2      #σρx
    else
       out[14] = 0.0
       out[15] = 0.0
@@ -99,12 +99,12 @@ function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
 #   out[1] = unc[1]^2 + unc[2]^2 + (0.25unc[12]*prd[13]^2/prd[12]^2)^2 +
 #            (0.5*prd[13]*unc[13]/prd[12])^2          #σA
    out[1] = unc[1]^2 + unc[2]^2 + (unc[13]*prd[14]^2)^2 +
-            (2*prd[13]*prd[14]*out[14])^2               #σA
+            (2*prd[13]*prd[14]*out[14])^2                       #σA
    out[2] = unc[2]^2 + 4.0*unc[3]^2+ (unc[13]*prd[15]^2)^2 +
-            (2*prd[13]*prd[15]*out[15])^2               #σB
-   out[3] = unc[2]^2 + 4.0*unc[3]^2                     #σC
-   out[4] = (unc[4]^2 + 4.0*csl^2*((prd[15]*unc[14])^2 +
-            (prd[14]*unc[15])^2)                      #σDab
+            (2*prd[13]*prd[15]*out[15])^2                       #σB
+   out[3] = unc[2]^2 + 4.0*unc[3]^2                             #σC
+   out[4] = unc[4]^2 + 4.0*csl^2*((prd[15]*unc[14])^2 +
+            (prd[14]*unc[15])^2)                               #σDab
    out[5] = (unc[5]^2 + 2*unc[6]^2)/3                   #σϵzz
    out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[9]^2        #σϵxx
    out[7] = (2*unc[5]^2 + unc[6]^2)/6 + unc[9]^2        #σϵyy
@@ -253,7 +253,8 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*"," #Kc
       part *= lpad(qunl[11],3)*"," #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.6f", frql[2])*","
+      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    else
       part  = lpad(qunl[1]*0.5,4)*","
@@ -267,10 +268,112 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*","
       part *= lpad(qunl[11],3)*","
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.6f", frql[2])*","
+      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    end
    return part
+end
+function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
+   c = 29979.2458
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   for i in 1:size(freqs,1)
+      #freq
+#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
+      part = @sprintf("%13.4f", freqs[i,1])
+      #error
+      part = string(part,@sprintf("%8.4f", 0.00))
+      #-log(Intensity)
+      modint = log(freqs[i,2])#*.1
+      #modint = -abs(rand(1)[1])
+      part = string(part, @sprintf("%8.4f", modint))
+      #Degrees of Rotational Freedom
+      part = string(part, lpad(3,2))
+      #E_lower
+      modEl = freqs[i,3]/c
+      part = string(part, @sprintf("%10.4f", modEl))
+      #Upper State degeneracy
+      part = string(part, lpad(1,3))
+      #Tag
+      part = string(part, lpad(0,7))
+      #QNFMT
+      part = string(part, lpad(1415,4))
+      #J N Ka Kc σ vt is the order in the array
+      #N Ka Kc v J is the order for SPCAT
+      #qunus for upper
+      part = string(part, lpad(qunus[i,2],2),lpad(qunus[i,3],2),
+      #lpad(qunus[i,4],2), lpad(qunus[i,6],2), lpad(qunus[i,5],2))
+      lpad(qunus[i,4],2), lpad(qunus[i,5],2), lpad(qunus[i,1],2), lpad(qunus[i,6],2))
+      #qunus for lower
+      out[i] = string(part, lpad(qunus[i,8],2),lpad(qunus[i,9],2),
+      lpad(qunus[i,10],2), lpad(qunus[i,11],2),  lpad(qunus[i,7],2), lpad(qunus[i,12],2))
+      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))
+   end
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
+end
+function TraWriter(molnam,s, freqs, qunus)
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   for i in 1:size(freqs,1)
+      out[i] = linestrng(s, freqs[i,:], qunus[i,:])
+   end
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
+end
+
+
+function TraWriterold(molnam,freqs, qunus)
+   c = 29979.2458
+   p = sortperm(freqs[:,1])
+   freqs = freqs[p,:]
+   qunus = qunus[p,:]
+   out = fill("0",size(freqs,1))
+   counter = 0
+   for i in 1:size(freqs,1)
+      #J N Ka Kc sigma vt is the order in the array
+      #qunus for upper
+      ju = @sprintf("%2.1f", 0.5*qunus[i,1])
+      part = string(" ", lpad(ju,5),",", lpad(qunus[i,2],3),",", lpad(qunus[i,3],3),",",
+      lpad(qunus[i,4],3),",", lpad(qunus[i,5],3),",", lpad(qunus[i,6],3))
+      #qunus for lower
+      jl = @sprintf("%2.1f", 0.5*qunus[i,7])
+      part = string(part,",", lpad(jl,5),",", lpad(qunus[i,8],3),",", lpad(qunus[i,9],3),
+      ",", lpad(qunus[i,10],3),",", lpad(qunus[i,11],3),",", lpad(qunus[i,12],3))
+      #freq
+#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
+      freq = @sprintf("%13.4f", freqs[i,1])
+      #error
+      part = string(part,",", freq,",", @sprintf("%8.4f", 0.02))
+      #-log(Intensity)
+      #modint = log(freqs[i,2])#*.1
+      modint = freqs[i,2]#*.1
+      part = string(part, @sprintf("%8.4f", modint))
+      if modint ≥ 0.0001
+         counter += 1
+         out[counter] = part
+      end
+   end
+   out = out[1:counter]
+   io = open("$molnam.cat", "w") do io
+      for i in out
+         println(io, i)
+      end
+   end
+   println("Transitions written to $molnam.cat!")
 end
 
 """START CODE FOR UNCERTAINTY PRINTER THINGY"""
@@ -455,14 +558,14 @@ function inpwriter(molnam::String, values)
 
    strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
    strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
-   strlnhigh = first(findall(isequal("%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))"),file[:,1]))
+   strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
 
    secvalues = values[1:15]
 
-   highstg= file[strlnhigh+2:end,12]
+   highstg= file[strlnhigh+2:end,end]
    ohighval = file[strlnhigh+2:end,2]
    uval = ohighval[highstg .== 0.0]
-   newhighval = values[16:end]
+   newhighval = values[19:end]
 
    highervalues = vcat(uval,newhighval)
 
@@ -510,8 +613,8 @@ function inpwriter(molnam::String, values)
          println(io, secondord[i])
       end
       println(io,"")
-      println(io,"%PARAMS N^a Nz^b (N₊^c + N₋^c) (NS)^d Sz^e Pₐ^f cos(g*α) sin(h*α) Ny^(1-δ(0,h))")
-      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;  stg")
+      println(io,"%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))")
+      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;   j;  stg")
       for i in 1:length(higherord)
          println(io, higherord[i])
       end
@@ -519,110 +622,6 @@ function inpwriter(molnam::String, values)
 end
 
 """END CODE FOR INPUT FILE WRITER"""
-
-
-function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
-   c = 29979.2458
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   for i in 1:size(freqs,1)
-      #freq
-#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
-      part = @sprintf("%13.4f", freqs[i,1])
-      #error
-      part = string(part,@sprintf("%8.4f", 0.00))
-      #-log(Intensity)
-      modint = log(freqs[i,2])#*.1
-      #modint = -abs(rand(1)[1])
-      part = string(part, @sprintf("%8.4f", modint))
-      #Degrees of Rotational Freedom
-      part = string(part, lpad(3,2))
-      #E_lower
-      modEl = freqs[i,3]/c
-      part = string(part, @sprintf("%10.4f", modEl))
-      #Upper State degeneracy
-      part = string(part, lpad(1,3))
-      #Tag
-      part = string(part, lpad(0,7))
-      #QNFMT
-      part = string(part, lpad(1415,4))
-      #J N Ka Kc σ vt is the order in the array
-      #N Ka Kc v J is the order for SPCAT
-      #qunus for upper
-      part = string(part, lpad(qunus[i,2],2),lpad(qunus[i,3],2),
-      #lpad(qunus[i,4],2), lpad(qunus[i,6],2), lpad(qunus[i,5],2))
-      lpad(qunus[i,4],2), lpad(qunus[i,5],2), lpad(qunus[i,1],2), lpad(qunus[i,6],2))
-      #qunus for lower
-      out[i] = string(part, lpad(qunus[i,8],2),lpad(qunus[i,9],2),
-      lpad(qunus[i,10],2), lpad(qunus[i,11],2),  lpad(qunus[i,7],2), lpad(qunus[i,12],2))
-      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))
-   end
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
-
-function TraWriter(molnam,s, freqs, qunus)
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   for i in 1:size(freqs,1)
-      out[i] = linestrng(s, freqs[i,:], qunus[i,:])
-   end
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
-
-
-function TraWriterold(molnam,freqs, qunus)
-   c = 29979.2458
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   counter = 0
-   for i in 1:size(freqs,1)
-      #J N Ka Kc sigma vt is the order in the array
-      #qunus for upper
-      ju = @sprintf("%2.1f", 0.5*qunus[i,1])
-      part = string(" ", lpad(ju,5),",", lpad(qunus[i,2],3),",", lpad(qunus[i,3],3),",",
-      lpad(qunus[i,4],3),",", lpad(qunus[i,5],3),",", lpad(qunus[i,6],3))
-      #qunus for lower
-      jl = @sprintf("%2.1f", 0.5*qunus[i,7])
-      part = string(part,",", lpad(jl,5),",", lpad(qunus[i,8],3),",", lpad(qunus[i,9],3),
-      ",", lpad(qunus[i,10],3),",", lpad(qunus[i,11],3),",", lpad(qunus[i,12],3))
-      #freq
-#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
-      freq = @sprintf("%13.4f", freqs[i,1])
-      #error
-      part = string(part,",", freq,",", @sprintf("%8.4f", 0.02))
-      #-log(Intensity)
-      #modint = log(freqs[i,2])#*.1
-      modint = freqs[i,2]#*.1
-      part = string(part, @sprintf("%8.4f", modint))
-      if modint ≥ 0.0001
-         counter += 1
-         out[counter] = part
-      end
-   end
-   out = out[1:counter]
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
 
 function findstrinput(molnam)
    #findctrl = `grep -n CNTRLS $molnam.inp`
@@ -647,20 +646,21 @@ function outputinit(molnam,params,scls,linelength,ctrl)
 
    controls = file[indexcon+1:index2nd-2, 1]
    
-   secvalues = params[1:15]
-   highervalues = params[16:end]
-   secscale = scls[1:15]
-   highscale = scls[16:end]
-   highstg= file[strlnhigh:end,12]
+   secvalues = params[1:18]
+   highervalues = params[19:end]
+   secscale = scls[1:18]
+   highscale = scls[19:end]
+   highstg= file[strlnhigh:end,end]
 
 
-   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)"," T²₁(ϵ)"," T²₂(ϵ)",
-             " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", " F", " -2ρF", " V3/2", " η"]
+   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
+             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
    
-   secondord = fill("0",15)
+   secondord = fill("0",18)
    higherord = fill("0",length(highnam))
    
    for i in 1:length(secondord)
@@ -706,13 +706,14 @@ function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
 
    prd = paramarray[:,counter+1]
    prdold = paramarray[:,counter]
-   highstg= file[strlnhigh:end,12]
+   highstg= file[strlnhigh:end,end]
 
    
-   highervalues = prd[16:end]
+   highervalues = prd[19:end]
    
-   secnam = ["BK", "BN", "B⨦", "Dab", "T⁰₀(ϵ)","T²₀(ϵ)","T²₁(ϵ)","T²₂(ϵ)",
-             "T²₀(χ)","T²₁(χ)","T²₂(χ)", "F", "-2ρF", "V3/2", "η"]
+   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
+             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
@@ -773,9 +774,10 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    scounter = lpad(counter,3)
 
 
-   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵxz","ϵyy","χzz","χxz","χxx-χyy","F","ρ","V3","η"]
+   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
+             "χxx-χyy","F","ρz", "ρx", "V3","ηz","ηx"]
    highnamall = file[strlnhigh:end,1]
-   highstg= file[strlnhigh:end,12]
+   highstg= file[strlnhigh:end,end]
    highnam = highnamall[highstg .!= 0.0]
    fullnam = vcat(secnam, highnam)
 

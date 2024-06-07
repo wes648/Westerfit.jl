@@ -200,9 +200,12 @@ function traerrs(J,σu)
    return .√sum(J .* σu',dims=2)
 end
 
-function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ)
+function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ,vecs)
    #(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
-   inds = qnconv(quns,nf,s,vtm)
+   nf = ctrl["NFOLD"]
+   s = ctrl["S"]
+   vtm = ctrl["vtmax"]
+   #inds = qnconv(quns,nf,s,vtm)
    jlist = jlister(inds)
    perm = permdeterm(scals,stg)
    J = build_jcbn2!([0.0],ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
@@ -214,4 +217,11 @@ function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ)
    end
    uncs = traerrs(J,pσ)
 end
+
+
+
+
+
+
+
 

@@ -91,7 +91,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
       finqns = vcat(finqns,qn)
    end
    #calculate uncertainties
-   uncs = unccalc_no_fit(ctrl,quns,prms,scls,stg,ops,pσ)
+   uncs = unccalc_no_fit(ctrl,finqns,prms,scls,stg,ops,pσ,fvcs)
    finfrq = hcat(finfrq,uncs)
    #write transitions to file
    TraWriter(molnam, ctrl["S"], finfrq, finqns)

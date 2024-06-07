@@ -198,6 +198,10 @@ function ngen(j::Float64,s::Float64)::Array{Int,2}
    return kron(out,ones(Int,convert(Int, (2.0*s+1.0)*(2.0*j+1.0)))' )
 end
 
+function cosp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
+   return @. (δ(mb+p,mk)+δ(mb-p,mk))/2.0
+end
+
 σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
 msgen(nf::Int,mc::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
