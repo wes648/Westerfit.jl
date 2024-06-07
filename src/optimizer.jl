@@ -149,7 +149,7 @@ end
 function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec)
    mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
    out = transpose(vec)*mat*vec
-   return out
+   return diag(out)
 end
 
 function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
@@ -182,7 +182,7 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,nf,prm,scl,stg)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
-            ders = diag(anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec))
+            ders = anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec)
             derivs[sind:find,sc,i] = ders
          end#perm loop
       end #j loop
