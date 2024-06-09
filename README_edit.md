@@ -53,19 +53,33 @@ $D_{ab}$ is the off-diagonal rotational constant for the Rho Axis Method.
 When it is included, $A$ and $B$ refer to their RAM meanings not their PAM meanings. These are all in MHz
 
 $F$ is the internal rotor constant. It is the reduced value as is used in RAM36. 
-$\rho$ is the coupling term between the methyl rotation and the $z$-axis angular momentum. 
+$\rho_z$ is the coupling term between the methyl rotation and the $z$-axis angular momentum. 
 It engages in the Hamiltonian as $-2\rho FP_{\alpha}N_{z}$ and $(A-F\rho^{2})N_{z}^{2}$. 
+$\rho_x$ is analogous to $\rho_z$ though for the $x$-axis. 
+For RAM fits, leave this as zero but it can be included for PAM fits.
 The $Vn$ is the first term in the potential expansion as determined by NFOLD.
 
 The $\epsilon$ terms are the spin-rotation coupling terms referring to axes in their subscripts. 
-ϵxz is the average of the $\epsilon_{xz}$ and $\epsilon_{zx}$ terms as they do not have seperable matrix elements. 
+If only one of either $\epsilon_{zx}$ or $\epsilon_{xz}$ is provided, the code will internally treat the value as average term, $T^2_{\pm}(\epsilon)$.
 These are transformed into spherical tensor notation upon start of the code.
 These can also serve as nuclear spin-rotation coupling as they are mathematically equivalent.
 
 The $\chi$ terms are the quadrupole terms, again referring to the axes in their subscript.
+This can be used as either the electronic spin-spin in molecules of $S\ge1$ or as the nuclear electric quadrupole moment for molecules with $I\ge1$.
 They are also transformed into spherical tensor form upon initializaiton.
 
-Lastly is the spin-torsion coupling term $\eta$.
+Lastly are the spin-torsion coupling terms $\eta_z$ and $\eta_x$ which refer to the operators $S_zP_{\alpha}$ and $S_xP_{\alpha}$.
+Definitions of the operators are provided in the paper.
+
+**Caution**. The user facing second order terms are not directly used nor fit by the program.
+The table below shows how the scale values in the 2nd order section are actually treated.
+| User Facing   | Internal      | User Facing   | Internal      |
+|:-------------:|:------------: |:-------------:|:------------: |
+| A  | BK $N_z^2$           | ϵzz | T⁰₀(ϵ) $T^0_0(N,S)$ |
+| B  | BN $N^2$             | ϵxx | T²₀(ϵ) $T^2_0(N,S)$ |
+| C  | B⨦ $(N_+^2 + N_-^2)$ | ϵyy | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
+| ρz | rz $P_{\alpha}N_z$   | ϵzx | T²₁(ϵ) $T^2_{\pm1}(N,S)$ |
+| ρx | rx $P_{\alpha}N_x$   | ϵxz | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
 
 ### Higher order operators
 These are manual coded in operators that are implemented as the anti-commutator of what the user codes in.
@@ -78,6 +92,17 @@ There are no checks of symmetry like in RAM36 so go wild.
 One could also code in inverse powers but I'm not sure why one would. Let me know if you do and how it helped!
 The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
+###Line File Format
+The experimental transitions should be included in the molnam.lne file.
+This uses a comma delimited format in the following structure:
+```
+Ju, Nu, Kau, Kcu, mu, Jl, Nl, Kal, Kcl, ml, freq, unc
+```
+$J$ is the total angular momentum ($F$ for cases with nuclear spin) and $N$ is the angular momentum of the molecular frame.
+$K_a$ and $K_c$ are the traditional assymetric top state labels and $m$ is the free rotor quantum number.
+The u and l labels denote the upper and lower states respectively.
+Lastly, freq is the experimental frequency and unc is the uncertainty in the line position which is used for weighting in the Levenberg-Marquadt routine.
+Make sure that Ju, Jl, freq, and unc are all floating point numbers (include a decimal point) and all the rest are integers.
 
 ## Installation
 Unfortuantely, westerfit installation is a bit of a mess. 
