@@ -118,7 +118,7 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
    out[1] = tempa - 0.5*(tempb + prd[3])          #BK
    out[2] = 0.5*(tempb + prd[3])                  #BN
    out[3] = 0.25*(tempb - prd[3])                 #B±
-   out[4] = prd[4] + 2*csl*prd[14]*prd[15]        #Dab
+   out[4] = prd[4]                                #Dab
 
    out[5] = -(prd[5] + prd[6] + prd[7]) / √3      #T⁰₀(ϵ)
    out[6] = 0.5*(prd[8] - prd[9])                 #T¹₁(ϵ)

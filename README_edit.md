@@ -92,7 +92,7 @@ There are no checks of symmetry like in RAM36 so go wild.
 One could also code in inverse powers but I'm not sure why one would. Let me know if you do and how it helped!
 The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
-###Line File Format
+### Line File Format
 The experimental transitions should be included in the molnam.lne file.
 This uses a comma delimited format in the following structure:
 ```

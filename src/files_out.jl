@@ -38,7 +38,7 @@ function paramrecov_full(prd::Array{Float64})::Array{Float64}
    out[1] = prd[1] + prd[2] - prd[13]*out[14]^2        #A
    out[2] = prd[2] + 2.0*prd[3] - prd[13]*out[15]^2    #B
    out[3] = prd[2] - 2.0*prd[3]                        #C
-   out[4] = prd[4] - 2*out[14]*out[15]*csl             #Dab
+   out[4] = prd[4] #- 2*out[14]*out[15]*csl             #Dab
    out[5] = (-prd[5] + √2*prd[7])/√3                   #ϵzz
    out[6] = -(prd[5]/√3 + prd[7]/√6) + prd[9]          #ϵxx
    out[7] = -(prd[5]/√3 + prd[7]/√6) - prd[9]          #ϵyy
@@ -103,8 +103,7 @@ function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
    out[2] = unc[2]^2 + 4.0*unc[3]^2+ (unc[13]*prd[15]^2)^2 +
             (2*prd[13]*prd[15]*out[15])^2                       #σB
    out[3] = unc[2]^2 + 4.0*unc[3]^2                             #σC
-   out[4] = unc[4]^2 + 4.0*csl^2*((prd[15]*unc[14])^2 +
-            (prd[14]*unc[15])^2)                               #σDab
+   out[4] = unc[4]^2                                    #σDab
    out[5] = (unc[5]^2 + 2*unc[6]^2)/3                   #σϵzz
    out[6] = (2*unc[5]^2 + unc[6]^2)/6 + unc[9]^2        #σϵxx
    out[7] = (2*unc[5]^2 + unc[6]^2)/6 + unc[9]^2        #σϵyy
@@ -560,7 +559,7 @@ function inpwriter(molnam::String, values)
    strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
    strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
 
-   secvalues = values[1:15]
+   secvalues = values[1:18]
 
    highstg= file[strlnhigh+2:end,end]
    ohighval = file[strlnhigh+2:end,2]
@@ -583,6 +582,7 @@ function inpwriter(molnam::String, values)
    highf= file[strlnhigh+2:end,9]
    highg= file[strlnhigh+2:end,10]
    highh= file[strlnhigh+2:end,11]
+   highj= file[strlnhigh+2:end,12]
    
    secondord = fill("0",15)
    higherord = fill("0",length(file[strlnhigh+2:end,1]))

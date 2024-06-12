@@ -105,7 +105,7 @@ function jbjklisterfull(jmin,jmax,mΔj)
 end
 
 function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
-                       rvals,rvecs,rqns,σr,cvals,cvecs,cqns,σc)
+                       rvals,rvecs,rqns,σr,cvals,cvecs,cqns,σc,uncs)
    s = ctrl["S"]
    vtm = ctrl["vtmax"]
    nf = ctrl["NFOLD"]
@@ -136,7 +136,6 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       bvecs = rvecs[1:Int(2*jb+1)*rmsd,binds]
       #calculate intensities
       μs = intmat(μ,ctrl["INTthres"],nf,ctrl["mcalc"],s,jb,σr,bvecs,jk,σc,kvecs)
-      #if the uncertainty calculator goes here, life might be easier
       if (jb==jk)&&(σr==σc)
          μs = sparse(UpperTriangular(μs))
       end
@@ -157,11 +156,11 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       ν = rvals[r] - cvals[c]
       frqs[r,c] = ν*(ctrl["νmin"]≤abs(ν*0.001)≤ctrl["νmax"])
    end
-   dropzeros!(frqs)
+   droptol!(frqs,1e-3) #drops all frequencies below 1kHz
    #assign Elow & qns plus sign correction
    rinds, cinds, νs = findnz(frqs)
-   len = nnz(frqs)
-   outfrq = zeros(len,3)
+   len = nnz(frqs) 
+   outfrq = zeros(len,4)
    outqns = zeros(Int,len,12)
    for i in 1:len
       ν = νs[i]
@@ -170,6 +169,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
+         outfrq[i,4] = √(uncs[r]^2 + uncs[c]^2)
          thermfact = abs(exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σc+1)*100
          outqns[i,1:6] = rqns[r,:]
@@ -177,6 +177,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
+         outfrq[i,4] = √(uncs[r]^2 + uncs[c]^2)
          thermfact = abs(exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σr+1)*100
          outqns[i,1:6] = cqns[c,:]
@@ -195,11 +196,19 @@ function tracalc_nocat(μ::Nothing,kbT,Qrt,nf,s,jmax,mcalc,vtm,
 end
 
 
-function traerrs(J,σu)
+function traerrs_bad(J,σu)
+   out = zeros(size(J,1))
+   @show J
    J = J.^2
    σu = σu.^2
-   return .√sum(J .* σu',dims=2)
+   out = .√sum(J .* σu',dims=2)
+   return out
 end
+function traerrs(J,cov)
+   out = J * cov * J'
+   return diag(out)
+end
+
 
 function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ,vecs)
    #(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)

@@ -71,30 +71,33 @@ function westereng(molnam::String, prm, ctrl)
    scls = vcat(ser,cde)
    return fvls, fvcs, fqns, μs, prm, scls, stg, cdo
 end
-function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pσ)
+function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pcov)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
    σcnt = σcount(ctrl["NFOLD"])
    jmax = ctrl["Jmax"]
-
+   @show pcov
+   perm = permdeterm(scls,stg)
+   @show perm
    kbT = ctrl["TK"]*20836.61912 #MHz/K
    Qrt = sum(exp.(fvls ./ -kbT))/3
-   finfrq = zeros(0,3)
+   finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
    @time for sc in 1:σcnt
       σ = sc - 1
       vals = fvls[:,sc]
       vecs = fvcs[:,:,sc]
       quns = fqns[:,:,sc]
-      J = derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
-      traerrs = traerrs(J,σu)
-      fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,vals,vecs,quns,σ)
+      J = derivcalc_all(ops,ctrl,perm,vecs,prm,scls,stg,σ)
+      uncs = traerrs(J,pcov)
+      if σ==0
+         @show (uncs)
+      end
+      fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
+                           vals,vecs,quns,σ,uncs)
       finfrq = vcat(finfrq,fr)
       finqns = vcat(finqns,qn)
    end
-   #calculate uncertainties
-   #uncs = unccalc_no_fit(ctrl,finqns,prms,scls,stg,ops,pσ,fvcs)
-   #finfrq = hcat(finfrq,uncs)
    #write transitions to file
    TraWriter(molnam, ctrl["S"], finfrq, finqns)
    return finfrq, finqns
@@ -126,7 +129,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
 #   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)
 
-   tsrp, puncs, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
+   tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    #println(tsrp)
    #println(puncs)
    reswritter(molnam,lines,omcs,cfrqs)
@@ -136,7 +139,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #   vals, vecs = rotdiag(Nmax,n,rotparams)
    #   println(vals)
    #end
-   return tsrp, puncs
+   return tsrp, pcov
 end
 
 function westerfit(molnam::String)
@@ -149,7 +152,7 @@ function westerfit(molnam::String)
       westerfit(molnam, ctrl)
    else
       if occursin("F",ctrl["RUNmode"])
-         prm, puncs = westerfit(molnam, ctrl)
+         prm, pcov = westerfit(molnam, ctrl)
       else
          prm = nothing
          puncs = nothing
@@ -157,7 +160,7 @@ function westerfit(molnam::String)
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
          vas, ves, qns, μs, prm, scls, stg, cdo = westereng(molnam, prm, ctrl)
          if occursin("S", ctrl["RUNmode"])
-            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,puncs)
+            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,pcov)
          end
       end
    end

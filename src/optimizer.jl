@@ -191,21 +191,22 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,prm,scl,stg)#removed nf call from he
    return derivs
 end#function
 
-function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg)
+function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    s = ctrl["S"]
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
+   ms = msgen(nf,mcalc,σ)
    derivs = zeros(Float64,size(vecs,2),length(perm))
    sd = Int(2.0*s+1.0)
    jmin = 0.5*iseven(sd)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
    msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
-   for j in jlist
+   @threads for j in jlist
       jd = Int(2.0*j) + 1
       sind, find = jvdest(j,s,ctrl["vtmax"])
       qns = qngen(j,s)
-      vec = veccs[1:jd*msd,sind:find,sc]
+      vec = vecs[1:jd*msd,sind:find]
       for i in 1:length(perm)
          pid = perm[i]
          ders = anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec)
@@ -220,7 +221,7 @@ function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    mcalc = ctrl["mcalc"]
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds,1),length(perm))
-   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,params,scals,stg)
+   deriv = derivcalc(jlist,ops,ctrl,perm,vecs,params,scals,stg)
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
@@ -445,10 +446,30 @@ function aitkenδ(γ)#this was a weird accelerator idea
    @. (γ[:,end-2]*γ[:,end] - γ[:,end-1]^2)/(γ[:,end-2]+γ[:,end] - 2.0*γ[:,end-1])
 end
 function paramunc(H,W,perm,omc)
-   uncs = diag(inv(Symmetric(H)))
+   uncs = zeros(size(H,1))
+   try
+      uncs = diag(inv(Symmetric(H)))
+   catch 
+      uncs = diag(inv(H))
+   end
    uncs .*= (omc' * W * omc)/(length(omc)-length(perm))
    return □rt.(uncs)
 end
+function correl(H)
+   out = zeros(size(H))
+   for i in 1:size(H,1), j in i:size(H,2)
+      out[i,j] = H[i,j] / √(H[i,i]*H[j,j])
+   end
+   return Symmetric(out)
+end
+function covarr(corr,pσ)
+   out = zeros(size(corr))
+   for i in 1:size(corr,1), j in 1:size(corr,2)
+      out[i,j] = corr[i,j] * pσ[i] * pσ[j]
+   end
+   return out
+end
+
 function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]
 end
@@ -617,8 +638,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    puncs = zeros(size(params))
+   @show H
    puncs[perm] = paramunc(H,W,perm,omc)
-   puncs_forsim = copy(puncs)
+   covarmat = covarr(correl(H),puncs)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl["Irrep"])
@@ -628,5 +650,5 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
       inpwriter(molnam, params)
    end
-   return params, puncs_forsim, fomc, fcfrqs, vals
+   return params, covarmat, fomc, fcfrqs, vals
 end
