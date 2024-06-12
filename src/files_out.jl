@@ -585,7 +585,7 @@ function inpwriter(molnam::String, values)
    highh= file[strlnhigh+2:end,11]
    highj= file[strlnhigh+2:end,12]
    
-   secondord = fill("0",15)
+   secondord = fill("0",numvals)
    higherord = fill("0",length(file[strlnhigh+2:end,1]))
 
 
@@ -599,7 +599,7 @@ function inpwriter(molnam::String, values)
       higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",
          lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",
          lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",
-         lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highstg[i],4))
+         lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highj[i],4),";",lpad(highstg[i],4))
    end
 
    time = now()
