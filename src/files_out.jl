@@ -549,7 +549,7 @@ function iterativecopier(molnam::String)
 end
 
 
-function inpwriter(molnam::String, values)
+function inpwriter(molnam::String, values, scales)
 
    iterativecopier(molnam)
 
@@ -559,19 +559,23 @@ function inpwriter(molnam::String, values)
    #strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
    #strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
 
-   numvals = strlnhigh-strln2nd-1
-   secvalues = values[1:numvals] #new values of second order ops
+  # numvals = strlnhigh-strln2nd-1
+   secvalues = values[1:18] #new values of second order ops
+   println(secvalues)
 
    highstg= file[strlnhigh+2:end,end] #stages of higher order ops
    ohighval = file[strlnhigh+2:end,2] #old vals of higher order ops
    uval = ohighval[highstg .== 0.0] #values only of dipole moments
-   newhighval = values[numvals+1:end] #new values of higher order ops
+   newhighval = values[19:end] #new values of higher order ops
 
    highervalues = vcat(uval,newhighval) #all higher order ops, incl dipoles
 
+
    controls = file[strlnctrl:strln2nd-1, 1]
-   secnam = file[strln2nd+1:strlnhigh-1,1]
-   secscale = file[strln2nd+1:strlnhigh-1,3]
+#   secnam = file[strln2nd+1:strlnhigh-1,1]
+#   secscale = file[strln2nd+1:strlnhigh-1,3]
+
+   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵyy","ϵzx","ϵxz","χzz","χxz","χxmy","F","ρz","ρx","Vn","ηz","ηx"]
 
    highnam = file[strlnhigh+2:end,1]
    highscale = file[strlnhigh+2:end,3]
@@ -585,13 +589,13 @@ function inpwriter(molnam::String, values)
    highh= file[strlnhigh+2:end,11]
    highj= file[strlnhigh+2:end,12]
    
-   secondord = fill("0",numvals)
+   secondord = fill("0",18)
    higherord = fill("0",length(file[strlnhigh+2:end,1]))
 
 
    for i in 1:length(secvalues)
       ln = 30 - length(secnam[i])
-      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(secscale[i],6))
+      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(scales[i],6))
    end
 
    for i in 1:length(higherord)

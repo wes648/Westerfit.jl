@@ -648,7 +648,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    if ctrl["overwrite"]==true
       println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
-      inpwriter(molnam, params)
+      inpwriter(molnam, params, scales)
    end
    return params, covarmat, fomc, fcfrqs, vals
 end
