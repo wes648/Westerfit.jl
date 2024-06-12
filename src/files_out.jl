@@ -553,20 +553,21 @@ function inpwriter(molnam::String, values)
 
    iterativecopier(molnam)
 
-   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+   strlnctrl,strln2nd,strlnhigh,file = findstrinput_new(molnam)
 
-   strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
-   strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
-   strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
+   #strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
+   #strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
+   #strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
 
-   secvalues = values[1:18]
+   numvals = strlnhigh-strln2nd-1
+   secvalues = values[1:numvals] #new values of second order ops
 
-   highstg= file[strlnhigh+2:end,end]
-   ohighval = file[strlnhigh+2:end,2]
-   uval = ohighval[highstg .== 0.0]
-   newhighval = values[19:end]
+   highstg= file[strlnhigh+2:end,end] #stages of higher order ops
+   ohighval = file[strlnhigh+2:end,2] #old vals of higher order ops
+   uval = ohighval[highstg .== 0.0] #values only of dipole moments
+   newhighval = values[numvals+1:end] #new values of higher order ops
 
-   highervalues = vcat(uval,newhighval)
+   highervalues = vcat(uval,newhighval) #all higher order ops, incl dipoles
 
    controls = file[strlnctrl:strln2nd-1, 1]
    secnam = file[strln2nd+1:strlnhigh-1,1]
@@ -636,6 +637,15 @@ function findstrinput(molnam)
    file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
    return strlnctrl,strln2nd,strlnhigh,file
 end
+
+function findstrinput_new(molnam)
+   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
+   strlnctrl = findfirst(isequal("%CNTRLS"),file)[1]
+   strln2nd = findfirst(isequal("%2NDORDER"),file)[1]
+   strlnhigh = findfirst(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file)[1]
+   return strlnctrl,strln2nd,strlnhigh,file
+end
+
 
 function outputinit(molnam,params,scls,linelength,ctrl)
 
