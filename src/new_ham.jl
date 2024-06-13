@@ -178,7 +178,7 @@ function qured(j,s,nb,nk)
 end
 function qulm(pr,q,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    return pr*qured(j,s,nb,nk)*
-             δ(nb,nk)* #This line can be used to emulate the perturbative 
+#             δ(nb,nk)* #This line can be used to emulate the perturbative 
              wig3j( nb, 2,nk,
                    -kb, q,kk)*powneg1(nb+nk-kb)
 end
