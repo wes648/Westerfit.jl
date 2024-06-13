@@ -15,7 +15,7 @@ WIGXJPFjl = "c012394e-041f-4dac-954c-af2908646be0"
 [compat]
 julia = "^1.9"
 DelimitedFiles = "^1.9.1"
-StaticArrays = "^1.9.4"
+StaticArrays = "^1.9.5"
 WIGXJPFjl = "^1.11.0"
 SparseArrays = "^1.10.0"
 

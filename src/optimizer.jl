@@ -569,8 +569,6 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    puncs = zeros(size(params))
-   @show eigvals(H)
-   @show eigvecs(H)
    puncs[perm] = paramunc(H,W,perm,omc)
    covarmat = covarr(correl(H),puncs)
    #params[1:15] .= paramrecov(params[1:15])
