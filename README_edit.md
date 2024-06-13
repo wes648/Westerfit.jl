@@ -129,13 +129,13 @@ Useful Windows Notes:
 2. Make sure you have a C compiler, such as gcc. You can check this by typing `which gcc` into your terminal.
 3. Run the command `julia` to enter a REPL session. Enter `]` to enter package mode. Enter `add Westerfit`.
 4. Unfortunately, WIGXJPFjl, a dependency, is causing issues. You can try to remedy this by typing `add WIGXJPFjl`. If that doesn't work, you can try manual compilation and putting the libwigxjpf_shared.so library in the package's deps directory; please let me know if you do this. If you don't feel comfortable trying that, feel free to shoot me an email.
-5. Open your bashrc with the command `vim ~/.bashrc`. Press `i` and enter to enter edit mode. Add these three lines, with X replaced by the number of threads you want to run on (more is better, you can also just remove the -tX altogether):
+5. Go to somewhere in your $PATH variable (you can check in your bashrc). Open a new file called `westerfit`, then type these lines:
 ```
 #!/PATH/TO/julia -tX
 using Westerfit
 westerfit(ARGS[1])
 ```
-Then enter `. ~/.bashrc` to update your terminal session.
+X is the number of threads (8 is fine; more is better). Your path to julia must go all the way to the executable; mine is `~/julia/julia-1.`7.3/bin/julia. Save this file. Make it an executable by running `chmod +x westerfit` and entering your password.
 6. Try running westerfit! Enter `westerfit molnam` and it will run on molnam.inp. Make sure you're in the directory that molnam.inp is in.
 
 To install westerfit, you will need to install [Julia](https://julialang.org/) and I recommend doing so through [juliaup](https://github.com/JuliaLang/juliaup).
