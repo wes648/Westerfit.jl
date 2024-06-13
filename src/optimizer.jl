@@ -56,17 +56,20 @@ end
 #end
 function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    ind = rpid+1
-   if ind ≤ length(stg)+15
-      check = stg[ind-15]
+   if ind ≤ length(stg)+18
+      check = stg[ind-18]
       while check < zero(check)
          pm = prm[ind]
          #println(pm)
          #println(ops[:,ind-15])
          #out .+= tsrop(pm,ops[:,ind-15],j,s,nb,kb,mb,nk,kk,mk)
-         out .+= tsr_op(1.0,j,s,qns,ms, ops[:, rpid-15] )
+         out .+= tsr_op(pm,j,s,qns,ms, ops[:, ind-18] )
+         #if sum(ms .% 3)≈0 && j==1.5
+         #   @show out
+         #end
          ind += 1
-         if ind-15 ≤ length(stg)
-            check = stg[ind-15]
+         if ind-18 ≤ length(stg)
+            check = stg[ind-18]
          else
             check = 0
          end
@@ -75,38 +78,6 @@ function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    return out
 end
 
-function derivmat_old(j,s,nf,rpid,prm,scl,stg,ops,nb,kb,mb,nk,kk,mk)
-   #println(prm)
-   if scl[rpid] < 0
-   elseif rpid ≤ 4 #pure rot
-      pr = zeros(4)
-      pr[rpid] = 1.0
-      out = hrsr(pr,zeros(4),zeros(3),j,s,nb,kb,nk,kk)
-      out = kron(I(size(mk,1)),out)
-   elseif 5 ≤ rpid ≤ 8 #spin-rot
-      pr = zeros(4)
-      pr[rpid-4] = 1.0
-      out = hrsr(zeros(4),pr,zeros(3),j,s,nb,kb,nk,kk)
-      out = kron(I(size(mk,1)),out)
-   elseif 9 ≤ rpid ≤ 11 #qua
-      pr = zeros(3)
-      pr[rpid-8] = 1.0
-      out = hrsr(zeros(4),zeros(4),pr,j,s,nb,kb,nk,kk)
-      out = kron(I(size(mk,1)),out)
-   elseif (rpid==12)||(rpid==14) # F or Vnf
-      pr = zeros(3)
-      pr[rpid-11] = 1.0
-      out = kron(htorq(pr,nf,mb,mk), I(size(nk,1)))
-   elseif rpid==13 # ρF
-      out = kron(Diagonal(mk),Diagonal(kk))
-   elseif rpid==15 # η 
-      out = tsrop(1.0,0,0,0,0,1,1,0,0,j,s,nb,kb,mb,nk,kk,mk)
-   else #user def
-      out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
-      out .= sumder(out,j,s,nf,rpid,prm,stg,ops,nb,kb,mb,nk,kk,mk)
-   end
-   return out
-end
 function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
    if scl[rpid] < 0 #should this be ≤ 0 ???
    elseif rpid ≤ 4 #pure rot
@@ -139,7 +110,6 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
    elseif rpid==18 # ηx
       out = kron(pa_op(ms,1), spm_op(j,s,qns,1))
    else #user def
-      #out = tsrop(1.0,ops[:,rpid-15],j,s,nb,kb,mb,nk,kk,mk)
       out = tsr_op(1.0,j,s,qns,ms,ops[:,rpid-18] )
       out .= sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    end
@@ -251,41 +221,6 @@ function lbmq_gain(β,λ::Float64,g,omc,nomc)::Float64
    return out
 end
 
-#function build_jcbn!(jcbn,ops,inds,s,ctrl,vecs,params,perm,scals)
-#"""
-#This builds the Jacobian based on the Hellmann–Feynman theorem.
-#"""
-#   nf = ctrl["NFOLD"]
-#   mcalc = ctrl["mcalc"]
-#   jcbn = zeros(Float64,size(inds)[1],length(perm))
-#   @threads for a in 1:size(inds,1)
-#      ju = 0.5*inds[a,1]
-#      σu = inds[a,2]
-#      nuk = ngen(ju,s)
-#      kuk = kgen(ju,s)
-#      muk = mgen(nf,mcalc,σu)
-#      nub = permutedims(nuk)
-#      kub = permutedims(kuk)
-#      mub = permutedims(muk)
-#      jl = 0.5*inds[a,4]
-#      σl = inds[a,5]
-#      nlk = ngen(jl,s)
-#      klk = kgen(jl,s)
-#      mlk = mgen(nf,mcalc,σl)
-#      nlb = permutedims(nlk)
-#      klb = permutedims(klk)
-#      mlb = permutedims(mlk)
-#      vecu = vecs[1:size(nuk,1)*size(muk,1),inds[a,3],σu+1]
-#      vecl = vecs[1:size(nlk,1)*size(mlk,1),inds[a,6],σl+1]
-#      @simd for i in 1:length(perm)
-#         b = perm[i]
-#         #dν/dOp = d/dOp (Eu - El)
-#         jcbn[a,i]  = anaderiv(params,scals,b,ops,ju,s,nf,nub,kub,mub,nuk,kuk,muk,vecu)
-#         jcbn[a,i] -= anaderiv(params,scals,b,ops,jl,s,nf,nlb,klb,mlb,nlk,klk,mlk,vecl)
-#      end
-#   end
-#   return jcbn
-#end
 function tsrapprox(j,β)::Vector{Float64}
    for i in 1:length(β)
       j[:,i] .*= β[i]
@@ -479,9 +414,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #S = ctrl["S"]
    #println(inds)
    #sd = Int(2*S+1)
+
    vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    LIMIT = ctrl["maxiter"]
-
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
    paramarray[:,1]=params
@@ -490,12 +425,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    rms, omc, = rmscalc(vals, inds, ofreqs)
    #perm,n = findnz(sparse(scales))
    perm = permdeterm(scales,stg)
-   println(perm)
-   #println(params)
-   #println(omc)
-   #println(nlist)
    println("Initial RMS = $rms")
-   goal = sum(uncs)/length(uncs)*0.00000
+   goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    W = diagm(0=>(uncs .^ -1))
    #RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-6
@@ -638,7 +569,8 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    puncs = zeros(size(params))
-   @show H
+   @show eigvals(H)
+   @show eigvecs(H)
    puncs[perm] = paramunc(H,W,perm,omc)
    covarmat = covarr(correl(H),puncs)
    #params[1:15] .= paramrecov(params[1:15])

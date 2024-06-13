@@ -76,9 +76,9 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
 #   if occursin("S",ctrl["RUNmode"])
    σcnt = σcount(ctrl["NFOLD"])
    jmax = ctrl["Jmax"]
-   @show pcov
+   #@show pcov
    perm = permdeterm(scls,stg)
-   @show perm
+   #@show perm
    kbT = ctrl["TK"]*20836.61912 #MHz/K
    Qrt = sum(exp.(fvls ./ -kbT))/3
    finfrq = zeros(0,4)
@@ -90,9 +90,9 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
       quns = fqns[:,:,sc]
       J = derivcalc_all(ops,ctrl,perm,vecs,prm,scls,stg,σ)
       uncs = traerrs(J,pcov)
-      if σ==0
-         @show (uncs)
-      end
+      #if σ==0
+      #   @show (uncs)
+      #end
       fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
                            vals,vecs,quns,σ,uncs)
       finfrq = vcat(finfrq,fr)

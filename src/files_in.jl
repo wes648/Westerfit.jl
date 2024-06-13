@@ -7,7 +7,7 @@ function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
       "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true,
-      "assign"=>"expect", "REJECT"=>1.0e+1, "Irrep"=>"Ir")
+      "assign"=>"expect", "REJECT"=>1.0e+1, "Irrep"=>"Ir", "goal"=>1.0)
    return ctrl
 end
 function blockfind(molnam::String,blknam::String)
@@ -68,7 +68,9 @@ end
 function secordinit_full()
    prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, 
       "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 9,
-      "χzz"=> 10, "χxz"=> 11, "χxmy"=> 12, 
+      "Czz" => 5, "Cxx" => 6, "Cyy" => 7, "Czx" => 8, "Cxz" => 9,
+      "χzz"=> 10, "χxz"=> 11, "χxmy"=> 12, "χxx-χyy"=>12,
+      "α"=>10, "δ"=>11, "β"=>12,
       "F" => 13, "ρz" => 14, "ρ" => 14, "ρx" =>15, "Vn" => 16, "V3" =>16,
       "ηz" => 17, "η" => 17, "ηx" => 18)
    return prd
