@@ -128,7 +128,7 @@ Useful Windows Notes:
 ### LINUX
 
 1. Install [Julia](https://julialang.org/). It is recommended that you do so through [juliaup](https://github.com/JuliaLang/juliaup).
-2. Make sure you have a C compiler, such as gcc. You can check this by typing `which gcc` into your terminal.
+2. (Hopefully now unnecessary but not confident) Make sure you have a C compiler, such as gcc. You can check this by typing `which gcc` into your terminal.
 3. Run the command `julia` to enter a REPL session. Enter `]` to enter package mode. Enter `add Westerfit`.
 4. Unfortunately, WIGXJPFjl, a dependency, is often the source of failure. You can try to remedy this by typing `add WIGXJPFjl` in package mode. If that doesn't work, feel free to shoot me an email. I can send you help you manually set up [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) as well as an alternative version of the WIGXJPFjl wrapper that should work/
 5. Navigate to a directory in your PATH and create a file named `westerfit` containing the 3 lines below with X replaced by the number of threads you want to run on (more is better, you can also just remove the -tX altogether). You can use `which julia` to determine your exact path to Julia.
