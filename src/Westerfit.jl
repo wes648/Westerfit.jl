@@ -18,7 +18,7 @@ precompile(sp_op, (Array{Int}, Number, Number, Int))
 precompile(spm_op, (Array{Int}, Number, Number, Int))
 precompile(tsr_op, (Float64, Number, Number, Array{Int,2}, Array{Int}, Array{Int,2}))
 
-#export westerfit, westersim, westereng, ctrlinp
+export westerfit, westersim, westereng, ctrlinp
 
 """
 Hi! If you are trying to read the source code, I recommend you start in main.jl
