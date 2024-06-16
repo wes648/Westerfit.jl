@@ -5,7 +5,6 @@ The pre-print of the paper is available [here](https://dx.doi.org/10.2139/ssrn.4
 
 Please feel free to direct any questions about the program to wes.harper2@gmail.com
 
-This is me making an edit
 # Quickstart
 
 The following is intended to be a quick reference on the input file structure & program usage. A more complete manual will be constructed once the paper is published.
