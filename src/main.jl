@@ -11,8 +11,8 @@ using Dates
 
 @static if Sys.iswindows()
    using WignerSymbols
-   wig3j(a,b,c,d,e,f,g) = wigner3j(Float64,a,b,c,d,e,f,g)
-   wig6j(a,b,c,d,e,f,g) = wigner6j(Float64,a,b,c,d,e,f,g)
+   wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
+   wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
 else
    using WIGXJPFjl
 end
