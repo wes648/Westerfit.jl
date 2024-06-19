@@ -1,7 +1,7 @@
 name = "Westerfit"
 uuid = "f202a280-4a11-4d8a-9d54-4c7a90dde5df"
 authors = ["wes648 <wes.harper2@gmail.com>"]
-version = "1.0.1"
+version = "1.0.2"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
