@@ -2,7 +2,7 @@
 %CNTRLS
 NFOLD = 3
 S = 0.0
-RUNmode = ESF
+RUNmode = EF
 TK = 25.0
 mcalc = 8
 assign = RAM36
@@ -10,12 +10,12 @@ LIMIT = 100
 INTThresh = 0.0
 vtmax = 0
 Jmax = 16
-overwrite = true
+overwrite = flase
 turducken = 1
 νmax = 20.0
 
 %2NDORDER
-A;            11269.900113839629;   1.0
+A;            11268.900113839629;   1.0
 B;            1752.1858457245653;   1.0
 C;            1529.5808412575634;   1.0
 Dab;         -16.185008941764856;   1.0
