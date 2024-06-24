@@ -105,11 +105,8 @@ Lastly, freq is the experimental frequency and unc is the uncertainty in the lin
 Make sure that Ju, Jl, freq, and unc are all floating point numbers (include a decimal point) and all the rest are integers.
 
 ## Installation
-Unfortuantely, westerfit installation is a bit of a mess. 
-Part of this is from the dev team both running the same Linux distribution and not having other machines for testing. 
-I'm afraid the WIGXJPFjl installer seems to be broken again. I'm working on it but manual installation of WIGXJPF may be necessary at the current time
 
-westerfit is now available in the Julia package manager!
+These installation instructions are to the best of our knowledge, but both developers run the same Linux distribution. Please send us an email if it's not working! We need to know if we want to fix it.
 
 ### WINDOWS
 
