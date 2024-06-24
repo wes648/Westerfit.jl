@@ -112,8 +112,20 @@ I'm afraid the WIGXJPFjl installer seems to be broken again. I'm working on it b
 westerfit is now available in the Julia package manager!
 
 ### WINDOWS
-We currently do not know if westerfit can be used natively in Windows so we recommend using the Ubuntu Windows Subsystem for Linux and have described the instillation process below.
 
+There are two possible ways to install westerfit on Windows. The first one is running it natively in Windows, and the second is using the Windows Subsystem for Linux. The latter version is more robust, but the first one is likely easier.
+
+#### Natively in Windows
+1. Install [Julia](https://apps.microsoft.com/detail/9njnww8pvkmn?ocid=webpdpshare).
+2. Open Julia. Enter `]` to enter package mode. Enter `add Westerfit`.
+3. To use Westerfit, open your Command Line. Navigate to the directory your input "molnam.inp" is in. Enter `julia`. You should see the Julia startup.
+```
+using Westerfit
+westerfit("molnam")
+```
+That should run westerfit!
+
+#### Windows Subsystem for Linux
 1. Set up [Windows Subsystem for Linux](https://www.howtogeek.com/744328/how-to-install-the-windows-subsystem-for-linux-on-windows-11/) with the Ubuntu App.
 2. Open up Ubuntu and do the set-up process, including setting a username and password (you won't be able to see the password when you type it).
 3. From here, move to the LINUX instructions.
