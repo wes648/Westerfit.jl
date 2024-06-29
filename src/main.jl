@@ -82,6 +82,9 @@ end
 function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pcov)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
+   if pcov == nothing
+      pcov = approxcovar(prm)
+   end
    σcnt = σcount(ctrl["NFOLD"])
    jmax = ctrl["Jmax"]
    #@show pcov

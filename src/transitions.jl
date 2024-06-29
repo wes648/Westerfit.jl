@@ -209,6 +209,14 @@ function traerrs(J,cov)
    return diag(out)
 end
 
+function approxcovar(params)
+   out = zeros(length(params),length(params))
+   for i in 1:length(params), j in i:length(params)
+      out[i,j] = √(params[i]*params[j]*1e-6)
+   end
+   return Symmetric(out)
+end
+
 
 function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ,vecs)
    #(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
