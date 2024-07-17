@@ -3,7 +3,7 @@ A new program for the simulating and fitting of molecular rotational spectra for
 
 The paper is available [here](https://doi.org/10.1016/j.jms.2024.111928) and the pre-print is available [here](https://dx.doi.org/10.2139/ssrn.4807560).
 
-Please feel free to direct any questions about the program to wes.harper2@gmail.com
+Please feel free to direct any questions about the program to westerfit@proton.me
 
 # Quickstart
 
@@ -40,6 +40,8 @@ Below are control settings, their meanings, and default values::Type
 **λlm0** (0.0001::Float64): Scale-factor used to determine the inital Levenberg-Marquardt Parameter. This gets multiplied by a function of the rms to determine the LBMQ Parameter used in a given step.
 
 **turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
+
+**goal** (1.0::Float64): The value of the weighted RMS that terminates the fit. Intended to prevent fitting past the experimental resolution.
 
 **assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, **expect**, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. **RAM36** uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. **expectk** is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, **eeo** does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally **expect** is recommended but **RAM36** works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in **eeo** but find its performance lacking.
 
