@@ -173,7 +173,7 @@ function allowints(nmax,vecs)
    end
    return droptol!(mat,1e-9)
 end
-function allowtras(nmax::Number,vals::Array{Float64},vecs::Array{Float64,2})
+function allowtras(nmax::Real,vals::Array{Float64},vecs::Array{Float64,2})
    out = spzeros(length(vals),length(vals))
    ro,co,v = findnz(allowints(nmax,vecs))
    for i in 1:length(ro)
@@ -184,7 +184,7 @@ function allowtras(nmax::Number,vals::Array{Float64},vecs::Array{Float64,2})
    out .*= (out .> 0.0)
    return droptol!(sparse(out), 1e-9)
 end
-function allowtras(nmax::Number,κ::Number)
+function allowtras(nmax::Real,κ::Real)
    vals,vecs = quickeigs(nmax,κ)
    return allowtras(nmax,vals,vecs)
 end

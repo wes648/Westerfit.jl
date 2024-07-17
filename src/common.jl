@@ -164,7 +164,7 @@ function σtype(σ,nfold)
    end
 end
 
-function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+function msbuilder(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
       return [1.]
    else
@@ -466,14 +466,14 @@ prs =[A; B; C; Dab; Fr; Fρ; V3; ao; a; b; d; η]
    return output
 end
 
-function greaterof(x::Number,y::Number)
+function greaterof(x::Real,y::Real)
    if x ≥ y
       return x
    else
       return y
    end
 end
-function lesserof(x::Number,y::Number)
+function lesserof(x::Real,y::Real)
    if x ≥ y
       return y
    else

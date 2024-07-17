@@ -4,31 +4,31 @@
 eh(N) returns the square root of the N²|NK⟩ matrix element, √(N(N+1)). See eh2
 for the non-square rooted version.
 """
-eh(x::Number)::Float64 = √(x*(x+1))
+eh(x::Real)::Float64 = √(x*(x+1))
 """
 eh2(N) returns the the N²|NK⟩ matrix element, N(N+1). See eh for the
 automatically square rooted version.
 """
-eh2(x::Number)::Float64 = x*(x+1)
-□rt(x::Number)::Float64 =√(x*(x>zero(x)))
-fh(x::Number,y::Number)::Float64 = □rt((x-y)*(x+y+1))
-jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
-nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
+eh2(x::Real)::Float64 = x*(x+1)
+□rt(x::Real)::Float64 =√(x*(x>zero(x)))
+fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
+jnred(j::Real,n::Real)::Float64 = √((2*j+1)*(2*n+1))
+nred(n::Real)::Float64 = √(n*(n+1)*(2*n+1))
 """
 powneg1(x) takes a number and returns (-1)^x. I realize this is a stupid looking
 function to have but it evalutes every so slightly faster than just (-1)^x
 """
-powneg1(k::Number)::Int = isodd(k) ? -1 : 1
+powneg1(k::Real)::Int = isodd(k) ? -1 : 1
 """
 δ(x,y) takes two number and returns the Kronecker delta as a float. See δi for
 the integer version
 """
-δ(x::Number,y::Number)::Float64 = x==y
+δ(x::Real,y::Real)::Float64 = x==y
 """
 δi(x,y) takes two number and returns the Kronecker delta as an integer. See δ
 for the float version
 """
-δi(x::Number,y::Number)::Int = x==y
+δi(x::Real,y::Real)::Int = x==y
 T(l::Int,q::Int)::Int = l*(l+1) + q + 1
 Tq(q::Int)::Int = 3 + q #quadrupole variant (only has 2nd rank components)
 Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & symm
@@ -163,7 +163,7 @@ function hsr(pr::Array{Float64},j,s,qns::Array{Int})::SparseMatrixCSC{Float64, I
    return out
 end
 
-function wiginv(s::Number)::Float64
+function wiginv(s::Real)::Float64
    if s<one(s)
       return 0.0
    else
@@ -304,7 +304,7 @@ function sqpart(j,s,q,bqn,kqn)::Float64
    kk = kqn[2]
    return wig3j(nb,1,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*powneg1(-kb)
 end
-function sz_op(j::Number,s::Number,qns::Array{Int,2},p::Int)
+function sz_op(j::Real,s::Real,qns::Array{Int,2},p::Int)
    l = size(qns,1)
    out = spzeros(l,l)
    if s≠zero(s)&&p≠0
@@ -340,7 +340,7 @@ function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-function sp_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+function sp_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
    if p≠0
       return sq_op(j,s,1,qns)^p
@@ -348,11 +348,11 @@ function sp_op(j::Number,s::Number,qns::Array{Int,2},p::Int
       return spdiagm(ones(size(qns,1)))
    end
 end
-function sm_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+function sm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
    return sq_op(j,s,-1,qns)^p
 end
-function spm_op(j::Number,s::Number,qns::Array{Int,2},p::Int
+function spm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
    return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
 end
@@ -380,7 +380,7 @@ function sin_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
 end
 
 ####   collected operators   ####
-function rsr_op(j::Number,s::Number,qns::Array{Int,2},a::Int,b::Int,
+function rsr_op(j::Real,s::Real,qns::Array{Int,2},a::Int,b::Int,
          c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)
    out = out*sz_op(j,s,qns,d)
@@ -392,14 +392,14 @@ end
 tor_op(ms,g,h,j)::SparseMatrixCSC{Float64, Int64} = pa_op(ms,g)*
                                                       cos_op(ms,h)*sin_op(ms,j)
 
-function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},ms::Array{Int},
+function tsr_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},ms::Array{Int},
                   a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                   jp::Int)::SparseMatrixCSC{Float64, Int64}
    out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
    out = kron(tor_op(ms,g,h,jp),out)
    return dropzeros!(tplus!(out))
 end
-function tsr_op(prm::Float64,j::Number,s::Number,qns::Array{Int,2},
+function tsr_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},
             ms::Array{Int},plist::Array{Int})::SparseMatrixCSC{Float64, Int64}
    #1/2 from a+a', 1/2 from np^0 + nm^0
    out = 0.25*prm*rsr_op(j,s,qns,plist[1],plist[2],plist[3],

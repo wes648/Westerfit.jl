@@ -1,7 +1,7 @@
 # westerfit
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
 
-The pre-print of the paper is available [here](https://dx.doi.org/10.2139/ssrn.4807560).
+The paper is available [here](https://doi.org/10.1016/j.jms.2024.111928) and the pre-print is available [here](https://dx.doi.org/10.2139/ssrn.4807560).
 
 Please feel free to direct any questions about the program to wes.harper2@gmail.com
 
@@ -35,7 +35,7 @@ Below are control settings, their meanings, and default values::Type
 
 **INTthres** (0.0::Float64): Minimum intensity value included in the file
 
-**TK** (8.0::Float64): Temperature of the simulation, not sure this is actually used because a certain author finds thermodynamics abhorrent
+**TK** (8.0::Float64): Temperature of the simulation in Kelvin
 
 **λlm0** (0.0001::Float64): Scale-factor used to determine the inital Levenberg-Marquardt Parameter. This gets multiplied by a function of the rms to determine the LBMQ Parameter used in a given step.
 

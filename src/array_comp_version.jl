@@ -1,6 +1,6 @@
 using LinearAlgebra, SparseArrays, WIGXJPFjl, BenchmarkTools
-jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
-nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
+jnred(j::Real,n::Real)::Float64 = √((2*j+1)*(2*n+1))
+nred(n::Real)::Float64 = √(n*(n+1)*(2*n+1))
 function Δlist(J,S)
    return collect(Int(abs(J-S)):Int(J+S))
 end
@@ -131,7 +131,7 @@ end
 
 
 struct psi
-   F::Number #total angular momentum
+   F::Real #total angular momentum
    Ss::Array #spin angular momenta
    nfs::Array #symmetry fold of rotors
    ms::Array #mcalcs for respective rotors
@@ -152,7 +152,7 @@ function T10(sid::Int,p,ψb,ψk)
 end
 
 
-klist(N::Number) = collect(-N:N)
+klist(N::Real) = collect(-N:N)
 function klist(N::Array)
    out = zeros(Int(sum(2 .* N .+1)))
    si = 1
@@ -165,10 +165,10 @@ function klist(N::Array)
    return out
 end
 
-function Δlist(J::Number,S::Number)
+function Δlist(J::Real,S::Real)
    return collect(abs(J-S):(J+S))
 end
-function Δlist(J::Array,S::Number)
+function Δlist(J::Array,S::Real)
    out = zeros(Int(length(J)*(2S+1)))
    sd = Int(2S+1)
    for i in eachindex(J)
@@ -191,10 +191,10 @@ function qngen(F,Ss)
    return out
 end
 
-function Δlist16(dJ::Number,dS::Number)::Array{Int16} #takes doubled J and S!!!
+function Δlist16(dJ::Real,dS::Real)::Array{Int16} #takes doubled J and S!!!
    return collect(abs(dJ-dS):2:(dJ+dS))
 end
-function Δlist16(dJ::Array,dS::Number)::Array{Int16} #takes doubled J and S!!!
+function Δlist16(dJ::Array,dS::Real)::Array{Int16} #takes doubled J and S!!!
    sd = dS+1
    out = zeros(Int16,length(dJ)*sd)
    for i in eachindex(dJ)
@@ -202,7 +202,7 @@ function Δlist16(dJ::Array,dS::Number)::Array{Int16} #takes doubled J and S!!!
    end
    return out
 end
-klist16(dN::Number)::Array{Int16} = collect(-dN:2:dN) #takes a doubled N!!!
+klist16(dN::Real)::Array{Int16} = collect(-dN:2:dN) #takes a doubled N!!!
 function klist16(dN::Array)::Array{Int16} #takes a doubled N!!!
    out = zeros(sum(dN .+1))
    si = 1
@@ -214,11 +214,11 @@ function klist16(dN::Array)::Array{Int16} #takes a doubled N!!!
    end
    return out
 end
-d16(x::Number)::Int16 = Int16(2x)
-degen(x::Number)::Int16 = Int16(2*x+1)
+d16(x::Real)::Int16 = Int16(2x)
+degen(x::Real)::Int16 = Int16(2*x+1)
 degen(x::Array)::Array{Int16} = Int16.(2 .* x .+1)
 #This often works but needs a fix for F < sum(Ss)
-function qngen16(F::Number,Ss::Array)::Array{Int16,2}
+function qngen16(F::Real,Ss::Array)::Array{Int16,2}
    if F ≤ sum(Ss)
       out = qngen16_safe(F,Ss)
    else
@@ -240,7 +240,7 @@ function qngen16(F::Number,Ss::Array)::Array{Int16,2}
    end
    return out
 end
-function  qngen16_safe(F::Number,Ss::Array)::Array{Int16,2}
+function  qngen16_safe(F::Real,Ss::Array)::Array{Int16,2}
    out = [d16(F)]
    for i in 1:length(Ss)
       piece = Δlist16(out[:,i],d16(Ss[i]))
@@ -255,7 +255,7 @@ function  qngen16_safe(F::Number,Ss::Array)::Array{Int16,2}
    end
    return out
 end
-function qngen16_prev(F::Number,Ss::Array)::Array{Int16,2}
+function qngen16_prev(F::Real,Ss::Array)::Array{Int16,2}
    l = degen(F)*prod(degen(Ss))
    out = zeros(l, length(Ss) + 2)
    out[:,1] = fill(d16(F),l)

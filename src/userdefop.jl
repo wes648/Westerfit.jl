@@ -165,7 +165,7 @@ function gh(x,y)::Float64
    out = □rt((x-y)*(x-y-1.0))
    return out
 end
-function □rt(x::Number)::Float64
+function □rt(x::Real)::Float64
    return √(x*(x>zero(x)))
 end
 function θ(j,n,s)
@@ -278,7 +278,7 @@ function σtype(nfold,σ)
       return 1
    end
 end
-function msbuilder(T::Type,nfold::Number,mcalc::Number,σ::Number)
+function msbuilder(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
       return [1.]
    else
@@ -311,7 +311,7 @@ function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    end
 end
 
-nred(n::Number)::Float64 = √(n*(n+1)*(2*n+1))
+nred(n::Real)::Float64 = √(n*(n+1)*(2*n+1))
 nred(n::Int)::Float64 = √(n*(n+1)*(2*n+1))
 nred(n::Float64)::Float64 = √(n*(n+1.0)*(2.0*n+1.0))
 nnred(n::Int)::Float64 = n*(n+1)*(2*n+1)
@@ -517,7 +517,7 @@ function hsrq(out,spr,qpr,j,s,nb,kb,nk,kk)
    return out
 end
 
-function wigdiv(x,s::Number)
+function wigdiv(x,s::Real)
    if s<one(s)
       return zero(x)
    else
@@ -556,7 +556,7 @@ function qulpart(pr,j,s,nb,kb,nk,kk)#::Array{Float64,2}
    return out
 end
 
-jnred(j::Number,n::Number)::Float64 = √((2*j+1)*(2*n+1))
+jnred(j::Real,n::Real)::Float64 = √((2*j+1)*(2*n+1))
 
 function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
    out = zeros(9)
