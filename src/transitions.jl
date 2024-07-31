@@ -212,7 +212,7 @@ end
 function approxcovar(params)
    out = zeros(length(params),length(params))
    for i in 1:length(params), j in i:length(params)
-      out[i,j] = √(params[i]*params[j]*1e-6)
+      out[i,j] = √(abs(params[i]*params[j]*1e-6))
    end
    return Symmetric(out)
 end

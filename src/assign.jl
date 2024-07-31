@@ -6,6 +6,7 @@ This is where the assignment routines are located for westerfit.
 
 
 ### EXPECTATION
+#july 28 24: fun discovery! this breaks for NFOLD=2
 kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
 keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
@@ -33,7 +34,7 @@ function expectassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
    vals = vals[list]
    vecs = vecs[:,list]
    list = nexpect(vecs,md,j,s,jsd,ns,nd,ni)
@@ -79,7 +80,7 @@ function expectkassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
    vals = vals[list]
    vecs = vecs[:,list]
    list = nkexpect(vecs,md,j,s,jsd,ns,nd,ni)
@@ -104,7 +105,7 @@ function eeoassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(σ,nf)==2)
+   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
    vals = vals[list]
    vecs = vecs[:,list] #simplifies down to just ground tor-state
    list = neko(vecs,md,j,s,jsd,ns,nd,ni)

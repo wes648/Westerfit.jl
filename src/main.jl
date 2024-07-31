@@ -167,6 +167,7 @@ function westerfit(molnam::String)
       else
          prm = nothing
          puncs = nothing
+         pcov = nothing
       end
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
          vas, ves, qns, μs, prm, scls, stg, cdo = westereng(molnam, prm, ctrl)

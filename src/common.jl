@@ -154,7 +154,7 @@ function σcount(nfold)
    out = floor(Int,nfold/2)+1
 end
 
-function σtype(σ,nfold)
+function σtype(nfold,σ)
    if σ==zero(σ) # A state
       return 0
    elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
