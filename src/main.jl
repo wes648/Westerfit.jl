@@ -38,7 +38,7 @@ function westereng(molnam::String, prm, ctrl)
    #molnam = replace(molnam, r".inp"=>"")
    #read input file
    sof, ser = secordinp(molnam,String(ctrl["Irrep"]))
-   μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
+   μs, cdf, cdn, cde, cdo, stg = opinp(molnam,ctrl["NFOLD"])
    if prm==nothing
       prm = vcat(sof,cdf)
    else
@@ -83,7 +83,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
    if pcov == nothing
-      pcov = approxcovar(prm)
+      pcov = approxcovar(prm,permdeterm(scls,stg))
    end
    σcnt = σcount(ctrl["NFOLD"])
    jmax = ctrl["Jmax"]
@@ -94,7 +94,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    Qrt = sum(exp.(fvls ./ -kbT))/3
    finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
-   @time for sc in 1:σcnt
+   for sc in 1:σcnt
       σ = sc - 1
       vals = fvls[:,sc]
       vecs = fvcs[:,:,sc]
@@ -121,7 +121,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
 """
    println("westerfit!")
    prm, ser = secordinp(molnam,String(ctrl["Irrep"]))
-   μs, cdf, cdn, cde, cdo, stg = opinp(molnam)
+   μs, cdf, cdn, cde, cdo, stg = opinp(molnam,ctrl["NFOLD"])
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)
    if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check

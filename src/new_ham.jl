@@ -426,7 +426,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,tormat,ms)::SparseMatrixCSC{Fl
    ℋ .+= kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-      ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1)+ sof[15]*npm_op(qns,1))
+      ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1))
    else
    end
    for i in 1:length(cdf)
@@ -451,7 +451,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    vals, vecs = eigen!(Symmetric(Matrix(H)))
    #@show vals[1:2*Int(2j+1)] ./csl
    ###perm = assignperm(vecs)
-   if ctrl["assign"]=="RAM36"
+   if (ctrl["assign"]=="RAM36")||(ctrl["assign"]=="ram36")
       perm = ramassign(vecs,j,s,mcalc,σtype(nf,σ),vtm)
       vals = vals[perm]
       vecs = vecs[:,perm]

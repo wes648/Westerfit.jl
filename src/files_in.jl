@@ -180,7 +180,7 @@ parsetuple(T::Type,s::Int) = s
 parsetuple(s::Int) = s
 parsetuple(T::Type,s::Float64) = s
 
-function opinp(molnam::String)
+function opinp(molnam::String,nfold)
    #findstr = `grep -n PARAMS $molnam.inp`
    #strln = parse(Int,readchomp(pipeline(findstr,`cut -d : -f1`))) + 1
    blk = blockfind(molnam, "%PARAMS")
@@ -220,8 +220,11 @@ function opinp(molnam::String)
    onams = nams[prm1]#, vals[prm2])
    oerr = errs[prm1]#, errs[prm2])
    oopr = oprs[:,prm1]#, oprs[:,prm2])
+   if nfold ≠ 0
+      oopr[8,:] = floor.(Int,oopr[8,:]./nfold)
+      oopr[9,:] = floor.(Int,oopr[9,:]./nfold)
+   end
    ostg = stgs[prm1]
-   #@show oopr
    return μset, opvls, onams, oerr, oopr, ostg
    else #exception for if none
       println("No higher order operators found. Continuing w/ only H^(2)")

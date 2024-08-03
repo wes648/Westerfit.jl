@@ -154,7 +154,7 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,prm,scl,stg)#removed nf call from he
          for i in 1:length(perm)
             pid = perm[i]
             ders = anaderiv(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec)
-            derivs[sind:find,sc,i] = ders
+            derivs[sind:find,sc,i] = ders#*scl[pid]
          end#perm loop
       end #j loop
    end#σ loop

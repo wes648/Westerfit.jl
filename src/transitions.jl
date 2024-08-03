@@ -205,14 +205,18 @@ function traerrs_bad(J,σu)
    return out
 end
 function traerrs(J,cov)
+   @show size(cov)
+   @show size(J)
    out = J * cov * J'
    return diag(out)
 end
 
-function approxcovar(params)
-   out = zeros(length(params),length(params))
-   for i in 1:length(params), j in i:length(params)
-      out[i,j] = √(abs(params[i]*params[j]*1e-6))
+function approxcovar(params,perm)
+   out = zeros(length(perm),length(perm))
+   for i in 1:length(perm), j in i:length(perm)
+      a = perm[i]
+      b = perm[i]
+      out[i,j] = √(abs(params[a]*params[b]*1e-6))
    end
    return Symmetric(out)
 end
