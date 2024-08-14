@@ -399,10 +399,10 @@ function correl(H)
 end
 function covarr(corr,pσ)
    out = zeros(size(corr))
-   for i in 1:size(corr,1), j in 1:size(corr,2)
+   for i in 1:size(corr,1), j in i:size(corr,2)
       out[i,j] = corr[i,j] * pσ[i] * pσ[j]
    end
-   return out
+   return Symmetric(out)
 end
 
 function permdeterm(scls,stgs)
@@ -571,6 +571,7 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    puncs = zeros(size(params))
    puncs[perm] = paramunc(H,W,perm,omc)
    covarmat = covarr(correl(H),puncs)
+   #covarmat = inv(H)
    #params[1:15] .= paramrecov(params[1:15])
    #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl["Irrep"])

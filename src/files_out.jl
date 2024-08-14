@@ -252,7 +252,7 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*"," #Kc
       part *= lpad(qunl[11],3)*"," #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%10.4f", frql[4])*","
       part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    else
@@ -267,7 +267,7 @@ function linestrng(s,frql,qunl)
       part *= lpad(qunl[10],3)*","
       part *= lpad(qunl[11],3)*","
       part *= " "*@sprintf("%13.4f", frql[1])*","
-      part *= @sprintf("%10.4f", frql[4])
+      part *= @sprintf("%10.4f", frql[4])*","
       part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    end

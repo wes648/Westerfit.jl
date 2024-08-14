@@ -169,7 +169,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
-         outfrq[i,4] = √(uncs[r]^2 + uncs[c]^2)
+         outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σc+1)*100
          outqns[i,1:6] = rqns[r,:]
@@ -177,7 +177,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
-         outfrq[i,4] = √(uncs[r]^2 + uncs[c]^2)
+         outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σr+1)*100
          outqns[i,1:6] = cqns[c,:]
@@ -205,10 +205,9 @@ function traerrs_bad(J,σu)
    return out
 end
 function traerrs(J,cov)
-   @show size(cov)
-   @show size(J)
-   out = J * cov * J'
-   return diag(out)
+   out = J * abs.(cov) * J'
+   return out
+   #return diag(out)
 end
 
 function approxcovar(params,perm)

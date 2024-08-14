@@ -94,7 +94,14 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    Qrt = sum(exp.(fvls ./ -kbT))/3
    finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
-   for sc in 1:σcnt
+   if (ctrl["NFOLD"] > 0)&&(isodd(ctrl["NFOLD"]))
+      σlst = [collect(1:σcnt) collect(1:σcnt)] .- 1
+   elseif
+      σlst = [collect(1:σcnt) collect(1:σcnt); 1 σcnt; σcnt 1] .- 1
+   else
+      σlst = [0 0]
+   end
+   for sc in 1:size(σlst,1)
       σ = sc - 1
       vals = fvls[:,sc]
       vecs = fvcs[:,:,sc]
