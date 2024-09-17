@@ -18,6 +18,8 @@ precompile(sp_op, (Array{Int}, Real, Real, Int))
 precompile(spm_op, (Array{Int}, Real, Real, Int))
 precompile(tsr_op, (Float64, Real, Real, Array{Int,2}, Array{Int}, Array{Int,2}))
 
+
+
 export westerfit, westersim, westereng, ctrlinp
 
 """

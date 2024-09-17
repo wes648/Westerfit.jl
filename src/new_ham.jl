@@ -58,7 +58,7 @@ function qngen(j,s)::Array{Int,2}
    return out
 end
 function qnlabv(j,s,nf,vtm,σ)::Array{Int,2}
-   σt = σtype(nf,σ)
+   #σt = σtype(nf,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
    vd = Int(vtm+1)
@@ -73,7 +73,7 @@ function qnlabv(j,s,nf,vtm,σ)::Array{Int,2}
    end
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,vd),out)
-   vtrray = kron(nf .* vtcoll(vtm,σt) .+ σ,ones(Int,jsd))
+   vtrray = kron(nf .* vtcoll(vtm) .+ σ,ones(Int,jsd))
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
    return out
 end
@@ -111,13 +111,18 @@ function hrotest(pr,n)
 end
 
 function nsred(l::Int,nb::Int,nk::Int)::Float64
-   return 0.5*( 
+   if (abs(l)==1)&&(nb==nk)
+      out = 0.0
+   else
+   out = 0.5*( 
    √(nk*(nk+1)*(2*nk+1))*
       wig6j( 1, 1, l,
-            nb,nk,nk)*powneg1(l) + 
+            nb,nk,nk) + #*powneg1(l) + 
    √(nb*(nb+1)*(2*nb+1))*
       wig6j( 1, 1, l,
             nk,nb,nb))
+   end
+   return out
 end
 function jsred(j,s,nb::Int,nk::Int)::Float64
    return wig6j(nk, s, j,
@@ -128,10 +133,6 @@ function srelem(pr::Float64,l::Int,q::Int,j,s,nb,kb,nk,kk)::Float64
                    -kb,q,kk)*√(2*l+1)*
        nsred(l,nb,nk)*jsred(j,s,nb,nk)*powneg1(nb-nk-kb)
 end
-const ts = SA[0  1 1 2  2 2  2 2;
-              0 -1 1 0 -1 1 -2 2;
-              1  2 2 3  4 4  5 5;
-              1  1 1 1 -1 1  1 1]
 function hsr(pr::Array{Float64},j,s,qns::Array{Int})::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
@@ -139,10 +140,10 @@ function hsr(pr::Array{Float64},j,s,qns::Array{Int})::SparseMatrixCSC{Float64, I
    out = spzeros(le,le)
    #awkward special array of rank, component, prm ind, & sign
    #each col is a different parameter
-   #ts = SA[0  1 1 2  2 2  2 2;
-   #        0 -1 1 0 -1 1 -2 2;
-   #        1  2 2 3  4 4  5 5;
-   #        1  1 1 1 -1 1  1 1]
+   ts = SA[0  1 1 2  2 2  2 2;
+           0 -1 1 0 -1 1 -2 2;
+           1  2 2 3  4 4  5 5;
+           1  1 1 1 -1 1  1 1]
    for i in 1:8
       tv = ts[:,i]
       prm = pr[tv[3]]*tv[4]
@@ -222,10 +223,14 @@ function htor2(sof::Array{Float64},ms::Array{Int})::SparseMatrixCSC{Float64, Int
    return out
 end
 function htor2v2(sof::Array{Float64},nf::Int,mc::Int,σ::Int)
-   if nf≠0
+   if (nf≠0)&&(isodd(nf))
       ms = msgen(nf,mc,σ)
       out = sof[1]*pa_op(ms,2)
       out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
+   elseif (nf≠0)&&(iseven(nf))
+      ms = msgen(nf,mc,σ)
+      out = sof[1]*pa_op(ms,2)
+      out += sof[4].*(I(size(out,1)) .- cos_op(ms,2))
    else
       out = [0.0]
       ms = [1]
@@ -342,11 +347,11 @@ end
 
 function sp_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
-   if p≠0
+   #if p≠0
       return sq_op(j,s,1,qns)^p
-   else
-      return spdiagm(ones(size(qns,1)))
-   end
+   #else
+   #   return spdiagm(ones(size(qns,1)))
+   #end
 end
 function sm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
@@ -354,7 +359,11 @@ function sm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
 end
 function spm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
-   return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+   if p≠0
+      return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+   else
+      return spdiagm(ones(size(qns,1)))
+   end
 end
 
 pa_op(ms::Array{Int},p::Int)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
@@ -441,7 +450,13 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
    end
-   U = kron(ut(mcalc,σtype(nf,σ)),ur(j,s))
+   if σ==0
+      U = kron(ur(mcalc), ur(j,s))
+   else
+      @show size(I(2mcalc+1))
+      @show size(ur(j,s))
+      U = kron(I(2mcalc+1),ur(j,s))
+   end
    H = (U*H*U)
    ### All lines commented with ### are for the Jacobi routine
    ###perm = kperm(j,s,mcalc)
@@ -452,7 +467,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    #@show vals[1:2*Int(2j+1)] ./csl
    ###perm = assignperm(vecs)
    if (ctrl["assign"]=="RAM36")||(ctrl["assign"]=="ram36")
-      perm = ramassign(vecs,j,s,mcalc,σtype(nf,σ),vtm)
+      perm = ramassign(vecs,j,s,mcalc,vtm)
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
@@ -464,6 +479,13 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
+   #if j<3.0
+   #   @show j
+   #   @show Δlist(j,s)
+   #   @show σ
+   #   @show vals[1:4*Int(2j+1)]
+   #   #@show vecs[:,1:2*Int(2j+1)]
+   #end
    return vals, vecs
 end
 
@@ -471,9 +493,9 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
    tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
-   msd = sd*Int(2*mcalc+(σtype(nf,σ)==2)+1)
+   msd = sd*Int(2*mcalc+1)
    vtd = Int(vtm+1)
-   σt = σtype(nf,σ)
+   #σt = σtype(nf,σ)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
@@ -514,11 +536,11 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
    @time for sc in 1:σcnt
       σ = sc - 1
       tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
-      msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
+      msd = Int((2*mcalc+1)*(2s+1))
       jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      @threads for j in jsublist
+      for j in jsublist
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,vtm) 
          fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,

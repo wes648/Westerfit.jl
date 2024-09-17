@@ -58,7 +58,7 @@ function qnlab(n,nf,m,σ)
    narray = fill(n,nd*md)
    karray = kron(ones(Int,md),collect(Int,-n:n))
    kcarray = k2kc.(narray,karray)
-   marray = kron(msbuilder(nf,m,σ),ones(Int,nd))
+   marray = kron(msgen(nf,m,σ),ones(Int,nd))
    σarray = fill(σ,nd*md)
    out = hcat(narray,abs.(karray),kcarray,marray,σarray)
 end
@@ -77,7 +77,7 @@ function qnlab(j,s,nf,m,σ)
    end
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,md),out)
-   marray = kron(msbuilder(nf,m,σ),ones(Int,jsd))
+   marray = kron(msgen(nf,m,σ),ones(Int,jsd))
    #[2j n ka kc m s]
    out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
    return out
@@ -202,8 +202,8 @@ function cosp(p::Int,mb::Array{Int,2},mk::Array{Int,2})::SparseMatrixCSC{Float64
    return @. (δ(mb+p,mk)+δ(mb-p,mk))/2.0
 end
 
-σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
-msgen(nf::Int,mc::Int,σ::Int)::Array{Int} = msbuilder(Int,nf,mc,σ)
+#σcount(nfold::Int)::Int = floor(Int,nfold/2)+1
+#msgen(nf::Int,mc::Int,σ::Int)::Array{Int} = msgen(Int,nf,mc,σ)
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)
    lim = mcalc*nfold

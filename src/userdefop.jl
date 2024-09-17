@@ -74,7 +74,7 @@ function qnlab(n,nf,m,σ)
    narray = fill(n,nd*md)
    karray = kron(ones(Int,md),collect(Int,-n:n))
    kcarray = k2kc.(narray,karray)
-   marray = kron(msbuilder(nf,m,σ),ones(Int,nd))
+   marray = kron(msgen(nf,m,σ),ones(Int,nd))
    σarray = fill(σ,nd*md)
    out = hcat(narray,abs.(karray),kcarray,marray,σarray)
 end
@@ -93,7 +93,7 @@ function qnlab(j,s,nf,m,σ)
    end
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,md),out)
-   marray = kron(msbuilder(nf,m,σ),ones(Int,jsd))
+   marray = kron(msgen(nf,m,σ),ones(Int,jsd))
    #[2j n ka kc m s]
    out = hcat(fill(Int(2*j),size(out,1)),out,marray,fill(σ,jsd*md))
    return out
@@ -278,7 +278,7 @@ function σtype(nfold,σ)
       return 1
    end
 end
-function msbuilder(T::Type,nfold::Real,mcalc::Real,σ::Real)
+function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
       return [1.]
    else
@@ -295,8 +295,8 @@ function msbuilder(T::Type,nfold::Real,mcalc::Real,σ::Real)
    return marray
    end
 end
-msbuilder(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msbuilder(Int,nfold,mcalc,σ)
-mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msbuilder(nf,mc,σ), ones(Int,2*mc+1)' )
+msgen(nfold::Int,mcalc::Int,σ::Int)::Array{Int} = msgen(Int,nfold,mcalc,σ)
+mgen(nf::Int,mc::Int,σ::Int)::Array{Int,2} = kron(msgen(nf,mc,σ), ones(Int,2*mc+1)' )
 
 function mslimit(nfold,mcalc,σ)::Tuple{Int, Int}
    σt = σtype(nfold,σ)

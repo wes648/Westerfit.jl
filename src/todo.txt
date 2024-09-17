@@ -1,0 +1,27 @@
+This is the great westerfit to-do list.
+
+3 Sept 24
+-Automated Suggestor of Distortion terms
+--need to learn about contrained optimization
+
+-Performance increases
+--higher powers of operators without matrix multiplication
+--split by symmetry before diagonalization
+---filter array by QN
+---generalized block-diagonalizer?
+
+-Multiple Spins
+--have some code started
+--worried about performance hit
+--look into approximations
+---this is antithetical to westerfit's objective
+--hund's case (a)-like 3 stage diagonalization approach?
+---tor, spi-spi, tsr?
+
+-Improved optimizer
+--looking into line search for \lambda values
+--BFGS & other quasi-newtonian methods?
+
+-Even fold rotor problem
+--need to combine A&B torsional states in msgen,etc
+--change definition of cosop to accoung for non n*NFOLD values 	

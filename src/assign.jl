@@ -34,7 +34,7 @@ function expectassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
+   md = 2*mc + 1
    vals = vals[list]
    vecs = vecs[:,list]
    list = nexpect(vecs,md,j,s,jsd,ns,nd,ni)
@@ -80,7 +80,7 @@ function expectkassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
+   md = 2*mc + 1 
    vals = vals[list]
    vecs = vecs[:,list]
    list = nkexpect(vecs,md,j,s,jsd,ns,nd,ni)
@@ -105,7 +105,7 @@ function eeoassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
    list = mexpect(vecs,jsd,nf,mc,σ)
    #println(list)
-   md = 2*mc + 1 + 1*(σtype(nf,σ)==2)
+   md = 2*mc + 1
    vals = vals[list]
    vecs = vecs[:,list] #simplifies down to just ground tor-state
    list = neko(vecs,md,j,s,jsd,ns,nd,ni)
@@ -264,13 +264,13 @@ end
 #kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
 #keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
-function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,σt::Int,vtmax)
+function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
    #println(ns)
    #println(ni)
-   md = 2*mcalc + 1 + 1*(σt==2)
+   md = 2*mcalc + 1 
    count = min(vtmax+4,md)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 

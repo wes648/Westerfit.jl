@@ -116,8 +116,9 @@ There are two possible ways to install westerfit on Windows. The first one is ru
 
 #### Natively in Windows
 1. Install [Julia](https://apps.microsoft.com/detail/9njnww8pvkmn?ocid=webpdpshare).
-2. Open Julia. Enter `]` to enter package mode. Enter `add Westerfit`.
-3. To use Westerfit, open your Command Line. Navigate to the directory your input "molnam.inp" is in. Enter `julia`. You should see the Julia startup.
+2. Open Julia. Press `]` to enter package mode. Enter `update` and then `add Westerfit`. The download may take some time.
+3. Before using westerfit, you will need to create an input file, "molnam.inp", and a line list, "molnam.lne". The "molnam" string should be a helpful file name. Make sure these are in the same directory as each other. 
+4. To use Westerfit, open your Command Line. Navigate to the directory your input "molnam.inp" is in. Enter `julia`. You should see the Julia startup.
 ```
 using Westerfit
 westerfit("molnam")

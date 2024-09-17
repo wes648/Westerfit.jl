@@ -220,9 +220,12 @@ function opinp(molnam::String,nfold)
    onams = nams[prm1]#, vals[prm2])
    oerr = errs[prm1]#, errs[prm2])
    oopr = oprs[:,prm1]#, oprs[:,prm2])
-   if nfold ≠ 0
+   if (nfold ≠ 0)&&(isodd(nfold))
       oopr[8,:] = floor.(Int,oopr[8,:]./nfold)
       oopr[9,:] = floor.(Int,oopr[9,:]./nfold)
+   elseif (nfold ≠ 0)&&(isodd(nfold))
+      oopr[8,:] = floor.(Int,2 .*oopr[8,:]./nfold) #dividing by 0.5nfold is the same
+      oopr[9,:] = floor.(Int,2 .*oopr[9,:]./nfold) # as multipling by 2/nfold
    end
    ostg = stgs[prm1]
    return μset, opvls, onams, oerr, oopr, ostg
@@ -288,7 +291,7 @@ function qnconv(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
 if length(lns[1,:]) != 10
     println("Wrong number of columns in qns")
 end
-if nf != zero(nf)
+if nf ≠ zero(nf)
    qunus = lns[:,1:10]
    inds = zeros(Int,size(lns,1),6)
    inds[:,1] = Int.(2 .* qunus[:,1])

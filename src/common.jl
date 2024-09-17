@@ -151,38 +151,38 @@ Determines the number of σ values that will result in unique values a provided
    and B states.
 """
 function σcount(nfold)
-   out = floor(Int,nfold/2)+1
+   out = max(floor(Int,(nfold+1)/2),1)
 end
 
-function σtype(nfold,σ)
-   if σ==zero(σ) # A state
-      return 0
-   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
-      return 2
-   else # E state
-      return 1
-   end
-end
+#function σtype(nfold,σ)
+#   if σ==zero(σ) # A & B state
+#      return 0
+#   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
+#      return 2
+#   else # E state
+#      return 1
+#   end
+#end
 
-function msbuilder(T::Type,nfold::Real,mcalc::Real,σ::Real)
+function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
       return [1.]
    else
-   σt = σtype(nfold,σ)
    lim = mcalc*nfold
-   if σt==0
+   if (σ==0)&&(isodd(nfold))
       marray = collect(T,-lim:nfold:lim)
-   elseif σt==2
+   elseif (σ==0)&&(iseven(nfold))
+      lim = floor(Int,lim/2)
+      marray = collect(T,-lim:floor(T,nfold/2):lim)
+   else
       lim += σ
       marray = collect(T,-lim:nfold:lim)
-   else
-      marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end
    return marray
    end
 end
-function msbuilder(nfold,mcalc,σ)
-   marray = msbuilder(Int,nfold,mcalc,σ)
+function msgen(nfold,mcalc,σ)
+   marray = msgen(Int,nfold,mcalc,σ)
    return marray
 end
 
@@ -337,20 +337,20 @@ This builds the rotational Wang Transformation matrix for every n in Δlist(j,s)
 end
 
 vt2m(vtm)::Int = ceil(vtm/2)*cospi(vtm)
-vt2m(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
-function vtlist(vtm,σt) 
+#vt2m(vtm,σt)::Int = ceil(vtm/2)*cospi(vtm) + (vtm≤zero(vtm))*δi(σt,2)
+function vtlist(vtm) 
    if vtm == zero(vtm)
-      return [vt2m(vtm,σt)]
+      return [vt2m(vtm)]
    else
-      return sort([vt2m(vtm,σt); vt2m(vtm-1,σt)])
+      return sort([vt2m(vtm); vt2m(vtm-1)])
    end
 end
-function vtcoll(vtm,σt) 
+function vtcoll(vtm) 
    if vtm == zero(vtm)
-      return [vt2m(vtm,σt)]
+      return [vt2m(vtm)]
    else
-      a = vt2m(vtm,σt)
-      b = vt2m(vtm-1,σt)
+      a = vt2m(vtm)
+      b = vt2m(vtm-1)
       ref = sort([a; b])
       return collect(ref[1]:ref[2])
    end

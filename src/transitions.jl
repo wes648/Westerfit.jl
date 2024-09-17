@@ -54,8 +54,8 @@ function fullμmat_prev(μs,nf,mcalc,s,jb,σb,jk,σk)
    kks = permutedims(kgeni(jk,s,lb))
    nbs = ngeni(jb,s,lk)
    kbs = kgeni(jb,s,lk)
-   mks = msbuilder(nf,mcalc,σk)
-   mbs = msbuilder(nf,mcalc,σb)
+   mks = msgen(nf,mcalc,σk)
+   mbs = msgen(nf,mcalc,σb)
    mks = kron(mks,ones(Int,1,length(mbs)))
    mbs = permutedims(kron(mbs,ones(Int,1,size(mks,1))))
    out = kron(cosp(0,mbs,mks),μpart(μs[:,1],s,jb,nbs,kbs,jk,nks,kks))
@@ -71,8 +71,8 @@ function fullμmat(μs,nf,mcalc,s,jb,σb,jk,σk)
    kks = kgeni(jk,s,lb)
    nbs = permutedims(ngeni(jb,s,lk))
    kbs = permutedims(kgeni(jb,s,lk))
-   mks = msbuilder(nf,mcalc,σk)
-   mbs = msbuilder(nf,mcalc,σb)
+   mks = msgen(nf,mcalc,σk)
+   mbs = msgen(nf,mcalc,σb)
    mks = permutedims(kron(mks,ones(Int,1,length(mbs))))
    mbs = kron(mbs,ones(Int,1,size(mks,1)))
    out = kron(cosp(0,mbs,mks),μpart(μs[:,1],s,jb,nbs,kbs,jk,nks,kks))
@@ -206,7 +206,8 @@ function traerrs_bad(J,σu)
 end
 function traerrs(J,cov)
    out = J * abs.(cov) * J'
-   return out
+   #return out
+   return zeros(size(out))
    #return diag(out)
 end
 
@@ -229,6 +230,7 @@ function unccalc_no_fit(ctrl,quns,params,scals,stg,ops,pσ,vecs)
    #inds = qnconv(quns,nf,s,vtm)
    jlist = jlister(inds)
    perm = permdeterm(scals,stg)
+   #THIS JACOBIAN IS COMPLETELY WRONG IT IS FOR TRANSITIONS BUT NEED LEVELS
    J = build_jcbn2!([0.0],ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    if pσ==nothing
       H = J' * J

@@ -712,11 +712,15 @@ function outputinit(molnam,params,scls,linelength,ctrl)
 end
 
 
-function iterationwriter(molnam,paramarray,srms,scounter,slλ,βf,perm)
+function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
 
    strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
 
-   counter = parse(Int,scounter)
+   #counter = parse(Int,scounter)
+   scounter = lpad(counter,3)
+   srms = (@sprintf("%0.4f", rms))
+   slλ = (@sprintf("%0.4f", log10(λlm)))
+
 
    prd = paramarray[:,counter+1]
    prdold = paramarray[:,counter]

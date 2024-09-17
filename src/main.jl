@@ -23,7 +23,9 @@ include("@__DIR__/../files_in.jl")
 include("@__DIR__/../files_out.jl")
 include("@__DIR__/../jacobi.jl")
 include("@__DIR__/../new_ham.jl")
-include("@__DIR__/../optimizer.jl")
+include("@__DIR__/../opt/opt-com.jl")
+include("@__DIR__/../opt/opt-approx.jl")
+include("@__DIR__/../opt/optimizer.jl")
 include("@__DIR__/../remnant.jl")
 include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../userdefop.jl")
@@ -42,7 +44,7 @@ function westereng(molnam::String, prm, ctrl)
    if prm==nothing
       prm = vcat(sof,cdf)
    else
-      #this occurs when westerfit is called before thus feeing the new
+      #this occurs when westerfit is called before thus feeding the new
       # parameters in to the function in their natural form
       #the parameters aren't being double transformed. it's fine i swear
       prm[1:18] = sod2prep_full(prm[1:18])
@@ -61,7 +63,7 @@ function westereng(molnam::String, prm, ctrl)
    fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
    @time for sc in 1:σcnt
       σ = sc - 1
-	   mcd = Int(2*ctrl["mcalc"]+(σtype(ctrl["NFOLD"],σ)==2)+1)
+	   mcd = Int(2*ctrl["mcalc"]+1)
 	   jmsd = Int(mcd*sd*(2*jmax+1))
 	   jsvd = Int(jfd*vtd)
 #       fvls[1:jvsd,σ], fvcs[1:jmsd,1:jsvd,σ], fqns[:,1:jvsd,σ] = tsrcalc(sof,cdf,cdo,
@@ -96,7 +98,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    finqns = zeros(Int,0,12)
    if (ctrl["NFOLD"] > 0)&&(isodd(ctrl["NFOLD"]))
       σlst = [collect(1:σcnt) collect(1:σcnt)] .- 1
-   elseif
+   elseif (ctrl["NFOLD"] > 0)&&(iseven(ctrl["NFOLD"]))
       σlst = [collect(1:σcnt) collect(1:σcnt); 1 σcnt; σcnt 1] .- 1
    else
       σlst = [0 0]
@@ -147,6 +149,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
 #   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)
 
+   #tsrp, pcov, omcs, cfrqs, vals = lbmq_approx(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    #println(tsrp)
    #println(puncs)
