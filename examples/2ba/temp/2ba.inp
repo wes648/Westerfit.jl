@@ -2,14 +2,15 @@
 %CNTRLS
 NFOLD = 3
 S = 0.0
-RUNmode = EF
+RUNmode = E 
 TK = 25.0
 mcalc = 8
 assign = RAM36
 LIMIT = 100
 INTThresh = 0.0
-vtmax = 0
-Jmax = 16
+vtmax = 1
+stages = 2
+Jmax = 30
 overwrite = flase
 turducken = 1
 νmax = 20.0

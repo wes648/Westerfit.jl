@@ -2,7 +2,7 @@
 This file is for testing variations on the theme of multiple torsional stages
 """
 
-include("/home/wes/files/westerfit/src/main.jl")
+#include("/home/wes/files/westerfit/src/main.jl")
 
 function build_h1(n,mc,σ)
    f = 5
@@ -63,7 +63,7 @@ function twostg_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},ms::Array{Int}
    if (g≠0)||(h≠0)||(jp≠0)
       out = kron(tvecs' * tor_op(ms,g,h,jp) * tvecs,out)
    else
-      out = kron(I(size(ms,1)), out)
+      out = kron(I(size(tvecs,2)), out)
    end
    return dropzeros!(tplus!(out))
 end
@@ -77,6 +77,7 @@ end
 
 function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixCSC{Float64, Int64}
    qns = qngen(j,s)
+   #@show j
    #ms = msgen(nf,mc,σ)
    ℋ = hrot2(sof[1:4],qns) 
    if s==0.5
@@ -100,7 +101,7 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
    return dropzeros!(ℋ)
 end
 
-function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mcalc,j,s,σ,vtm)
+function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
    #println("ℋ time for J=$j")
    H = hjstage(sof,cdf,cdo,j,s,nf,tvals,tvecs,ms)
    if true ∈ isnan.(H)
@@ -110,7 +111,7 @@ function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mcalc,j,s,σ,vtm)
    H = (U*H*U)
    vals, vecs = eigen!(Symmetric(Matrix(H)))
 
-   perm = twostg_assign(vecs,j,s,mcalc,vtm)
+   perm = twostg_assign(vecs,j,s,mmax,vtm)
    vals = vals[perm]
    vecs = vecs[:,perm]
    
@@ -118,14 +119,14 @@ function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mcalc,j,s,σ,vtm)
    return vals, vecs
 end
 
-function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mlim,jlist,s,sd,σ)
+function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mmax,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
    tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
    tvals,tvecs = eigen(Symmetric(Matrix(tormat)))
-   tvals = tvals[1:mlim+1]
-   tvecs = tves[:,1:mlim+1]
-   msd = sd*Int(mlim+1)
+   tvals = tvals[1:mmax+1]
+   tvecs = tvecs[:,1:mmax+1]
+   msd = sd*Int(mmax+1)
    vtd = Int(vtm+1)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end]
@@ -138,10 +139,84 @@ function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mlim,jlist,s,sd,σ)
 #   @threads for j in jlist
       jd = Int(2.0*j) + 1
       sind, find = jvdest(j,s,vtm) 
-      vals, vecs = twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mcalc,j,s,σ,vtm)
+      vals, vecs = twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
       outvals[sind:find] = vals
       outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = vecs
    end
    return outvals, outvecs, outquns
+end
+
+function vtfinder(svcs,jsd::Int,md::Int,vtmax)
+   ovrlp = zeros(md,size(svcs,2))
+   @simd for i in 1:md 
+      ovrlp[i,:] = sum(svcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
+   end
+   vind = zeros(Int,size(svcs,1))
+   cap = min(vtmax+4,md)
+   for vi in 1:(vtmax+1)#cap #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+      perm = sort(sortperm(ovrlp[vi,:], rev=true)[1:jsd])
+      ovrlp[:,perm] .= 0.0
+      ovrlp[vi,:] .= 0.0
+      vind[perm] .= vi
+   end
+   return vind
+end
+function nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
+   jsd = jd*sd
+   vlist = collect(1:(vtmax+1))
+   list = collect(1:size(svcs,1))[Bool.(sum(vind .∈ vlist',dims=2))[:]]
+   tvcs = svcs[:,list] 
+   ovrlp = zeros(length(ns),size(tvcs,2))
+   for i in 1:length(ns) 
+      nd = 2*ns[i]+1
+      for m in 1:md
+         frst = ni[i,1] + jsd*(m-1)
+         last = ni[i,2] + jsd*(m-1)
+         ovrlp[i,:] += transpose(sum(tvcs[frst:last, :], dims=1))
+      end
+   end
+   nind = zeros(Int,size(svcs,1))
+   part = zeros(Int,length(list))
+   for i in 1:length(ns)
+      nd = (2*ns[i]+1)*min((vtmax+1),md)
+      #count = min(nd*(vtmax+1),nd*(md))
+      #vlimit = min(vtmax+3,md) 
+      #for v in 0:vlimit
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])#[1:nd]
+      nind[list[perm]] .= i
+      ovrlp[:,perm] .= 0.0 
+      #end
+   end
+   #println(nind)
+   return nind
+end
+function twostg_assign(vecs,j,s,mmax,vtmax)
+   md = mmax + 1
+   jd = Int(2.0*j) + 1
+   sd = Int(2.0*s) + 1
+   ns, nd, ni, jsd = srprep(j,s)
+   count = min(vtmax+4,md)
+   svcs = abs.(vecs[:,1:jsd*count]).^2
+   #determine vt state
+   vind = vtfinder(svcs,jsd,md,vtmax)
+   #determine N state
+   nind = nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
+   #energy sort for K (done intrisnically)
+   #permute to m style ordering (you didn't implement this....)
+   col = collect(1:size(vecs,1))
+   perm = zeros(Int,size(vecs,1)) #initalize big because easier
+   for ng in 1:length(ns)
+      nfilter = (nind .== ng)
+      for v in 0:vtmax
+         mg = mmax + vt2m(v) + 1
+         frst = jsd*(mg-1) + ni[ng,1]
+         last = jsd*(mg-1) + ni[ng,2]
+         part = col[nfilter .* (vind .== (v+1))]
+         part = part[keperm(ns[ng])]
+         perm[frst:last] = part#col[filter][keperm(ns[ng])]
+      end
+   end
+   perm = perm[perm .!= 0]
+   return perm
 end

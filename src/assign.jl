@@ -119,7 +119,6 @@ function neko(vecs,mcd,j,s,jsd,ns,nd,ni)
    for i in 1:length(ns)
       n = ns[i]
       part = sort(sortperm(n2 .- eh2(n), by=abs)[1:nd[i]])
-      #@show koverlap(vecs,part,ni[i,1],ni[i,2],nd[i],n)
       part = part[koverlap(vecs,part,ni[i,1],ni[i,2],nd[i],n)]
       nlist[ni[i,1]:ni[i,2]] = part
       n2[part] .= 0.0
@@ -147,7 +146,6 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    @simd for i in 1:md 
       ovrlp[i,:] = sum(svcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
    end
-   #println(ovrlp)
    #ovrlp = argmax(ovrlp,dims=1)
    mind = zeros(Int,size(svcs,1))
    #@simd for i in 1:length(mind)
@@ -195,8 +193,36 @@ function mfinderforagivenn(svcs,mind,nind,ng,n,jsd,md,mcalc,vtmax)
    mind[list] .= part
    return mind
 end
+function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
+#this needs to be fully reworked it is only looking at the top part of the vector
+   jsd = jd*sd
+   ovrlp = zeros(length(ns),size(svcs,2))
+   for i in 1:length(ns) 
+      nd = 2*ns[i]+1
+      for m in 1:md
+         frst = ni[i,1] + jsd*(m-1)
+         last = ni[i,2] + jsd*(m-1)
+         ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1))
+      end
+   end
+   nind = zeros(Int,size(svcs,1))
+   for i in 1:length(ns)
+      nd = (2*ns[i]+1)
+      count = nd*min((vtmax+4),md)
+      #vlimit = min(vtmax+3,md) 
+      #for v in 0:vlimit
+         perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])#[1:nd]
+         nind[perm] .= i
+         ovrlp[:,perm] .= 0.0 
+         ovrlp[i,:] .= 0.0
+      #end
+   end
+   #println(nind)
+   return nind
+end
 function nfinderform(svcs,mind,mg,vtmax,md,jd,sd,ns,ni)
 #this needs to be fully reworked it is only looking at the top part of the vector
+#as of sept24, I'm very sure this is the problem. No! the issue is the lack of update & expansion
    jsd = jd*sd
    list = collect(1:size(svcs,1))[mind .== mg]
    tvcs = svcs[:,list]
@@ -212,7 +238,7 @@ function nfinderform(svcs,mind,mg,vtmax,md,jd,sd,ns,ni)
    nind = zeros(Int,size(svcs,1))
    part = zeros(Int,length(list))
    for i in 1:length(ns)
-      nd = (2*ns[i]+1)
+      nd = (2*ns[i]+1)#*(vtmax+1)
       #count = min(nd*(vtmax+1),nd*(md))
       #vlimit = min(vtmax+3,md) 
       #for v in 0:vlimit
@@ -232,29 +258,30 @@ function nfinderv2(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
    end
    return nind
 end
-
-function nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-#this needs to be fully reworked it is only looking at the top part of the vector
+function nfinderv3(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
    jsd = jd*sd
-   ovrlp = zeros(length(ns),size(svcs,2))
+   vlist = (mc+1) .+ vt2m.(collect(0:vtmax))
+   list = collect(1:size(svcs,1))[Bool.(sum(mind .∈ vlist',dims=2))[:]]
+   tvcs = svcs[:,list]
+   ovrlp = zeros(length(ns),size(tvcs,2))
    for i in 1:length(ns) 
       nd = 2*ns[i]+1
       for m in 1:md
          frst = ni[i,1] + jsd*(m-1)
          last = ni[i,2] + jsd*(m-1)
-         ovrlp[i,:] += transpose(sum(svcs[frst:last, :], dims=1))
+         ovrlp[i,:] += transpose(sum(tvcs[frst:last, :], dims=1))
       end
    end
    nind = zeros(Int,size(svcs,1))
+   part = zeros(Int,length(list))
    for i in 1:length(ns)
-      nd = (2*ns[i]+1)
-      count = min(nd*(vtmax+4),nd*(md))
+      nd = (2*ns[i]+1)*min((vtmax+1),md)
+      #count = min(nd*(vtmax+1),nd*(md))
       #vlimit = min(vtmax+3,md) 
       #for v in 0:vlimit
-         perm = sort(sortperm(ovrlp[i,:], rev=true)[1:count])#[1:nd]
-         nind[perm] .= i
-         ovrlp[:,perm] .= 0.0 
-         ovrlp[i,:] .= 0.0
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])#[1:nd]
+      nind[list[perm]] .= i
+      ovrlp[:,perm] .= 0.0 
       #end
    end
    #println(nind)
@@ -275,7 +302,7 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
    mind = mfinder(svcs,jsd,md,mcalc,vtmax)
-   nind = nfinderv2(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
+   nind = nfinderv3(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
    #nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    #println(mind)
    col = collect(1:size(vecs,1))
@@ -284,15 +311,9 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
       nfilter = (nind .== ng)
       for v in 0:vtmax
          mg = mcalc + vt2m(v) + 1
-         #filter = nfilter .* (mind .== mg)
          frst = jsd*(mg-1) + ni[ng,1]
          last = jsd*(mg-1) + ni[ng,2]
-         #println("first = $frst, last = $last")
-         #println("n = $(ns[ng])")
-         #println(sum(filter))
-         #println("J = $j, ng = $ng")
-         part = col[nfilter]
-         #println(part)
+         part = col[nfilter .* (mind .== mg)]
          part = part[keperm(ns[ng])]
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end

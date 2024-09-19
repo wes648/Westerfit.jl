@@ -453,8 +453,8 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    if σ==0
       U = kron(ur(mcalc), ur(j,s))
    else
-      @show size(I(2mcalc+1))
-      @show size(ur(j,s))
+      #@show size(I(2mcalc+1))
+      #@show size(ur(j,s))
       U = kron(I(2mcalc+1),ur(j,s))
    end
    H = (U*H*U)
@@ -479,13 +479,6 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    end
    ###vecs = rvecs*vecs 
    vecs = U*vecs
-   #if j<3.0
-   #   @show j
-   #   @show Δlist(j,s)
-   #   @show σ
-   #   @show vals[1:4*Int(2j+1)]
-   #   #@show vecs[:,1:2*Int(2j+1)]
-   #end
    return vals, vecs
 end
 

@@ -175,8 +175,7 @@ function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
       lim = floor(Int,lim/2)
       marray = collect(T,-lim:floor(T,nfold/2):lim)
    else
-      lim += σ
-      marray = collect(T,-lim:nfold:lim)
+      marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end
    return marray
    end

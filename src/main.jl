@@ -21,7 +21,8 @@ include("@__DIR__/../assign.jl")
 include("@__DIR__/../common.jl")
 include("@__DIR__/../files_in.jl")
 include("@__DIR__/../files_out.jl")
-include("@__DIR__/../jacobi.jl")
+#include("@__DIR__/../jacobi.jl")
+include("@__DIR__/../multstage.jl")
 include("@__DIR__/../new_ham.jl")
 include("@__DIR__/../opt/opt-com.jl")
 include("@__DIR__/../opt/opt-approx.jl")
@@ -56,23 +57,40 @@ function westereng(molnam::String, prm, ctrl)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
    vtd = Int(ctrl["vtmax"]+1)
-   mcd = Int(2*ctrl["mcalc"]+(iseven(ctrl["NFOLD"]))+1)
+   if ctrl["stages"] == 1
+      mcd = Int(2*ctrl["mcalc"]+1)
+   elseif ctrl["stages"] == 2
+      mcd = Int(ctrl["mmax"]+1)
+   else
+      println("DANGER")
+   end
+
    jfd = sd*Int(sum(2.0 .* jlist .+ 1.0))
    fvls = zeros(Float64,jfd*vtd,σcnt)
+   #mcd = Int(2*ctrl["mcalc"]+1)
    fqns = zeros(Int,jfd*vtd,6,σcnt)
    fvcs = zeros(Float64,Int(sd*(2*jmax+2)*mcd),jfd*vtd,σcnt)
    @time for sc in 1:σcnt
       σ = sc - 1
-	   mcd = Int(2*ctrl["mcalc"]+1)
-	   jmsd = Int(mcd*sd*(2*jmax+1))
-	   jsvd = Int(jfd*vtd)
+      jmsd = Int(mcd*sd*(2*jmax+1))
+      jsvd = Int(jfd*vtd)
 #       fvls[1:jvsd,σ], fvcs[1:jmsd,1:jsvd,σ], fqns[:,1:jvsd,σ] = tsrcalc(sof,cdf,cdo,
+   if ctrl["stages"] == 1
       tempa, tempe, tempq = tsrcalc(ctrl,prm,stg, cdo,
       	        ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],jlist,ctrl["S"],sd,σ)
       fvls[1:jsvd,sc] = tempa
       fvcs[1:jmsd,1:jsvd,sc] = tempe
       fqns[1:jsvd,:,sc] = tempq
-   end
+   elseif ctrl["stages"] == 2
+      tempa, tempe, tempq = twostg_calc(ctrl,prm,stg,cdo,
+         ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],ctrl["mmax"],jlist,ctrl["S"],sd,σ)
+      fvls[1:jsvd,sc] = tempa
+      fvcs[1:jmsd,1:jsvd,sc] = tempe
+      fqns[1:jsvd,:,sc] = tempq
+   else
+      @warn "I can't diagonalize in zero stages"
+   end#if
+   end#for
    println("yay energy levels are calculated!")
    #write energies to file
    if occursin("E",ctrl["RUNmode"])
