@@ -144,7 +144,46 @@ function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mmax,jlist,s,sd,σ)
       outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = vecs
    end
-   return outvals, outvecs, outquns
+   return outvals, outvecs, tvecs, outquns
+end
+function twostg_calc2(prm,stg,cdo,nf,ctrl,jlist)
+#function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
+   s = ctrl["S"]
+   mmax = ctrl["mmax"]
+   mcalc = ctrl["mcalc"]
+   vtm = ctrl["vtmax"]
+   sof = prm[1:18]
+   cdf = prmsetter(prm[19:end],stg)
+   vtd = Int(vtm+1)
+   msd = Int((mmax+1)*(2s+1))
+   jmin = 0.5*iseven((2*s+1))
+   jmax = jlist[end,1]
+   jfd = Int((2s+1)*sum(2. .*collect(Float64,jmin:jmax).+1.))
+   σcnt = σcount(nf)
+   fvls = zeros(Float64,jfd*vtd,σcnt)
+   fqns = zeros(Int,jfd*vtd,6,σcnt)
+   fvcs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(mmax+1)),jfd*vtd,σcnt)
+   tvecs = zeros(Float64,Int(2*mcalc+1),Int(mmax+1),σcnt)
+   @time for sc in 1:σcnt
+      σ = sc - 1
+      tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
+      σvals,σvecs = eigen(Symmetric(Matrix(tormat)))
+      σvals = σvals[1:mmax+1]
+      σvecs = σvecs[:,1:mmax+1]
+      tvecs[:,:,sc] = σvecs
+      jmsd = Int(msd*(2*jmax+1))
+      jsvd = Int(jfd*vtd)
+      jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
+      for j in jsublist
+         jd = Int(2.0*j) + 1
+         sind, find = jvdest(j,s,vtm) 
+         fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = twostg_diag(ctrl,
+                           sof,cdf,cdo,σvals,σvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
+         fqns[sind:find,:,sc] = qnlabv(j,s,nf,vtm,σ)
+      end
+   end
+
+   return fvls, fvcs, tvcs, fqns
 end
 
 function vtfinder(svcs,jsd::Int,md::Int,vtmax)

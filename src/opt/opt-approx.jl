@@ -38,7 +38,7 @@ function lbmq_approx!(β,H,J,jtw,omc,λ,nparams,scls,perm)
    end
    A = cholesky!(A)
    β .= ldiv!(β, A, jtw*omc) .* scls[perm]
-   #@show β' * jtw*omc > zero(β' * jtw*omc)
+   @show β' * jtw*omc > zero(β' * jtw*omc)
    nparams[perm] .+= β
    return β,λ,nparams
 end
@@ -60,7 +60,7 @@ function lbmq_approx(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    W = Diagonal(1.0 ./ uncs)
    #RHOTHRES = -1.0E-6
    ϵ0 = 0.1E-6 #RMS check
-   ϵ1 = 0.1E-10 #step size check
+   ϵ1 = 0.1E-6 #step size check
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    #oλlm = λlm
@@ -84,12 +84,13 @@ function lbmq_approx(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    endpoint = "not yet"
    converged=false
 while converged==false
-   @show sum(-2jtw*omc)
-   @show sum(βf)
+   #@show sum(-2jtw*omc)
+   #@show sum(βf)
 
    λlm = λgen(μlm, rms) 
-   βf,λ,nparams = lbmq_approx!(βf,H,J,jtw,omc,λlm,params,scales,perm)
-   #βf = J[:,perm] \ omc
+   #βf,λ,nparams = lbmq_approx!(βf,H,J,jtw,omc,λlm,params,scales,perm)
+   βf = J[:,perm] \ omc
+   nparams[perm] += 0.5βf
    cfreqs = tsrapprox(J,nparams,stg)
    nrms, nomc = rmscalc(cfreqs,ofreqs)
    #nomc = ofreqs .- cfreqs
@@ -98,10 +99,11 @@ while converged==false
    #check = abs(nrms-rms)/rms
    check = abs(nrms-rms)/rms
 
-   if (ρlm > 0)#1.0e-7
+   #if (ρlm > 1.0e-7)#||(nrms<rms)#1.0e-7
+   #if nrms < rms
       rms = nrms
       params .= nparams
-      if (mod(counter,2)==0)&&(counter > 0)
+      if (mod(counter,6)==0)&&(counter > 0)
          println("New vector time!")
          vals,vecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
          cfreqs = qfreqs!(cfreqs,vals,inds)
@@ -119,10 +121,16 @@ while converged==false
       iterprint(rms,λlm,counter)
       iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
       μlm /= 30.0
-   else
-      μlm = max(4.0*μlm,1.0E-24)
-   end
+   #else
+   #   printstyled("grumble grumble\n"; color=:red)
+   #   μlm = max(4.0*μlm,1.0E-24)
+   #end
    converged,endpoint = fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,params[perm])
+   if converged
+      @show βf
+      @show -2jtw*omc
+      @show eigvals(H)
+   end
 end#while
    #@show H
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)

@@ -34,10 +34,10 @@ end
 
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
-   @show size(inds)
-   @show size(ofreqs)
-   @show size(vals)
-   @show inds[1:5,:]
+   #@show size(inds)
+   #@show size(ofreqs)
+   #@show size(vals)
+   #@show inds[1:5,:]
    @threads for i in 1:size(cfreqs,1)
       cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
    end
