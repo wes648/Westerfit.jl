@@ -27,23 +27,23 @@ function sumder_2stg(out,j,s,nf,rpid,prm,stg,ops,ms,qns,tvecs)
    end
    return out
 end
-function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs)
+function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
    if scl[rpid] < 0 #should this be ≤ 0 ???
    elseif rpid ≤ 4 #pure rot
       pr = zeros(4)
       pr[rpid] = 1.0
       out = hrot2(pr,qns)
-      out = kron(I(length(ms)),out)
+      out = kron(I(mmax+1),out)
    elseif 5 ≤ rpid ≤ 9 #spin-rot
       pr = zeros(5)
       pr[rpid-4] = 1.0
       out = hsr(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
+      out = kron(I(mmax+1),out)
    elseif 10 ≤ rpid ≤ 12 #qua
       pr = zeros(3)
       pr[rpid-9] = 1.0
       out = hqu(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
+      out = kron(I(mmax+1),out)
    elseif rpid==13 # F
       pr = [1.;0.;0.;0.]
       out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
@@ -64,8 +64,8 @@ function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs)
    end
    return out
 end
-function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec)
-   mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvec)
+function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec,mmax)
+   mat = derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvec,mmax)
    out = transpose(vec)*mat*vec
    return diag(out)
 end
@@ -79,6 +79,7 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
    for sc in 1:σcnt
       σ = sc - 1
       ms = msgen(nf,ctrl["mcalc"],σ)
+      tvcs = tvecs[:,:,sc]
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       for j in jsublist
          #println(j)
@@ -88,7 +89,7 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
-            ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvecs)
+            ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
             derivs[sind:find,sc,i] = ders#*scl[pid]
          end#perm loop
       end #j loop
@@ -102,20 +103,22 @@ function derivcalc_2stg_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
    ms = msgen(nf,mcalc,σ)
+   tvcs = tvecs[:,:,σ+1]
    derivs = zeros(Float64,size(vecs,2),length(perm))
    sd = Int(2.0*s+1.0)
    jmin = 0.5*iseven(sd)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
-   msd = Int(ctrl["mmax"]+1)*(2s+1))
+   msd = Int((ctrl["mmax"]+1)*(2s+1))
    @threads for j in jlist
       jd = Int(2.0*j) + 1
+      #tvcs = tvecs[:,:]
       sind, find = jvdest(j,s,ctrl["vtmax"])
       qns = qngen(j,s)
       vec = vecs[1:jd*msd,sind:find]
       for i in 1:length(perm)
          pid = perm[i]
-         ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvecs)
+         ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs)
          derivs[sind:find,i] = ders
       end#perm loop
    end#j loop
@@ -197,7 +200,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    βf = zero(perm) #step
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zero(omc) #jtwient
-   J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scals,stg,tvcs)
+   J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    H, jtw = build_hess(jtw,J,W)
    #println(H)
@@ -225,7 +228,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #println(params)
          #vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scals,stg,tvcs)
+         @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
          H, jtw = build_hess(jtw,J,W)
          #println(diag(H))

@@ -25,8 +25,9 @@ include("@__DIR__/../files_out.jl")
 include("@__DIR__/../multstage.jl")
 include("@__DIR__/../new_ham.jl")
 include("@__DIR__/../opt/opt-com.jl")
-include("@__DIR__/../opt/opt-approx.jl")
 include("@__DIR__/../opt/optimizer.jl")
+include("@__DIR__/../opt/opt-approx.jl")
+include("@__DIR__/../opt/opt-twostg.jl")
 include("@__DIR__/../remnant.jl")
 include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../userdefop.jl")
@@ -167,8 +168,14 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
 #   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)
 
+if ctrl["stages"] == 1
    #tsrp, pcov, omcs, cfrqs, vals = lbmq_approx(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
+elseif ctrl["stages"] == 2
+   tsrp, pcov, omcs, cfrqs, vals = lbmq_2stg(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
+else
+   @warn "I can't diagonalize in zero stages"
+end#if
    #println(tsrp)
    #println(puncs)
    reswritter(molnam,lines,omcs,cfrqs)

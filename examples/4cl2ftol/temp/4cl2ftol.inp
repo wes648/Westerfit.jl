@@ -5,6 +5,7 @@ S = 1.5
 TK = 25.0
 RUNmode = F
 mcalc = 5
+stages = 2
 vtmax = 0
 assign = RAM36
 turducken = 3

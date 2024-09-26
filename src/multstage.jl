@@ -183,7 +183,7 @@ function twostg_calc2(prm,stg,cdo,nf,ctrl,jlist)
       end
    end
 
-   return fvls, fvcs, tvcs, fqns
+   return fvls, fvcs, tvecs, fqns
 end
 
 function vtfinder(svcs,jsd::Int,md::Int,vtmax)
