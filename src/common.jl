@@ -151,7 +151,12 @@ Determines the number of σ values that will result in unique values a provided
    and B states.
 """
 function σcount(nfold)
-   out = max(floor(Int,(nfold+1)/2),1)
+   if isodd(nfold)
+      out = floor(Int,0.5*(nfold+1))
+   else
+      out = floor(Int,nfold/3)
+   end
+   return out
 end
 
 #function σtype(nfold,σ)
@@ -166,7 +171,7 @@ end
 
 function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
-      return [1.]
+      return ones(T,1)
    else
    lim = mcalc*nfold
    if (σ==0)&&(isodd(nfold))
@@ -174,6 +179,9 @@ function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    elseif (σ==0)&&(iseven(nfold))
       lim = floor(Int,lim/2)
       marray = collect(T,-lim:floor(T,nfold/2):lim)
+   elseif (σ≠0)&&(iseven(nfold))
+      lim = floor(Int,lim/2)
+      marray = collect(T,-lim+σ:floor(T,nfold/2):lim+σ)
    else
       marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end

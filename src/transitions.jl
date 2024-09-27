@@ -148,6 +148,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       #ints[binds[cind],kinds[rind]] = tints
    end
    #println(ints)
+#I think I can split this function in two here
    #calculate frequencies & filter out ones out of range
    rinds, cinds, = findnz(ints)
    for i in 1:nnz(ints)
