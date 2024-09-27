@@ -116,8 +116,8 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    else
       jbjk = jbjklisterfull(0.5*iseven(Int(2*s+1)),jmax,mΔj)
    end
-   rmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1+(σtype(nf,σr)==2)))
-   cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1+(σtype(nf,σc)==2)))
+   rmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
+   cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
    frqs = spzeros(length(rvals),length(cvals))
    ints = spzeros(length(rvals),length(cvals))
    exprmin = exp(-minimum(rvals)/kbT)

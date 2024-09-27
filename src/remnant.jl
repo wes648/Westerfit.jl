@@ -54,7 +54,7 @@ end
 
 function qnlab(n,nf,m,σ)
    nd = Int(2*n+1)
-   md = Int(2*m+(σtype(nf,σ)==2)+1)
+   md = Int(2*m+1)
    narray = fill(n,nd*md)
    karray = kron(ones(Int,md),collect(Int,-n:n))
    kcarray = k2kc.(narray,karray)
@@ -65,7 +65,7 @@ end
 function qnlab(j,s,nf,m,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
-   md = Int(2*m+(σtype(nf,σ)==2)+1)
+   md = Int(2*m+1)
    out = zeros(Int,0,3)
    for n in nlist
       nd = Int(2*n+1)

@@ -30,6 +30,7 @@ include("@__DIR__/../opt/opt-approx.jl")
 include("@__DIR__/../opt/opt-twostg.jl")
 include("@__DIR__/../remnant.jl")
 include("@__DIR__/../transitions.jl")
+include("@__DIR__/../transi-2stg.jl")
 #include("@__DIR__/../userdefop.jl")
 
 BLAS.set_num_threads(Threads.nthreads())
@@ -60,8 +61,10 @@ function westereng(molnam::String, prm, ctrl)
    vtd = Int(ctrl["vtmax"]+1)
    if ctrl["stages"] == 1
       mcd = Int(2*ctrl["mcalc"]+1)
+      tvcs = Array{Float64,3}(undef,0,0,0)
    elseif ctrl["stages"] == 2
       mcd = Int(ctrl["mmax"]+1)
+      tvcs = zeros(2*ctrl["mcalc"]+1,mcd,σcnt)
    else
       println("DANGER")
    end
@@ -83,11 +86,13 @@ function westereng(molnam::String, prm, ctrl)
       fvcs[1:jmsd,1:jsvd,sc] = tempe
       fqns[1:jsvd,:,sc] = tempq
    elseif ctrl["stages"] == 2
-      tempa, tempe, tempq = twostg_calc(ctrl,prm,stg,cdo,
+      #printstyled("hi wes\n",color=:cyan)
+      tempa, tempe, tempt, tempq = twostg_calc(ctrl,prm,stg,cdo,
          ctrl["NFOLD"],ctrl["vtmax"],ctrl["mcalc"],ctrl["mmax"],jlist,ctrl["S"],sd,σ)
       fvls[1:jsvd,sc] = tempa
       fvcs[1:jmsd,1:jsvd,sc] = tempe
       fqns[1:jsvd,:,sc] = tempq
+      tvcs[:,:,sc] = tempt
    else
       @warn "I can't diagonalize in zero stages"
    end#if
@@ -98,9 +103,9 @@ function westereng(molnam::String, prm, ctrl)
       engwriter(molnam,ctrl,fvls,fqns)
    end
    scls = vcat(ser,cde)
-   return fvls, fvcs, fqns, μs, prm, scls, stg, cdo
+   return fvls, fvcs, fqns, μs, prm, scls, stg, cdo, tvcs
 end
-function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pcov)
+function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,pcov,tvcs)
    #calculate transitions
 #   if occursin("S",ctrl["RUNmode"])
    if pcov == nothing
@@ -115,6 +120,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    Qrt = sum(exp.(fvls ./ -kbT))/3
    finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
+   #=
    if (ctrl["NFOLD"] > 0)&&(isodd(ctrl["NFOLD"]))
       σlst = [collect(1:σcnt) collect(1:σcnt)] .- 1
    elseif (ctrl["NFOLD"] > 0)&&(iseven(ctrl["NFOLD"]))
@@ -122,18 +128,32 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    else
       σlst = [0 0]
    end
-   for sc in 1:size(σlst,1)
+   =#
+   for sc in 1:σcnt
       σ = sc - 1
       vals = fvls[:,sc]
       vecs = fvcs[:,:,sc]
       quns = fqns[:,:,sc]
+      if ctrl["stages"]==1
       J = derivcalc_all(ops,ctrl,perm,vecs,prm,scls,stg,σ)
       uncs = traerrs(J,pcov)
+      else
+         println("Sorry, the unc calculator isn't implemented"*
+            " for this stage value ($(ctrl["stages"]))")
+         uncs = zeros(size(vals))
+      end
       #if σ==0
       #   @show (uncs)
       #end
+      if ctrl["stages"]==1
       fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
                            vals,vecs,quns,σ,uncs)
+      elseif ctrl["stages"]==2
+      fr,qn = tracalc_twostg(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
+                           vals,vecs,quns,σ,uncs,tvcs)
+      else
+         @warn "I can't diagonalize in zero stages"
+      end#if
       finfrq = vcat(finfrq,fr)
       finqns = vcat(finqns,qn)
    end
@@ -205,9 +225,9 @@ function westerfit(molnam::String)
          pcov = nothing
       end
       if occursin("E", ctrl["RUNmode"])||occursin("S", ctrl["RUNmode"])
-         vas, ves, qns, μs, prm, scls, stg, cdo = westereng(molnam, prm, ctrl)
+         vas,ves,qns,μs,prm,scls,stg,cdo,tvcs = westereng(molnam, prm, ctrl)
          if occursin("S", ctrl["RUNmode"])
-            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,pcov)
+            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,pcov,tvcs)
          end
       end
    end

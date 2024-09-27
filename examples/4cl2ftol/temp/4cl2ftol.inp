@@ -3,7 +3,7 @@
 NFOLD = 3
 S = 1.5
 TK = 25.0
-RUNmode = F
+RUNmode = S
 mcalc = 5
 stages = 2
 vtmax = 0

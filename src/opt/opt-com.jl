@@ -134,7 +134,6 @@ function derivcalc(jlist,ops,ctrl,perm,vecs,prm,scl,stg)#removed nf call from he
       #println(sc)
       σ = sc - 1
       msd = Int((2*mcalc+1)*(2s+1))
-      #σt = σtype(nf,σ)
       #msd = Int(2*s+1)*mcd
       #mstrt, mstop = mslimit(nf,mcalc,σ)
       #jmsd = Int(msd*(2*jmax+1))
@@ -168,7 +167,7 @@ function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    jmin = 0.5*iseven(sd)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
-   msd = Int((2*mcalc+(σtype(nf,σ)==2)+1)*(2s+1))
+   msd = Int((2*mcalc+1)*(2s+1))
    @threads for j in jlist
       jd = Int(2.0*j) + 1
       sind, find = jvdest(j,s,ctrl["vtmax"])

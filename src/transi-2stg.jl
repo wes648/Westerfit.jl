@@ -16,7 +16,7 @@ function fullμmat_2stg(μs,nf,mcalc,s,jb,σb,jk,σk,tvecs)
    mbs = msgen(nf,mcalc,σb)
    mks = permutedims(kron(mks,ones(Int,1,length(mbs))))
    mbs = kron(mbs,ones(Int,1,size(mks,1)))
-   out = kron(tvb' * I(cosp(0,mbs,mks)) * tvk,
+   out = kron(tvb' * cosp(0,mbs,mks) * tvk,
               μpart(μs[:,1],s,jb,nbs,kbs,jk,nks,kks))
    @simd for i in 2:size(μs,2)
       out += kron(tvb' * cosp(i-1,mbs,mks) * tvk,
@@ -25,7 +25,7 @@ function fullμmat_2stg(μs,nf,mcalc,s,jb,σb,jk,σk,tvecs)
    return out
 end
 function intmat2stg(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck,tvecs)
-   out = fullμmat(μ,nf,mcalc,s,jk,σk,jb,σb,tvecs)
+   out = fullμmat_2stg(μ,nf,mcalc,s,jk,σk,jb,σb,tvecs)
    out = sparse(transpose(vecb)*(out)*veck)
    out .*= out
    return droptol!(out,INTTHRESH*0.01)
@@ -43,8 +43,8 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    else
       jbjk = jbjklisterfull(0.5*iseven(Int(2*s+1)),jmax,mΔj)
    end
-   rmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1+(σtype(nf,σr)==2)))
-   cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1+(σtype(nf,σc)==2)))
+   rmsd = Int((2*s+1)*(ctrl["mmax"]+1))
+   cmsd = Int((2*s+1)*(ctrl["mmax"]+1))
    frqs = spzeros(length(rvals),length(cvals))
    ints = spzeros(length(rvals),length(cvals))
    exprmin = exp(-minimum(rvals)/kbT)
@@ -97,7 +97,7 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if ν > 0.0
          outfrq[i,1] = ν
          outfrq[i,3] = cvals[c] / csl
-         outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
+         #outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σc+1)*100
          outqns[i,1:6] = rqns[r,:]
@@ -105,7 +105,7 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       elseif ν < 0.0
          outfrq[i,1] = -ν
          outfrq[i,3] = rvals[r] /csl
-         outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
+         #outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
          outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σr+1)*100
          outqns[i,1:6] = cqns[c,:]

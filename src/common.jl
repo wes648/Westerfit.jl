@@ -159,16 +159,6 @@ function σcount(nfold)
    return out
 end
 
-#function σtype(nfold,σ)
-#   if σ==zero(σ) # A & B state
-#      return 0
-#   elseif (iseven(nfold))&&(σ==(σcount(nfold)-1)) # B state
-#      return 2
-#   else # E state
-#      return 1
-#   end
-#end
-
 function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    if nfold==0
       return ones(T,1)

@@ -58,7 +58,6 @@ function qngen(j,s)::Array{Int,2}
    return out
 end
 function qnlabv(j,s,nf,vtm,σ)::Array{Int,2}
-   #σt = σtype(nf,σ)
    nlist = Δlist(j,s)
    jsd = Int((2*j+1)*(2*s+1))
    vd = Int(vtm+1)
@@ -488,7 +487,6 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
    msd = sd*Int(2*mcalc+1)
    vtd = Int(vtm+1)
-   #σt = σtype(nf,σ)
    jmin = 0.5*iseven(sd)
    jmax = jlist[end]
    jfd = sd*Int(sum(2.0 .* collect(Float64,jmin:jmax) .+ 1.0))
