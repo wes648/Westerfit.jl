@@ -1,4 +1,5 @@
 
+using MKL
 using DelimitedFiles
 using LinearAlgebra
 using LinearAlgebra.BLAS
@@ -181,9 +182,10 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    end
 
    #determine the states
-   linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],0)
+   linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],ctrl["vtmax"])
+   #@show linds
    jlist = jlister(linds)
-   #println(linds)
+   #@show jlist
    #opt
 #   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)

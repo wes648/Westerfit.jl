@@ -72,7 +72,11 @@ function qnlabv(j,s,nf,vtm,σ)::Array{Int,2}
    end
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,vd),out)
-   vtrray = kron(nf .* vtcoll(vtm) .+ σ,ones(Int,jsd))
+   if isodd(nf)
+      vtrray = kron(nf .* vtcoll(vtm) .+ σ,ones(Int,jsd))
+   else
+      vtrray = kron(floor(Int,.5nf) .* vtcoll(vtm) .+ σ,ones(Int,jsd))
+   end
    out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
    return out
 end

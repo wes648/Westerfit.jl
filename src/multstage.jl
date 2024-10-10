@@ -140,6 +140,9 @@ function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mmax,jlist,s,sd,σ)
       jd = Int(2.0*j) + 1
       sind, find = jvdest(j,s,vtm) 
       vals, vecs = twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
+      #if j==1.0
+      #   @show vals./csl
+      #end
       outvals[sind:find] = vals
       outquns[sind:find,:] = qnlabv(j,s,nf,vtm,σ)
       outvecs[1:jd*msd,sind:find] = vecs
@@ -182,7 +185,6 @@ function twostg_calc2(prm,stg,cdo,nf,ctrl,jlist)
          fqns[sind:find,:,sc] = qnlabv(j,s,nf,vtm,σ)
       end
    end
-
    return fvls, fvcs, tvecs, fqns
 end
 

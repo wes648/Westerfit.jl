@@ -256,7 +256,7 @@ function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
 if length(lns[1,:]) != 12
     println("Wrong number of columns in .lne file")
 end
-if nf != zero(nf)
+if nf≠zero(nf) && isodd(nf)
    qunus = lns[:,1:10]
    freqs = lns[:,11]
    uncs = lns[:,12]
@@ -266,6 +266,17 @@ if nf != zero(nf)
    inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
    inds[:,4] = Int.(2 .* qunus[:,6])
    inds[:,5] = Int.(mod.(qunus[:,10],nf))
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+elseif nf≠zero(nf) && iseven(nf)
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] = Int.(mod.(2 .*qunus[:,5],nf))
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] = Int.(mod.(2 .*qunus[:,10],nf))
    inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
 else
    qunus = lns[:,1:10]

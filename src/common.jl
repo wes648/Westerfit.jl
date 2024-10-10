@@ -116,7 +116,7 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    This is the old version based on the torsional
 """
 function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
-   if nf!=zero(nf)
+   if nf≠zero(nf)
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
    ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
@@ -131,11 +131,24 @@ end
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
 """
-function qn2ind(nf,vtm,m,j,s,n,ka,kc)
-   if (nf!=zero(nf))&&(vtm != 0)
+function qn2ind_prev(nf,vtm,m,j,s,n,ka,kc)
+   if (nf≠zero(nf))&&(vtm ≠ 0)
    #ka = abs(ka)
    ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
    ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
+   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
+   ind = convert(Int,ind)
+   return ind
+   else
+   return qn2ind(j,s,n,ka,kc)
+   end
+end
+function qn2ind(nf,vtm,m,j,s,n,ka,kc)
+   if (nf≠zero(nf))
+   #ka = abs(ka)
+   ind = sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(vtm+1)
+   ind += (vtm+floor(Int,m/nf))*(2*j+1)
+   ind *= Int(2s+1)
    ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
    ind = convert(Int,ind)
    return ind
@@ -153,8 +166,10 @@ Determines the number of σ values that will result in unique values a provided
 function σcount(nfold)
    if isodd(nfold)
       out = floor(Int,0.5*(nfold+1))
-   else
-      out = floor(Int,nfold/3)
+   elseif iseven(nfold)
+      out = floor(Int,(nfold+1)/3)
+   else #nfold == 0
+      out = ones(Int,1)
    end
    return out
 end

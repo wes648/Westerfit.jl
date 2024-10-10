@@ -69,7 +69,6 @@ function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec,mmax)
    out = transpose(vec)*mat*vec
    return diag(out)
 end
-
 function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
    s = ctrl["S"]
    nf = ctrl["NFOLD"]
@@ -90,6 +89,73 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
          for i in 1:length(perm)
             pid = perm[i]
             ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
+            derivs[sind:find,sc,i] = ders#*scl[pid]
+         end#perm loop
+      end #j loop
+   end#σ loop
+   return derivs
+end#function
+
+function derivmat_2stg(j,s,nf,rpid,ms,qns,tvecs,mmax)
+   if rpid ≤ 4 #pure rot
+      pr = zeros(4)
+      pr[rpid] = 1.0
+      out = hrot2(pr,qns)
+      out = kron(I(mmax+1),out)
+   elseif 5 ≤ rpid ≤ 9 #spin-rot
+      pr = zeros(5)
+      pr[rpid-4] = 1.0
+      out = hsr(pr,j,s,qns)
+      out = kron(I(mmax+1),out)
+   elseif 10 ≤ rpid ≤ 12 #qua
+      pr = zeros(3)
+      pr[rpid-9] = 1.0
+      out = hqu(pr,j,s,qns)
+      out = kron(I(mmax+1),out)
+   elseif rpid==13 # F
+      pr = [1.;0.;0.;0.]
+      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+   elseif rpid==16 # Vnf
+      pr = [0.;0.;0.;1.]
+      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+   elseif rpid==14 # ρzF
+      out = kron(tvecs' * pa_op(ms,1) * tvecs, nz_op(qns,1))
+   elseif rpid==15 # ρxF
+      out = kron(tvecs' * pa_op(ms,1) * tvecs, npm_op(qns,1)) 
+   elseif rpid==17 # ηz
+      out = kron(tvecs' * pa_op(ms,1) * tvecs, sz_op(j,s,qns,1)) 
+   elseif rpid==18 # ηx
+      out = kron(tvecs' * pa_op(ms,1) * tvec, spm_op(j,s,qns,1))
+   else
+      out = Diagonal(I(size(qns,1)))
+   end
+   return out
+end
+function anaderiv_2stg(rpid,j,s,nf,ms,qns,vec,tvec,mmax)
+   mat = derivmat_2stg(j,s,nf,rpid,ms,qns,tvec,mmax)
+   out = transpose(vec)*mat*vec
+   return diag(out)
+end
+function derivcalc_2stg(jlist,ctrl,perm,vecs,tvecs)
+   s = ctrl["S"]
+   nf = ctrl["NFOLD"]
+   σcnt = σcount(nf)
+   derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
+   msd = Int((ctrl["mmax"]+1)*(2s+1))
+   for sc in 1:σcnt
+      σ = sc - 1
+      ms = msgen(nf,ctrl["mcalc"],σ)
+      tvcs = tvecs[:,:,sc]
+      jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
+      for j in jsublist
+         #println(j)
+         jd = Int(2.0*j) + 1
+         sind, find = jvdest(j,s,ctrl["vtmax"]) 
+         qns = qngen(j,s)
+         vec = vecs[1:jd*msd,sind:find,sc]
+         for i in 1:length(perm)
+            pid = perm[i]
+            ders = anaderiv_2stg(pid,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
             derivs[sind:find,sc,i] = ders#*scl[pid]
          end#perm loop
       end #j loop
@@ -214,6 +280,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       λlm = λgen(μlm, rms) 
       βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_2stg!(H,J,
          jtw,omc,λlm,Δlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
+      #@show βf
       check = abs(nrms-rms)/rms
       if nrms < rms#*(0.95 + 0.3*exp(-0.6*BAD))
          if nrms < rms
@@ -240,6 +307,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
+         iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
          μlm /= 30.0
       else
          μlm = max(4.0*μlm,1.0E-24)
