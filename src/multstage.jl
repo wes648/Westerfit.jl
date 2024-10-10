@@ -92,7 +92,8 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
    ℋ .+= kron(tvecs' *pa_op(ms,1)* tvecs, sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-      ℋ += kron(tvecs' *pa_op(ms,1)* tvecs, sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1))
+      tpart = droptol!(sparse(tvecs' *pa_op(ms,1)* tvecs),1e-12)
+      ℋ += kron(tpart, sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1))
    else
    end
    for i in 1:length(cdf)

@@ -220,9 +220,16 @@ function hqu(pr,j,s,qns)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-function htor2(sof::Array{Float64},ms::Array{Int})::SparseMatrixCSC{Float64, Int64}
-   out = sof[1]*pa_op(ms,2)
-   out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
+function htor2(sof::Array{Float64},nf,ms::Array{Int})::SparseMatrixCSC{Float64, Int64}
+   if (nf≠0)&&(isodd(nf))
+      out = sof[1]*pa_op(ms,2)
+      out += sof[4].*(I(size(out,1)) .- cos_op(ms,1))
+   elseif (nf≠0)&&(iseven(nf))
+      out = sof[1]*pa_op(ms,2)
+      out += sof[4].*(I(size(out,1)) .- cos_op(ms,2))
+   else
+      out = [0.0]
+   end
    return out
 end
 function htor2v2(sof::Array{Float64},nf::Int,mc::Int,σ::Int)

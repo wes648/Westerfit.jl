@@ -70,6 +70,11 @@ end
 -(O::Vector{op},P::Vector{op})::Vector{op} = vcat(O,-1*P)
 
 
+function ur(n::Int)::SparseMatrixCSC{Float64, Int64}
+   out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
+   out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
+   return sparse(out)
+end
 #*(O::op,ψ::psi) = O.v * (O.f(ψ))^O.p
 #Multiplying an operator by the wavefunction gnerates the matrix
 #   Yeah this isn't the most QMly sound notation but it should be

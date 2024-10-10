@@ -46,10 +46,10 @@ function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
       out = kron(I(mmax+1),out)
    elseif rpid==13 # F
       pr = [1.;0.;0.;0.]
-      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+      out = kron(tvecs' * htor2(pr,nf,ms) * tvecs,  I(size(qns,1)))
    elseif rpid==16 # Vnf
       pr = [0.;0.;0.;1.]
-      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+      out = kron(tvecs' * htor2(pr,nf,ms) * tvecs,  I(size(qns,1)))
    elseif rpid==14 # ρzF
       out = kron(tvecs' * pa_op(ms,1) * tvecs, nz_op(qns,1))
    elseif rpid==15 # ρxF
