@@ -193,7 +193,7 @@ end#function
 function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tvecs)
    nf = ctrl["NFOLD"]
    mcalc = ctrl["mcalc"]
-   jcbn = zeros(Float64,size(inds,1),length(perm))
+   #jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
@@ -249,11 +249,12 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    println("Initial RMS = $rms")
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    W = Diagonal(1.0 ./ uncs)
-   ϵ0 = 0.1E-6
-   ϵ1 = 0.1E-6
+   ϵ0 = 0.1E-6 #rms change threshold
+   ϵ1 = 0.1E-8 #step size threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    oλlm = λlm
+   oρlm = 0.0
    println("Initial λ = $λlm")
    Δlm = nrm2(params[perm])/length(perm)
    counter = 0
@@ -265,10 +266,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #puncs = zero(perm)
    βf = zero(perm) #step
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
-   jtw = zero(omc) #jtwient
+   jtw = zeros(Float64,length(perm),size(inds,1))
+   H = zeros(length(perm),length(perm))
    J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
-   H, jtw = build_hess(jtw,J,W)
+   build_hess!(H,jtw,J,W)
    #println(H)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
@@ -281,8 +283,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_2stg!(H,J,
          jtw,omc,λlm,Δlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
       #@show βf
+      ρlm = lbmq_gain2(βf,J,omc,nomc)
+      #@show ρlm
       check = abs(nrms-rms)/rms
-      if nrms < rms#*(0.95 + 0.3*exp(-0.6*BAD))
+
+      if (nrms < rms) && (ρlm > 1e-3)
          if nrms < rms
             BAD = max(0,BAD-1)
          else
@@ -297,8 +302,8 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
-         H, jtw = build_hess(jtw,J,W)
-         #println(diag(H))
+         build_hess!(H,jtw,J,W)
+            #println(diag(H))
          counter += 1
          paramarray[:,counter+1] = params
          #sρlm = (@sprintf("%0.4f", ρlm))
@@ -308,9 +313,9 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
-         μlm /= 30.0
+         μlm /= 20.0
       else
-         μlm = max(4.0*μlm,1.0E-24)
+         μlm = max(10.0*μlm,1.0E-24)
       end
    converged,endpoint = fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,params[perm])
    end#while

@@ -11,9 +11,18 @@ function lbmq_gain(β,λ::Float64,g,h,omc,nomc)::Float64
    if out < 0
       println("fucking gain function")
    end
-   out = 2.0*(sum(omc .^2) - sum(nomc .^2)) / out#abs(out)
+   out = 2.0*(sum(abs2, omc - sum(abs2, nomc))) / out#abs(out)
    return out
 end
+function lbmq_gain2(β,J,omc,nomc)::Float64
+   pred = -sum(abs2, (J * β) .+ omc)
+   actu = sum(abs2,nomc)
+   curr = sum(abs2,omc)
+   #@show actu < curr
+   out = (actu - curr) / (pred - curr)
+   return out
+end
+
 
 function jlister(inds)
    #finds all the unique J & σ pairs
@@ -242,6 +251,11 @@ function build_hess!(hssn,dk,jtw,jcbn,weights)
    #end
    return hssn, dk, jtw
 end
+function build_hess!(hssn,jtw,jcbn,weights)
+   mul!(jtw,jcbn',weights)
+   mul!(hssn,jtw,jcbn)
+end
+
 function build_hess(jtw,jcbn,weights)
    jtw = transpose(jcbn)*weights
    hssn = jtw*jcbn

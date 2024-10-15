@@ -189,7 +189,6 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    #opt
 #   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)
-
 if ctrl["stages"] == 1
    #tsrp, pcov, omcs, cfrqs, vals = lbmq_approx(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
    tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
