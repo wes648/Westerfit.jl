@@ -102,10 +102,10 @@ function derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
       out = kron(I(length(ms)),out)
    elseif rpid==13 # F
       pr = [1.;0.;0.;0.]
-      out = kron(htor2(pr,ms), I(size(qns,1)))
+      out = kron(htor2(pr,nf,ms), I(size(qns,1)))
    elseif rpid==16 # Vnf
       pr = [0.;0.;0.;1.]
-      out = kron(htor2(pr,ms), I(size(qns,1)))
+      out = kron(htor2(pr,nf,ms), I(size(qns,1)))
    elseif rpid==14 # ρzF
       out = kron(pa_op(ms,1), nz_op(qns,1))
    elseif rpid==15 # ρxF
@@ -252,14 +252,24 @@ function build_hess!(hssn,dk,jtw,jcbn,weights)
    return hssn, dk, jtw
 end
 function build_hess!(hssn,jtw,jcbn,weights)
-   mul!(jtw,jcbn',weights)
-   mul!(hssn,jtw,jcbn)
+   jtw = mul!(jtw,jcbn',weights)
+   hssn = mul!(hssn,jtw,jcbn)
+   return hssn, jtw
 end
-
 function build_hess(jtw,jcbn,weights)
    jtw = transpose(jcbn)*weights
    hssn = jtw*jcbn
    return hssn, jtw
+end
+function hstab(hssn,params)
+   for i in 1:length(params)
+      check = abs(hssn[i,i] / params[i])
+      if check < 1e-12
+         temp = abs(params[i])
+         hssn[:,i] .*= temp
+         hssn[i,:] .*= temp
+      end
+   end
 end
 
 function tsrapprox(j,β,stg)::Vector{Float64}

@@ -1,6 +1,7 @@
 """
-Apparently I have to make a new fucking optimizer because some asshole decided to make a new version of westerfit that
-   uses a two stage diagonalization process and the data structures won't line up
+Apparently I have to make a new fucking optimizer because some asshole decided 
+   to make a new version of westerfit that uses a two stage diagonalization
+   process and the data structures won't line up
 functions needed:
 1. new derivative element calculator -- done?
 2. new jacobian calculator -- done?
@@ -203,41 +204,29 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    #@show jcbn
    return jcbn
 end
-function lbmq_2stg!(H,J,jtw,omc,λ,Δ,nlist,inds,nparams,scls,perm,ofreqs,rms,stg,cdo,ctrl)
-   tdncount = ctrl["turducken"]
-   A = Hermitian(H + λ*Diagonal(H))
-   while isposdef(A)==false #this could be tidier
-      λ = max(2.0*λ,1.0E-24)
-      #println(λ)
-      A = Hermitian(H + λ*Diagonal(H))
-   end
+function lbmq_2stp!(H,jtw,omc,λ,β,prms)
+   A = Hermitian(H + λ*Diagonal(abs.(prms) .* diag(H)) )
+   #A = Hermitian(H + λ*I )
+   #while isposdef(A)==false #this could be tidier
+   #   λ = max(2.0*λ,1.0E-24)
+   #   #println(λ)
+   #   A = Hermitian(H + λ*Diagonal(H))
+   #end
    if isinf(λ)
       @warn "LB-MQ Matrix not pos-def!"
       println("Make sure you aren't trying to optimize a parameter with value of 0.0.")
       println("This code is about to crash")
    end
    A = cholesky!(A)
-   β = zeros(Float64,length(perm),tdncount)
-   β[:,1] .= ldiv!(β[:,1], A, jtw*omc) .* scls[perm]
-   for i in 2:tdncount
-      nparams[perm] .+= β[:,i-1]
-      vals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-      nrms, omc, = rmscalc(vals,inds,ofreqs)
-      β[:,i] .= ldiv!(β[:,i], A, jtw*omc) .* scls[perm]
-   end
-   βf = sum(β,dims=2)
-   nparams[perm] .+= β[:,end]
-   vals, nvecs = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   nrms, omc, = rmscalc(vals,inds,ofreqs)
-   return βf,λ,omc,nrms,vals,nvecs, nparams
+   β .= ldiv!(β, A, jtw*omc)# .* scls[perm]
+   return β,λ
 end
 
 
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
-#2pm wed 25/09, I have only placed this function here. I have not finished converting it
-   #sorry future wes
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-
+   GEO = true
+   BOLD = 2
    LIMIT = ctrl["maxiter"]
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
@@ -245,6 +234,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    oparams = paramarray[:,1]
 
    rms, omc, = rmscalc(vals, inds, ofreqs)
+   lrms = rms
    perm = permdeterm(scales,stg)
    println("Initial RMS = $rms")
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
@@ -256,15 +246,15 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    oλlm = λlm
    oρlm = 0.0
    println("Initial λ = $λlm")
-   Δlm = nrm2(params[perm])/length(perm)
    counter = 0
-   BAD = 0
-
+   θ = 0.0
+   bad = 0
    outputstart(molnam,λlm,rms)
 
    nparams = copy(params)
    #puncs = zero(perm)
-   βf = zero(perm) #step
+   βf = zeros(length(perm),2) #step
+   βo = similar(βf[:,1])
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zeros(Float64,length(perm),size(inds,1))
    H = zeros(length(perm),length(perm))
@@ -279,22 +269,48 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    endpoint = "not yet"
    converged=false
    while converged==false
-      λlm = λgen(μlm, rms) 
-      βf,λlm,nomc,nrms,vals,nvecs,nparams = lbmq_2stg!(H,J,
-         jtw,omc,λlm,Δlm,nlist,inds,copy(params),scales,perm,ofreqs,rms,stg,cdo,ctrl)
+      λlm = λgen(μlm, rms)
+      βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
+      if GEO
+         dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
+         βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
+         βf[:,2] .*= 0.5
+         if abs(norm(βf[:,2])/norm(βf[:,1])) > 0.375 #This is half the threshold factor
+            #they suggest 0.75 (so 0.375 here)
+            βf[:,2] .*= 0.0025*abs(norm(βf[:,1])/norm(βf[:,2]))
+         end
+      end
+      βf .*= scales[perm]
       #@show βf
+   #for i in 2:tdncount
+   #   nparams[perm] .+= βf
+   #   vals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+   #   nrms, omc, = rmscalc(vals,inds,ofreqs)
+   #   βt = similar(βf)
+   #   βt,λlm = lbmq_2stp!(H,jtw,omc,λ,βt,ctrl,scls,perm)
+   #   βt .*= scls[perm]
+   #   βf .+= βt
+   #end
+      if counter > 1
+         θ = dot(βf[:,1],βo) / (norm(βf[:,1]*norm(βo)))
+         @show θ
+      end
+      if θ > 0.9999
+         #@show sum(βf,dims=2)
+         βf .*= 1.5
+      end
+
+      nparams[perm] .+= sum(βf,dims=2)
+      vals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      nrms, nomc, = rmscalc(vals,inds,ofreqs)
       ρlm = lbmq_gain2(βf,J,omc,nomc)
-      #@show ρlm
       check = abs(nrms-rms)/rms
 
       if (nrms < rms) && (ρlm > 1e-3)
-         if nrms < rms
-            BAD = max(0,BAD-1)
-         else
-            println("This might be a bad step")
-            BAD += 1
-         end
+      #if ((nrms*(1. - θ)^BOLD)< lrms)|| ((nrms < rms) && (ρlm > 2e-2))# || bad > 2
+         bad = 0
          rms = nrms
+         lrms = min(lrms,rms)
          omc = nomc
          params .= nparams
          #println(params)
@@ -302,7 +318,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
-         build_hess!(H,jtw,J,W)
+         H, jtw = build_hess!(H,jtw,J,W)
+         #@show J
+         #hstab(H,params[perm])
+         @show norm(jtw*omc)
+         βo = βf[:,1]
             #println(diag(H))
          counter += 1
          paramarray[:,counter+1] = params
@@ -312,10 +332,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          #sΔ = (@sprintf("%0.6f", Δlm))
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
-         iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
+         iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
          μlm /= 20.0
       else
          μlm = max(10.0*μlm,1.0E-24)
+         bad += 1
       end
    converged,endpoint = fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,params[perm])
    end#while
