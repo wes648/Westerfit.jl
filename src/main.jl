@@ -28,7 +28,8 @@ include("@__DIR__/../new_ham.jl")
 include("@__DIR__/../opt/opt-com.jl")
 include("@__DIR__/../opt/optimizer.jl")
 include("@__DIR__/../opt/opt-approx.jl")
-include("@__DIR__/../opt/opt-twostg.jl")
+include("@__DIR__/../opt/opt-dubious.jl")
+#include("@__DIR__/../opt/opt-twostg.jl")
 include("@__DIR__/../remnant.jl")
 include("@__DIR__/../transitions.jl")
 include("@__DIR__/../transi-2stg.jl")
@@ -95,7 +96,7 @@ function westereng(molnam::String, prm, ctrl)
       fqns[1:jsvd,:,sc] = tempq
       tvcs[:,:,sc] = tempt
    else
-      @warn "I can't diagonalize in zero stages"
+      @warn "I can't diagonalize in this number of stages"
    end#if
    end#for
    println("yay energy levels are calculated!")
@@ -153,7 +154,7 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
       fr,qn = tracalc_twostg(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
                            vals,vecs,quns,σ,uncs,tvcs)
       else
-         @warn "I can't diagonalize in zero stages"
+         @warn "I can't diagonalize in this number of stages"
       end#if
       finfrq = vcat(finfrq,fr)
       finqns = vcat(finqns,qn)

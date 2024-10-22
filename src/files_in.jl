@@ -14,7 +14,8 @@ function blockfind(molnam::String,blknam::String)
    out = zeros(Int,2)
    count = 0
    inblock = false
-   for i in eachline(open("$molnam.inp"))
+   io = open("$molnam.inp")
+   for i in eachline(io)
       count += 1
       if contains(i,blknam)
          out[1] = count
@@ -22,9 +23,14 @@ function blockfind(molnam::String,blknam::String)
       elseif isempty( filter(x -> !isspace(x), i) )&& inblock==true
          out[2] = count
          break
+      elseif eof(io)
+         out[2] = count
+         break
       end
    end
-   #@show out
+   close(io)
+   @show blknam
+   @show out
    return out
 end
 
@@ -179,6 +185,13 @@ parsetuple(T::Type,s::AbstractString) = Tuple(parse.(T, split(s, ',')))
 parsetuple(T::Type,s::Int) = s
 parsetuple(s::Int) = s
 parsetuple(T::Type,s::Float64) = s
+function opreadconv(x)::Int
+   if typeof(x) == SubString{String}
+      return 0
+   else
+      return x
+   end
+end
 
 function opinp(molnam::String,nfold)
    #findstr = `grep -n PARAMS $molnam.inp`
@@ -207,7 +220,7 @@ function opinp(molnam::String,nfold)
    for i in col
       nams[i] = file[i,1]
       vals[i] = file[i,2] #parsetuple(Float64,file[i,2])
-      oprs[:,i] = file[i,4:end-1] #parsetuple.(Int,file[i,4:end-1])
+      oprs[:,i] = opreadconv.(file[i,4:end-1]) #parsetuple.(Int,file[i,4:end-1])
       errs[i] = file[i,3]
       stgs[i] = file[i,end]
    end

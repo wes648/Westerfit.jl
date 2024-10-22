@@ -1,5 +1,6 @@
 # westerfit
 A new program for the simulating and fitting of molecular rotational spectra for $C_s$ molecules with one internal rotor and one spin source.
+The westerfit package has been developed & is maintained by J.H. "Wes" Westerfield and Sophie E. Worthingon-Krisch.
 
 The paper is available [here](https://doi.org/10.1016/j.jms.2024.111928) and the pre-print is available [here](https://dx.doi.org/10.2139/ssrn.4807560).
 
@@ -7,15 +8,20 @@ Please feel free to direct any questions about the program to westerfit@proton.m
 
 # Quickstart
 
-The following is intended to be a quick reference on the input file structure & program usage. A more complete manual will be constructed once the paper is published.
-The westerfit input file is divided into three sections each with a designated header. The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
+The following is intended to be a quick reference on the input file structure & program usage. 
+A more complete manual will be constructed once the paper is published.
+The westerfit input file is divided into three sections each with a designated header. 
+The very first line is a title card and the sections are the Control Settings (%CNTRLS), Second Order Parameters (%2NDORDER), and the additional Operators & Parameters (%PARAMS).
 
 ### Control Settings
 Below are control settings, their meanings, and default values::Type
 
 **apology** (true::Bool): Prints a sincere if awkward apology for the name of the program
 
-**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. ES will run through the same calculations as S but without printing energy levels. The Fit will run first and then put the new parameters into the ES calculation.
+**RUNmode** (ESF::String): Dictates how the program is run by finding characters in string. 
+E calculates & prints energy levels, S calculates & prints transitions, and F performs the optimization. 
+ES and S will run through the same calculations but S will only print transitions while ES will also print energy levels. 
+The Fit will run first and then put the new parameters into the ES calculation.
 
 **overwrite** (true::Bool): Whether or not to overwrite the input file with the new values from the fit. Regardless, the input file will be copied to a back up.
 
@@ -23,7 +29,10 @@ Below are control settings, their meanings, and default values::Type
 
 **NFOLD** (0::Int): Symmetry-fold of the internal rotor. 0 disables most of the torsional code (I think)
 
-**mcalc** (8::Int): Determines the size of the torsional basis as 2mcalc+1 for A & E symmetry states and 2mcalc+2 for B symmetry. BELGI uses 10 for the first stage and the equivalent of 4 for the second stage. I've found 5 to work reasonably well without being repulsively slow.
+**mcalc** (8::Int): Determines the size of the torsional basis as 2mcalc+1. BELGI uses 10 for the first stage and the equivalent of 4 for the second stage. 
+I've found 5 to work reasonably well without being repulsively slow.
+
+**mmax** (??::Int): Determines the number of torsional states in the second diagonalization as mmax+1
 
 **vtmax** (0::Int): Largest torsional state output by the code. I *think* this also impacts what torsional states are used in the fitter. Best to keep with just ground state for now. 
 
@@ -37,17 +46,32 @@ Below are control settings, their meanings, and default values::Type
 
 **TK** (8.0::Float64): Temperature of the simulation in Kelvin
 
-**λlm0** (0.0001::Float64): Scale-factor used to determine the inital Levenberg-Marquardt Parameter. This gets multiplied by a function of the rms to determine the LBMQ Parameter used in a given step.
+**λlm0** (0.0001::Float64): Scale-factor used to determine the inital Levenberg-Marquardt Parameter. 
+This gets multiplied by a function of the rms to determine the LBMQ Parameter used in a given step.
 
-**turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
+**turducken** (1::Int): Number of Levenberg-Marquardt steps calculated on single step before recalculated the Jacobian. 
+Doesn't seem worth it given the current performance of the Jacobian but can give an occasional performance boost
 
 **goal** (1.0::Float64): The value of the weighted RMS that terminates the fit. Intended to prevent fitting past the experimental resolution.
 
-**assign** (expect::String): Determines how the quantum numbers are assigned after diagonalization. The default, **expect**, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. **RAM36** uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. **expectk** is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. Lastly, **eeo** does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. This does the best job of reproducing SPFIT's DIAG=3. Generally **expect** is recommended but **RAM36** works very nicely for single perturbations (spin or torsion). I'm personally fond of the theory in **eeo** but find its performance lacking.
+**assign** (ram36::String): Determines how the quantum numbers are assigned after diagonalization. 
+The default, **expect**, uses the expectation values of $m$ & then $N$ followed by an energetic sorting to assign $K$. 
+**RAM36** uses the contributions of different blocks of the eigenvectors to provide a spin-expanded version of the assigner in RAM36. 
+**expectk** is similar to expect but uses the expectation values of $K$ as well and doesn't seem to work. 
+Lastly, **eeo** does the expection values of $m$ and $N$ followed by eigenvector analysis to assign $K$. 
+This does the best job of reproducing SPFIT's DIAG=3. Generally **expect** is recommended but **RAM36** works very nicely for single perturbations (spin or torsion). 
+I'm personally fond of the theory in **eeo** but find its performance lacking.
 
+**stages**(1::Int): The number of diagonalization stages used. 
+1 treats everything in a singular Hamiltonian matrix for a given $J$ & $\sigma$ pair. 
+2 moves the purely $m$ dependent terms into an intial torsional stage before proceeding into a BELGI-like ro-tor diagonalization stage. 
+This differs from BELGI as the first stage does not include $K$ dependent terms. 
+I like 1 better for being more elegant but 2 is substantially faster and highly recommended for 2-fold rotor problems.
 
 ### Second Order Parameters
-The second order Hamiltonian of westerfit is hardcoded. You can comment out any lines with # but the number of lines must remain fixed in this section. All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
+The second order Hamiltonian of westerfit is hardcoded. 
+You can comment out any lines with # but the number of lines must remain fixed in this section. 
+All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
 
 $A$, $B$, and $C$ are the rotational constants corresponding to the $z$, $x$, and $y$ molecule fixed axes respectively. 
 $D_{ab}$ is the off-diagonal rotational constant on the $x$ and $z$ axes for the Rho Axis Method. 
@@ -78,20 +102,19 @@ The table below shows how the scale values in the 2nd order section are actually
 |:-------------:|:------------: |:-------------:|:------------: |
 | A  | BK $N_z^2$           | ϵzz | T⁰₀(ϵ) $T^0_0(N,S)$ |
 | B  | BN $N^2$             | ϵxx | T²₀(ϵ) $T^2_0(N,S)$ |
-| C  | B⨦ $(N_+^2 + N_-^2)$ | ϵyy | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
+| C  | B± $(N_+^2 + N_-^2)$ | ϵyy | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
 | ρz | rz $P_{\alpha}N_z$   | ϵzx | T²₁(ϵ) $T^2_{\pm1}(N,S)$ |
 | ρx | rx $P_{\alpha}N_x$   | ϵxz | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
 
 ### Higher order operators
-These are manual coded in operators that are implemented as the anti-commutator of what the user codes in.
+These are manual coded in operators that are implemented as the anti-commutator of what the user codes in. 
 These lines can also be commented out but do not remove the lines opening with %.
 The first column is a name string for the operators.
 Here are some unicode characters for easier name: Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ.
 The second & third columns are Float64 and are the parameter value and step scale factor, respectively. A scale factor of zero will keep that operator fixed during the optimization.
-The next 8 columns are Int referring to the powers of the various operators as described in the line beginign that block of the input file.
-There are no checks of symmetry like in RAM36 so go wild. 
-One could also code in inverse powers but I'm not sure why one would. 
-Let me know if you do and how it helped!
+The next 8 columns are Int referring to the powers of the various operators as described in the line begining that block of the input file.
+A string character like . or ⋅ can be used equivalently to 0 in attempt to make the input easier to read.
+There are no checks of symmetry like in RAM36 so go wild but the user is also expected to know what they are doing. 
 The last column is a stage. It is either 0 for intensites of 1 for Hamiltonian operators. Might expand that if I come up with better code structures.
 
 ### Line File Format

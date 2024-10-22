@@ -158,15 +158,15 @@ function qn2ind(nf,vtm,m,j,s,n,ka,kc)
 end
 
 """
-Determines the number of σ values that will result in unique values a provided
+Determines the number of σ values that will result in separable torsional blocks a provided
    nfold value. So for nfold = 3, it returns 2 since we have the A states of
    σ=0 and E states of σ=1. It will also return 2 for nfold = 2 since we have A
    and B states.
 """
-function σcount(nfold)
+function σcount(nfold::Real)
    if isodd(nfold)
       out = floor(Int,0.5*(nfold+1))
-   elseif iseven(nfold)
+   elseif iseven(nfold)&&nfold≠0
       out = floor(Int,(nfold+1)/3)
    else #nfold == 0
       out = ones(Int,1)
@@ -193,7 +193,7 @@ function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    return marray
    end
 end
-function msgen(nfold,mcalc,σ)
+function msgen(nfold::Int,mcalc::Int,σ::Int)
    marray = msgen(Int,nfold,mcalc,σ)
    return marray
 end
