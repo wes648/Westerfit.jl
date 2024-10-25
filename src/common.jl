@@ -165,9 +165,9 @@ Determines the number of σ values that will result in separable torsional block
 """
 function σcount(nfold::Real)
    if isodd(nfold)
-      out = floor(Int,0.5*(nfold+1))
+      out = ceil(Int,0.5*nfold)
    elseif iseven(nfold)&&nfold≠0
-      out = floor(Int,(nfold+1)/3)
+      out = floor(Int,nfold/4) + 1
    else #nfold == 0
       out = ones(Int,1)
    end
@@ -194,7 +194,10 @@ function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    end
 end
 function msgen(nfold::Int,mcalc::Int,σ::Int)
-   marray = msgen(Int,nfold,mcalc,σ)
+   marray = msgen(Int,nfold,mcalc,abs(σ))
+   if σ < 0
+      marray .*= -1
+   end
    return marray
 end
 
