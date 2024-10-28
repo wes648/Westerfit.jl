@@ -39,7 +39,12 @@ transitions.jl calculates the transition intensities & does the frequency filter
 optimizer.jl has the levenberg-marquadt implementation
 files_in.jl and files_out.jl are for the input & output file handling respectively
 
-Anything else is likely exerpimental or no longer used
+Anything else is likely experimental or no longer used
 """
+
+function julia_main()::Cint
+  westerfit(ARGS)
+  return 0 # if things finished successfully
+end
 
 end # module

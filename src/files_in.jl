@@ -29,8 +29,8 @@ function blockfind(molnam::String,blknam::String)
       end
    end
    close(io)
-   @show blknam
-   @show out
+   #@show blknam
+   #@show out
    return out
 end
 

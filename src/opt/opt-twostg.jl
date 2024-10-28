@@ -298,7 +298,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          omc = nomc
          params .= nparams
          #println(params)
-         #vecs .= nvecs
+         vecs .= nvecs
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])

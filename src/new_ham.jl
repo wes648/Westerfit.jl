@@ -445,7 +445,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,tormat,ms)::SparseMatrixCSC{Fl
    ℋ .+= kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-      ℋ += kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1))
+      ℋ += kron(pa_op(ms,1), sparse(sof[14]*nz_op(qns,1)) + sof[15]*npm_op(qns,1))
    else
    end
    for i in 1:length(cdf)
@@ -507,8 +507,8 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int((2*jmax+1)*msd),jfd*vtd)
-   for j in jlist #thread removed for troubleshooting purposes
-#   @threads for j in jlist
+#   for j in jlist #thread removed for troubleshooting purposes
+   @threads for j in jlist
       jd = Int(2.0*j) + 1
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))
@@ -542,7 +542,7 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      for j in jsublist
+      @threads for j in jsublist
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,vtm) 
          fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,

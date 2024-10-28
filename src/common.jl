@@ -163,13 +163,13 @@ Determines the number of σ values that will result in separable torsional block
    σ=0 and E states of σ=1. It will also return 2 for nfold = 2 since we have A
    and B states.
 """
-function σcount(nfold::Real)
+function σcount(nfold::Real)::Int
    if isodd(nfold)
       out = ceil(Int,0.5*nfold)
    elseif iseven(nfold)&&nfold≠0
       out = floor(Int,nfold/4) + 1
    else #nfold == 0
-      out = ones(Int,1)
+      out = 1
    end
    return out
 end
