@@ -16,7 +16,7 @@ WignerSymbols = "9f57e263-0b3d-5e2e-b1be-24f2bb48858b"
 
 [compat]
 DelimitedFiles = "^1.9.1"
-MKL = "0.7.0"
+MKL = "^0.7.0"
 StaticArrays = "^1.9.8"
 WIGXJPFjl = "^1.11.0"
 WignerSymbols = "^2.0.0"
