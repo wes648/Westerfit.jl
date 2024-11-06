@@ -783,11 +783,6 @@ function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
    close(io)
 end
 
-function pdiff(params,puncs)
-   pdiff = sfdiv(puncs, params)
-return pdiff
-end
-
 function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
 
    strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
@@ -836,12 +831,16 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"\n")
 
       unformat = fill("0",length(params))
-      println(io,"                         Parameter                   Uncertainty             Percent Difference")
+      println(io,"                         Parameter                    Uncertainty    % Uncertainty")
       for i in 1:length(params)
-         pdiffi = sfdiv(puncs[i],params[i])*100
+         if puncs[i] == 0.0
+            pdiffi = "-"
+         else
+            pdiffi = abs(round(puncs[i]/params[i]*1000,digits=4))
+         end
          ln = 30 - length(fullnam[i])
          ln2 = 30 - length(params[i])
-         ln3 = 30 - length(pdiffi)
+         ln3 = 17 - length(pdiffi)
          unformat[i] = string(" ",fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2), "; ", lpad(pdiffi, ln3))
       end
       for i in 1:length(unformat)
