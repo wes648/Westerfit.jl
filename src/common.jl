@@ -495,3 +495,11 @@ function lesserof(x::Real,y::Real)
       return x
    end
 end
+
+function sfdiv(a::Real,b::Real)::Float64
+   if b ≤ zero(b)
+      return 0.0
+   else
+      return a / b
+   end
+end
