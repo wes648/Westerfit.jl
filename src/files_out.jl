@@ -831,7 +831,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       println(io,"\n")
 
       unformat = fill("0",length(params))
-      println(io,"                         Parameter                    Uncertainty    % Uncertainty")
+      println(io,"                         Parameter                    Uncertainty    ‰ Uncertainty")
       for i in 1:length(params)
          if puncs[i] == 0.0
             pdiffi = "-"
