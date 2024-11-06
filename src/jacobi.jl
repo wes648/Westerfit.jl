@@ -64,7 +64,7 @@ end
 #Returns a sparse identity matrix of size x. Mostly used for type consistency in
 #   the Wang Transformations.
 #"""
-#   return sparse!(I,x,x)
+#   return sparse(I,x,x)
 #end
 function givenS(A,p::Int,q::Int,θ::Float64)
    V = eye(size(A,1))
@@ -184,7 +184,7 @@ function SparseSweepF(A,V = eye(size(A,1)), f=0)
    end
    return A,V
 end
-function jacobisparse!(A,cnt=1,f=0)
+function jacobisparse(A,cnt=1,f=0)
    V = eye(size(A,1))
    for i in 1:cnt 
       A,V = SparseSweepF(A,V,f)

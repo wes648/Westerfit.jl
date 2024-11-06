@@ -83,7 +83,7 @@ function fullμmat(μs,nf,mcalc,s,jb,σb,jk,σk)
 end
 function intmat(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck)
    out = fullμmat(μ,nf,mcalc,s,jk,σk,jb,σb)
-   out = sparse!(transpose(vecb)*(out)*veck)
+   out = sparse(transpose(vecb)*(out)*veck)
    out .*= out
    return droptol!(out,INTTHRESH*0.01)
 end
@@ -137,7 +137,7 @@ function tracalc_nocat(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       #calculate intensities
       μs = intmat(μ,ctrl["INTthres"],nf,ctrl["mcalc"],s,jb,σr,bvecs,jk,σc,kvecs)
       if (jb==jk)&&(σr==σc)
-         μs = sparse!(UpperTriangular(μs))
+         μs = sparse(UpperTriangular(μs))
       end
       rind, cind, tints = findnz(μs)
       for l in 1:length(tints)
