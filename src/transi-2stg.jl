@@ -26,7 +26,7 @@ function fullμmat_2stg(μs,nf,mcalc,s,jb,σb,jk,σk,tvecs)
 end
 function intmat2stg(μ,INTTHRESH,nf,mcalc,s,jb,σb,vecb,jk,σk,veck,tvecs)
    out = fullμmat_2stg(μ,nf,mcalc,s,jk,σk,jb,σb,tvecs)
-   out = sparse(transpose(vecb)*(out)*veck)
+   out = sparse!(transpose(vecb)*(out)*veck)
    out .*= out
    return droptol!(out,INTTHRESH*0.01)
 end
@@ -64,7 +64,7 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       #calculate intensities
 μs = intmat2stg(μ,ctrl["INTthres"],nf,ctrl["mcalc"],s,jb,σr,bvecs,jk,σc,kvecs,tvecs)
       if (jb==jk)&&(σr==σc)
-         μs = sparse(UpperTriangular(μs))
+         μs = sparse!(UpperTriangular(μs))
       end
       rind, cind, tints = findnz(μs)
       for l in 1:length(tints)

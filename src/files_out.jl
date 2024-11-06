@@ -561,7 +561,7 @@ function inpwriter(molnam::String, values, scales)
 
   # numvals = strlnhigh-strln2nd-1
    secvalues = values[1:18] #new values of second order ops
-   println(secvalues)
+   #println(secvalues)
 
    highstg= file[strlnhigh+2:end,end] #stages of higher order ops
    ohighval = file[strlnhigh+2:end,2] #old vals of higher order ops

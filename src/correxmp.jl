@@ -147,7 +147,7 @@ function μgen(n)
    kb = permutedims(kk)
    out = zeros(2*n+1,2*n+1)
    @. out = wig3j(nb,1,nk,-kb,-1,kk) + wig3j(nb,1,nk,-kb,0,kk) + wig3j(nb,1,nk,-kb,1,kk)
-   return sparse(out)
+   return sparse!(out)
 end
 function μgen(k,b)
    nk = ngeni(k,2*b+1)
@@ -156,7 +156,7 @@ function μgen(k,b)
    kb = permutedims(kgen(b,2*k+1))
    out = zeros(2*k+1,2*b+1)
    @. out = wig3j(nb,1,nk,-kb,-1,kk) + wig3j(nb,1,nk,-kb,0,kk) + wig3j(nb,1,nk,-kb,1,kk)
-   return sparse(out)
+   return sparse!(out)
 end
 function allowints(nmax,vecs)
    mat = spzeros(size(vecs,2),size(vecs,2))
@@ -182,7 +182,7 @@ function allowtras(nmax::Real,vals::Array{Float64},vecs::Array{Float64,2})
       out[r,c] = vals[r] - vals[c]
    end
    out .*= (out .> 0.0)
-   return droptol!(sparse(out), 1e-9)
+   return droptol!(sparse!(out), 1e-9)
 end
 function allowtras(nmax::Real,κ::Real)
    vals,vecs = quickeigs(nmax,κ)

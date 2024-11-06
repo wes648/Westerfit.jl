@@ -16,7 +16,7 @@ end
 
 function limsubtract(a,b)
    r,c, = findnz(a)
-   f = sparse(r,c,ones(length(c)))
+   f = sparse!(r,c,ones(length(c)))
    out = a - (b .* f)
    return out
 end

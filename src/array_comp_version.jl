@@ -93,7 +93,7 @@ function sz_comp(j,s)
    l = Int((2*j+1)*(2*s+1))
    out = spzeros(l,l)
    qns = qngen(j,s)
-   out .= sparse([szpart(j,s,qns[b,:],qns[a,:]) for a ∈ 1:l, b ∈ 1:l ])
+   out .= sparse!([szpart(j,s,qns[b,:],qns[a,:]) for a ∈ 1:l, b ∈ 1:l ])
    out = nred(s).*dropzeros!(out)
    return out
 end
@@ -102,7 +102,7 @@ function sz_broad(j,s)#aggressively slower
    l = Int((2*j+1)*(2*s+1))
    qns = qngen(j,s)
    out = spzeros(l,l)
-   @. r,c, = findnz(sparse((abs(qns[:,1]' - qns[:,1])≤1) 
+   @. r,c, = findnz(sparse!((abs(qns[:,1]' - qns[:,1])≤1) 
       * (abs(qns[:,2]' - qns[:,2])==0) ))
 
    #r,c,v = fnzred(out)
@@ -113,12 +113,12 @@ function sz_broad(j,s)#aggressively slower
    #r,c,v = fnzred(r,c,v)
    @. v *= (-1)^(s+j+1 -qns[r,2])
    #out = szpart.(j,s,qns', qns)
-   out = nred(s).*dropzeros!(sparse(r,c,v))
+   out = nred(s).*dropzeros!(sparse!(r,c,v))
    return Symmetric(out)
 end
 
 function fnzred(r::Array,c::Array,v::Array)
-   r,c,v = findnz(sparse(r,c,v))
+   r,c,v = findnz(sparse!(r,c,v))
    f = r .≤ c
    return r[f], c[f], v[f]
 end

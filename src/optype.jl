@@ -1,16 +1,27 @@
 
 using LinearAlgebra
 using SparseArrays
+using BenchmarkTools
 import Base.*
 import Base.^
 import Base.+
 import Base.-
 
-struct psi
-   N::Int
+
+tplus!(a::Diagonal)::Diagonal = a
+tplus!(a::Array{Float64,2})::Array{Float64,2} = hermitianpart!(2a)
+function tplus!(a::SparseMatrixCSC{Float64, Int64})::SparseMatrixCSC{Float64, Int64}
+   a .+= permutedims(a)
 end
 
-struct op
+struct psi
+   N::Int
+   K::Vector{Int}
+   lng::Int
+   psi(N::Int) = new(N,collect(-N:N),2N+1)
+end
+
+mutable struct op
    #v for value as in parameter value
    v::Number
    #p for power as in operator power
@@ -23,9 +34,10 @@ struct op
 end
 
 #Multiplying an operator by a number updates the value
-*(v::Number,O::op)::op = op(O.v*v,O.p,O.f)
+*(v::Number,O::op)::op = op(v*O.v,O.p,O.f)
 #Raising an operator to a power updates the exponent
-^(O::op,n::Int)::op = op(O.v,O.p*n,O.f)
+^(O::op,n::Int)::op = op(O.v,n*O.p,O.f)
+
 function ^(O::Vector{op},n::Int)::Vector{op}
    out = O
    for i in 2:n
@@ -45,7 +57,7 @@ end
 function *(O::Vector{op},P::op)::Vector{op}
    OP = similar(O)
    for i in eachindex(O)
-      OP[i] = O * P[i]
+      OP[i] = O[i] * P
    end
    return OP
 end
@@ -58,6 +70,7 @@ function *(O::Vector{op},P::Vector{op})::Vector{op}
    end
    return OP
 end
+
 #Adding two operators generates a vector of operators
 +(O::op,P::op)::Vector{op} = vcat(O,P)
 +(O::op,P::Vector{op})::Vector{op} = vcat(O,P)
@@ -79,15 +92,16 @@ end
 #Multiplying an operator by the wavefunction gnerates the matrix
 #   Yeah this isn't the most QMly sound notation but it should be
 #   fairly comfortable & easy for spectroscopists to follow
-function *(O::op,ψ::psi)
-   out = O.v
+function *(O::op,ψ::psi)#::SparseMatrixCSC{Float64, Int64}
+   out = O.v*I(ψ.lng)
    for i in eachindex(O.p)
-      out *= (O.f[i](ψ))^O.p[i]
+      out *= (O.f[i](ψ,O.p[i]))
    end
+   tplus!(out)
    return out
 end
 #This allows the basis set to be distributed among a list of added operators
-function *(O::Vector{op},ψ::psi)
+function *(O::Vector{op},ψ::psi)::SparseMatrixCSC{Float64, Int64}
    out = O[1]*ψ
    for i in 2:length(O)
       out += O[i]*ψ
@@ -96,65 +110,70 @@ function *(O::Vector{op},ψ::psi)
 end
 #This allows a scalar to be distributed among a list of added operators
 function *(v::Number,O::Vector{op})::Vector{op}
-   out = v*O[1]
-   for i in 2:length(O)
-      out += v*O[i]
+   out = similar(O)
+   for i in 1:length(O)
+      out[i] = v*O[i]
    end
    return out
 end
 
 #Get it? \squarert? It's a more stable variant of sqrt that defaults to zero when
 #   given a negative input value
-function □rt(x)::Float64
-   if x ≤ zero(x)
-      return 0.0
-   else
-      return √x
-   end
-end
-function fh(x::Int,y::Int)::Float64
-   out = □rt((x-y)*(x+y+1))
-   return out
-end
+eh(x::Real)::Float64 = √(x*(x+1))
+□rt(x::Real)::Float64 =√(x*(x>zero(x)))
+fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 
 #The four nice angular momentum operators
-function nz(ψ::psi)::Diagonal{Float64, Vector{Float64}}
-   Diagonal(collect(Float64,-ψ.N:ψ.N))
+function nz(ψ::psi,p::Int)::Diagonal{Float64, Vector{Float64}}
+   Diagonal(ψ.K)^p
 end
-function nt(ψ::psi)::Diagonal{Float64, Vector{Float64}}
-   Diagonal(fill(√(ψ.N*(ψ.N+1)),2*ψ.N +1))
+function nt(ψ::psi,p::Int)::Diagonal{Float64, Vector{Float64}}
+   Diagonal(fill(eh(ψ.N)^p, ψ.lng))
 end
-function np(ψ::psi)::SparseMatrixCSC{Float64, Int64}
-   out = fh.(ψ.N,collect(-ψ.N:ψ.N-1))
-   out = spdiagm(-1=>out)
-   return out
-end
-function nm(ψ::psi)::SparseMatrixCSC{Float64, Int64}
-   out = fh.(ψ.N,collect(-ψ.N:ψ.N-1))
-   out = spdiagm(1=>out)
+function np(ψ::psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+   ns = fill(ψ.N,ψ.lng-p)
+   part = ones(length(ns))
+   if p ≤ length(ns) && p ≠ 0
+      ks = ψ.K[1+p:end]
+      part = ones(length(ks))
+      for o in 1:p
+         part .*= fh.(ns,ks.-o)
+      end
+   #end#original if
+      out = spzeros(ψ.lng,ψ.lng)
+      out[diagind(out,-p)] = part
+   elseif p > length(ns) && p ≠ 0
+      out = spzeros(ψ.lng,ψ.lng)
+      out[diagind(out,-p)] = part
+   else
+      out = spdiagm(ones(ψ.lng))
+   end
    return out
 end
 
+
 ### TEST BIT FOR DEMO ###
-using Symbolics
-@variables A B C
-A = 3000.
-B = 1500.
-C = 1000.
 Nz = op(1.0,1,nz)
 Nt = op(1.0,1,nt)
 Np = op(1.0,1,np)
-Nm = op(1.0,1,nm)
-Nx = 0.5*(Np + Nm)
-Ny = 0.5*im*(Np-Nm)
+#Nm = op(1.0,1,nm)
+Nz2 = op(1.0,2,nz)
+Nt2 = op(1.0,2,nt)
+Np2 = op(1.0,2,np)
+#Nm2 = op(1.0,2,nm)
+ψ = psi(3)
 #Setting the value of psi defines N
-ϕ = psi(1)
+#ϕ = psi(1)
 
 #The effective vs pretty forms of the asymmetric top hamiltonian
-H = (A - 0.5*(B+C))*Nz^2 + 0.5*(B+C)*Nt^2 + 0.25*(B-C)*(Np^2 + Nm^2)
-Hv2 = A*Nz^2 + B*Nx^2 + C*Ny^2
+#H = (A - 0.5*(B+C))*Nz^2 + 0.5*(B+C)*Nt^2 + 0.25*(B-C)*(Np^2 + Nm^2)
+BK = 1.75
+BN = 1.25
+Bp = 0.125
+H = BK*Nz2 + BN*Nt2 + Bp*(Np2)
+#Hv2 = A*Nz^2 + B*Nx^2 + C*Ny^2
 
-H*ϕ
-Hv2*ϕ
+#H*ϕ
+#Hv2*ϕ
 
 

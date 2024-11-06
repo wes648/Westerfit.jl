@@ -464,7 +464,7 @@ function hsr(pr,j,s)
    @simd for l in 0:2:2
       out[f] += srlpart(pr,l,j,s,nbs[f],kbs[f],nks[f],kks[f])
    end#sr for loop
-   return dropzeros(sparse(out))
+   return dropzeros!(sparse!(out))
 end
 function hrsr(rpr,spr,j,s)
    lb = convert(Int,(2.0*s+1.0)*(2.0*j+1.0))
@@ -712,9 +712,9 @@ function rsrop(a::Int,b::Int,c::Int,d::Int,e::Int,h::Int,
    #::SparseMatrixCSC{Float64, Int64}#::Array{Float64,2}
    #all in the follwing line commute!
    op = ntop(a,nb,kb,nk,kk)*nzop(b,nb,kb,nk,kk)*nsop(d,j,s,nb,kb,nk,kk) 
-   op *= sparse(npmp(c,nb,kb,nk,kk))
-   op *= sparse(nyop(1-δi(0,h),nb,kb,nk,kk))
-   op *= sparse(szop2(e,j,s,nb,kb,nk,kk))
+   op *= sparse!(npmp(c,nb,kb,nk,kk))
+   op *= sparse!(nyop(1-δi(0,h),nb,kb,nk,kk))
+   op *= sparse!(szop2(e,j,s,nb,kb,nk,kk))
    #op += transpose(op)
    return 0.25 * op
 end
@@ -744,13 +744,13 @@ end
 function cdsum(cdf,cdo,j,s,nb,kb,mb,nk,kk,mk)
    am = ntop(Int(sum(cdo[1,:])>0),nb,kb,nk,kk)
    bm = nzop(Int(sum(cdo[2,:])>0),nb,kb,nk,kk)
-   cm = sparse(npmp(Int(sum(cdo[3,:])>0),nb,kb,nk,kk))
+   cm = sparse!(npmp(Int(sum(cdo[3,:])>0),nb,kb,nk,kk))
    dm = nsop(Int(sum(cdo[4,:])>0),j,s,nb,kb,nk,kk) 
-   em = sparse(szop2(Int(sum(cdo[5,:])>0),j,s,nb,kb,nk,kk))
+   em = sparse!(szop2(Int(sum(cdo[5,:])>0),j,s,nb,kb,nk,kk))
    fm = paop(Int(sum(cdo[6,:])>0),mb,mk)
    gm = cosp(Int(sum(cdo[7,:])>0),mb,mk)
    hs = sinp(Int(sum(cdo[8,:])>0),mb,mk)
-   hy = sparse(nyop(Int(sum(cdo[8,:])>0),nb,kb,nk,kk))
+   hy = sparse!(nyop(Int(sum(cdo[8,:])>0),nb,kb,nk,kk))
    out = zeros(size(mk).*size(nk))
    @simd for i in eachindex(cdf)
       rop = am^cdo[1,i] * bm^cdo[2,i] * cm^cdo[3,i] * dm^cdo[4,i] *
@@ -776,7 +776,7 @@ end
 #function torop(pr::Float64,p::Int,c::Int,
 #               mb::Array{Int,2},mk::Array{Int,2}
 #               )::SparseMatrixCSC{Float64, Int64}
-#   op = paop(p,mb,mk)*sparse(cosp(c,mb,mk))
+#   op = paop(p,mb,mk)*sparse!(cosp(c,mb,mk))
 #   return (op + transpose(op)) .* (pr/2.0)
 #end
 
@@ -903,7 +903,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,nf,mcalc,mb,mk,j,s,σ,σt,vtm)
    ### All lines commented with ### are for the Jacobi routine
    ###perm = kperm(j,s,mcalc)
    ###H = permute!(H,perm,perm)
-   ###H, rvecs = jacobisparse(H, 3)#Int(j+s)+mcalc)
+   ###H, rvecs = jacobisparse!(H, 3)#Int(j+s)+mcalc)
    ###rvecs = U*rvecs
    #@time vals, vecs = LAPACK.syev!('V', 'U', Matrix(H))
    vals, vecs = eigen!(Symmetric(Matrix(H)))

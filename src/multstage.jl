@@ -10,8 +10,8 @@ function build_h1(n,mc,σ)
    ms = collect(-(3mc+σ):3:(3mc+σ))
    ht = spdiagm(0=>(f.* ms.^2 .+ 0.5*v), 1=>fill(-0.25v,length(ms)-1), -1=>(fill(-0.25v,length(ms)-1))) .* csl
    hr = hrotest([1.75;1.25;0.125;.08],n)
-   rho = -2*f*csl*0.05 .* kron(Diagonal(ms),Diagonal(collect(-n:n)))
-   out = dropzeros(kron(ht,I(2n+1)) + kron(I(length(ms)),hr) + rho)
+   rho = -2*f*csl*0.5 .* kron(Diagonal(ms),Diagonal(collect(-n:n)))
+   out = dropzeros!(kron(ht,I(2n+1)) + kron(I(length(ms)),hr) + rho)
    out = kron(ur(mc),ur(n)) * out * kron(ur(mc),ur(n))
    return dropzeros!(out) ./csl
 end
@@ -25,9 +25,9 @@ function build_h2s(n,mc,mm,σ)
    tvals = tvals[1:mm+1]
    tvecs = tvecs[:,1:mm+1]
    hr = hrotest([1.75;1.25;0.125;.08],n)
-   rho = -2*f*csl*0.05.* kron((tvecs' * Diagonal(ms) * tvecs), Diagonal(collect(-n:n)))
+   rho = -2*f*csl*0.5.* kron((tvecs' * Diagonal(ms) * tvecs), Diagonal(collect(-n:n)))
    #@show rho
-   out = dropzeros(sparse(kron(I(mm+1),hr) + rho + Diagonal(kron(tvals,ones(2n+1)))))
+   out = dropzeros!(sparse(kron(I(mm+1),hr) + rho + Diagonal(kron(tvals,ones(2n+1)))))
    out = kron(I(mm+1),ur(n)) * out * kron(I(mm+1),ur(n))
    return dropzeros!(out) ./csl
 end
@@ -42,7 +42,7 @@ function build_h2(n,mc,mm,σ)
    tvecs = tvecs[:,1:mm+1]
    hr = hrotest([1.75;1.25;0.125;.08],n)
    rho = -2*f*csl*0.05.* kron((tvecs' * Diagonal(ms) * tvecs), Diagonal(collect(-n:n)))
-   out = dropzeros(sparse(kron(I(mm+1),hr) + rho + kron(Diagonal(tvals),I(2n+1))))
+   out = dropzeros!(sparse(kron(I(mm+1),hr) + rho + kron(Diagonal(tvals),I(2n+1))))
    out = kron(I(mm+1),ur(n)) * out * kron(I(mm+1),ur(n))
    return dropzeros!(out) ./csl
 end
@@ -92,7 +92,7 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
    ℋ .+= kron(tvecs' *pa_op(ms,1)* tvecs, sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-      tpart = droptol!(sparse(tvecs' *pa_op(ms,1)* tvecs),1e-12)
+      tpart = droptol!(sparse!(tvecs' *pa_op(ms,1)* tvecs),1e-12)
       ℋ += kron(tpart, sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1))
    else
    end

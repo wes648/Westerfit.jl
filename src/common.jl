@@ -316,14 +316,14 @@ This builds the torsional Wang Transformation matrix for a span of -m:m with a
    if σt == 0
       out = Diagonal(vcat(fill(-√.5,m), 1.0, fill(√.5,m)))
       out += rotl90(Diagonal(vcat(fill(√.5,m), 0.0, fill(√.5,m))))
-      out = sparse(out)
+      out = sparse!(out)
    elseif σt==2
       m += 1
       out = Diagonal(vcat(fill(-√.5,m), fill(√.5,m)))
       out += rotl90(Diagonal(vcat(fill(√.5,m), fill(√.5,m))))
-      out = sparse(out)
+      out = sparse!(out)
    else
-      out = sparse(I,2*m+1,2*m+1)
+      out = sparse!(I,2*m+1,2*m+1)
    end
    return out
 end

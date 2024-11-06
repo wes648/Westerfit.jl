@@ -228,7 +228,7 @@ end
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    GEO = true
-   BOLD = 2
+   BOLD = 0
    LIMIT = ctrl["maxiter"]
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
@@ -241,8 +241,8 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    println("Initial RMS = $rms")
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    W = Diagonal(1.0 ./ uncs)
-   ϵ0 = 0.1E-6 #rms change threshold
-   ϵ1 = 0.1E-6 #step size threshold
+   ϵ0 = 0.1E-4 #rms change threshold
+   ϵ1 = 0.1E-5 #step size threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    oλlm = λlm
@@ -296,7 +296,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #end
       if counter > 1
          θ = dot(βf[:,1],βo) / (norm(βf[:,1]*norm(βo)))
-         @show θ
+         #@show θ
       end
       #if θ > 0.99999
       #   #@show sum(βf,dims=2)

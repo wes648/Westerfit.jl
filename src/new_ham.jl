@@ -35,9 +35,11 @@ Tsr(l::Int,q::Int)::Int = δi(l,2) + abs(q) + 1 #Cs sr version, no 1st rk, & sym
 
 """
 tplus!(a) replaces the matrix a with the sum of it and it's transpose. A dense
-and sparse variant are available
+and a sparse variant are available. 
+
+For dense matrices, this is just hermitianpart!(2a). 
 """
-tplus!(a::Array{Float64,2})::Array{Float64,2} = a .+= permutedims(a)
+tplus!(a::Array{Float64,2})::Array{Float64,2} = hermitianpart!(2a)
 function tplus!(a::SparseMatrixCSC{Float64, Int64})::SparseMatrixCSC{Float64, Int64}
    a .+= permutedims(a)
 end
@@ -340,7 +342,7 @@ end
 function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    l = size(qns,1)
    out = spzeros(l,l)
-   if s≠zero(s)#&&p≠0
+   if s≠zero(s)
       for a ∈ 1:l, b ∈ 1:l
          if abs(qns[a,1]-qns[b,1])≤1 && (q+qns[a,2]-qns[b,2])==0
             @views out[b,a] = sqpart(j,s,q,qns[b,:],qns[a,:])
@@ -445,7 +447,7 @@ function hjbuild(sof,cdf::Array,cdo::Array,j,s,nf,tormat,ms)::SparseMatrixCSC{Fl
    ℋ .+= kron(pa_op(ms,1), sof[14]*nz_op(qns,1) + sof[15]*npm_op(qns,1) + 
                sof[17]*sz_op(j,s,qns,1) + sof[18]*spm_op(j,s,qns,1))
    elseif (s==zero(s))&&(nf≠0)
-      ℋ += kron(pa_op(ms,1), sparse(sof[14]*nz_op(qns,1)) + sof[15]*npm_op(qns,1))
+      ℋ += kron(pa_op(ms,1), sparse!(sof[14]*nz_op(qns,1)) + sof[15]*npm_op(qns,1))
    else
    end
    for i in 1:length(cdf)
@@ -471,7 +473,7 @@ function tsrdiag(ctrl,sof,cdf,cdo,tormat,ms,nf,mcalc,j,s,σ,vtm)
    ### All lines commented with ### are for the Jacobi routine
    ###perm = kperm(j,s,mcalc)
    ###H = permute!(H,perm,perm)
-   ###H, rvecs = jacobisparse(H, 3)#Int(j+s)+mcalc)
+   ###H, rvecs = jacobisparse!(H, 3)#Int(j+s)+mcalc)
    ###rvecs = U*rvecs
    vals, vecs = eigen!(Symmetric(Matrix(H)))
    #@show vals[1:2*Int(2j+1)] ./csl
