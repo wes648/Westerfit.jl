@@ -276,17 +276,25 @@ end
 nt2_op(qns,p)::Diagonal{Float64, Vector{Float64}} = @views out = Diagonal(eh2.(qns[:,1]).^p)
 function nz_op(qns,p)::Diagonal{Float64, Vector{Float64}} 
    if p≠0
-      @views out = Diagonal(qns[:,2].^p)
+      @views out *= Diagonal(qns[:,2].^p)
    else
       out = Diagonal(ones(size(qns,1)))
    end
-   return out
+      return out
+end
+function nz_op(out,qns,p)::Diagonal{Float64, Vector{Float64}} 
+   if p≠0
+      @views out *= Diagonal(qns[:,2].^p)
+      return out
+   else
+      return out
+   end
 end
 
 function np_op(qns,p::Int)::SparseMatrixCSC{Float64, Int64}
    ns = qns[1+p:end,1]
    part = ones(length(ns))
-   if p ≤ length(ns) && p ≠ 0
+   if p ≤ size(qns,1) && p ≠ 0
       ks = qns[1+p:end,2]
       part = ones(length(ks))
       for o in 1:p
@@ -295,15 +303,21 @@ function np_op(qns,p::Int)::SparseMatrixCSC{Float64, Int64}
    #end#original if
       out = spzeros(size(qns,1),size(qns,1))
       out[diagind(out,-p)] = part
-   elseif p > length(ns) && p ≠ 0
+   elseif p > size(qns,1) && p ≠ 0
       out = spzeros(size(qns,1),size(qns,1))
-      out[diagind(out,-p)] = part
+      #out[diagind(out,-p)] = part
    else
       out = spdiagm(ones(size(qns,1)))
    end
    return out
 end
 npm_op(qns::Matrix{Int64},p::Int) = Symmetric(np_op(qns,p),:L)
+function npm_op(out,qns::Matrix{Int64},p::Int)
+   if p≠0
+      out *= Symmetric(np_op(qns,p),:L)
+   end
+   return out
+end
 function iny_op(qns::Matrix{Int64},p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
       out = np_op(qns,1-δi(p,0))
@@ -334,9 +348,17 @@ function sz_op(j::Real,s::Real,qns::Array{Int,2},p::Int)
       out .*= nred(s)*powneg1(s+j+1)
       out = Symmetric(out,:L)^p
    else
-      out[diagind(out)] .+= 1.0
+      out[diagind(out)] .= 1.0
    end
    return out
+end
+function sz_op(out,j::Real,s::Real,qns::Array{Int,2},p::Int)
+   if p≠0
+      out *= sz_op(j,s,qns,p)
+      return out
+   else
+      return out
+   end
 end
 
 function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
@@ -375,6 +397,15 @@ function spm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
       return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
    else
       return spdiagm(ones(size(qns,1)))
+   end
+end
+function spm_op(out,j::Real,s::Real,qns::Array{Int,2},p::Int
+         )::SparseMatrixCSC{Float64, Int64} 
+   if p≠0
+      out *= sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+      return out
+   else
+      return out
    end
 end
 
