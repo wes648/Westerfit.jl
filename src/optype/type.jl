@@ -72,17 +72,18 @@ mutable struct op
    d::Int
    #forces the vector structure for even a single function
    #op(v::Number,p::Int,f::Function;a=0,b=0,c=0,d=0) = new(Float64(v),[p],[f],a,b,c,d)
-   function op(;v::1.0,rp=Vector{Int}[],rf=Vector{Function}[],
+   function op(v::Number;rp=Vector{Int}[],rf=Vector{Function}[],
                tp=zeros(Int,0,2),a=0,b=0,c=0,d=0)
       return new(Float64(v),rp,rf,tp,a,b,c,d)
    end
+   op(O::op) = new(Float64(O.v),O.rp,O.rf,O.tp,O.a,O.b,O.c,O.d)
 end
 
 #Multiplying an operator by a number updates the value
 *(v::Number,O::op)::op = op(v*O.v,O.p,O.f)
 #Raising an operator to a power updates the exponent
 function ^(O::op,n::Int)::op 
-   out = copy(O)
+   out = op(O)
    out.rp .*= n
    out.tp .*= n
    out.a *= n
@@ -100,7 +101,10 @@ function ^(O::Vector{op},n::Int)::Vector{op}
    return out
 end
 #Multiplying two operators multiplies the values & concatenates the powers + functions
-*(O::op,P::op)::op = op(O.v*P.v,vcat(O.p, P.p),vcat(O.f, P.f))
+function *(O::op,P::op)::op
+   op(O.v*P.v,rp=vcat(O.rp,P.rp),rf=vcat(O.rf, P.rf),tp=(O.tp .+ P.tp),a=O.a+P.a,
+      b=O.b+P.b,c=O.c+P.c,d=O.d+P.d)
+end
 function *(O::op,P::Vector{op})::Vector{op}
    OP = similar(P)
    for i in eachindex(P)
