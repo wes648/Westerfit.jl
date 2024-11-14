@@ -204,7 +204,7 @@ function opinp(molnam::String,nfold)
    catch
       zeros(0,0)
    end
-   len = size(file,1) #might be wrong index
+   len = size(file,1)
    if size(file,2)==12
    @warn "You are using a deprecated input format! Check the github for the new structure"
    end
