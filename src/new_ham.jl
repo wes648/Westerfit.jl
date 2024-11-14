@@ -274,13 +274,13 @@ function nnss_op(j,s,qns,a,b)::Diagonal{Float64, Vector{Float64}}
    return Diagonal(out)
 end
 nt2_op(qns,p)::Diagonal{Float64, Vector{Float64}} = @views out = Diagonal(eh2.(qns[:,1]).^p)
-function nz_op(qns,p)::Diagonal{Float64, Vector{Float64}} 
+function nz_op(qns::Array{Int,2},p::Int)::Diagonal{Float64, Vector{Float64}} 
    if p≠0
-      @views out *= Diagonal(qns[:,2].^p)
+      @views out = Diagonal(qns[:,2].^p)
    else
       out = Diagonal(ones(size(qns,1)))
    end
-      return out
+   return out
 end
 function nz_op(out,qns,p)::Diagonal{Float64, Vector{Float64}} 
    if p≠0

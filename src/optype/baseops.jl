@@ -1,0 +1,25 @@
+
+Nz = op(1.0,d=1)
+N2 = op(1.0,a=1)
+Np = op(1.0,rp=[1],rf=[np])
+Nm = op(1.0,rp=[1],rf=[nm])
+Npm = op(1.0,rp=[1],rf=[npm])
+Nx = op(1.0,rp=[1],rf=[nx])
+sNy = op(1.0,rp=[1],rf=[sny])
+
+NS = op(1.0,b=1)
+S2 = op(1.0,c=1)
+Sz = op(1.0,rp=[1],rf=[sz])
+Sp = op(1.0,rp=[1],rf=[sp])
+Sm = op(1.0,rp=[1],rf=[sm])
+Spm = op(1.0,rp=[1],rf=[spm])
+Sx = op(1.0,rp=[1],rf=[sx])
+sSy = op(1.0,rp=[1],rf=[ssy])
+
+Pα = op(1.0,tp=[1;0;;])
+cosα = op(1.0,tp=[0;1;;])
+Pβ = op(1.0,tp=[0 1; 0 0])
+cosβ = op(1.0,tp=[0 0; 0 1])
+Pγ = op(1.0,tp=[0 0 1; 0 0 0])
+cosγ = op(1.0,tp=[0 0 0; 0 0 1])
+
