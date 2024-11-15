@@ -5,7 +5,7 @@ out = Dict{String,Float64}("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>1e-3,"Hz"=>1e-6,
 end
 
 
-function Opparse(s::String,list::Dict{String,Op};v=1.0)::Op
+function opparse(s::String,list::Dict{String,Op};v=1.0)::Op
    s = split(s,' ')
    out = Op(v)
    for i in eachindex(s)
@@ -15,7 +15,7 @@ function Opparse(s::String,list::Dict{String,Op};v=1.0)::Op
       elseif length(part)==2
          out *= Op(1.0,list[s[1]])^parse(Int,s[2])
       else
-         println("don't raise Operators to multiple powers")
+         println("don't raise operators to multiple powers")
       end
    end
    return out
@@ -43,7 +43,7 @@ function valset_withcomments(nams,vals,unts,stg)::Vector{Float64}
    return vals
 end#
 
-function Opreader(molnam)
+function opreader(molnam)
    molnam = "test_input"
    blk = blockfind(molnam, "%OPS")
    blk[1] += 1
@@ -72,18 +72,18 @@ if len != zero(len) #if there are added parameters
    Opers = strip.(file[:,7])
    vals = valset(vals,unts,stgs)
    
-   ℋ = Opparse(vals[1],Opers[1])
+   ℋ = opparse(vals[1],Opers[1])
    for i in 2:len
       #this is technically concatination but I don't know how to initialize an
       #array of Ops of specified length efficiently
-      ℋ += Opparse(vals[i],Opers[i])
+      ℋ += opparse(vals[i],Opers[i])
    end#for
    return ℋ,
 end#function 
 
 
 #=
-ind = get(baseOps,split[1],22)
+ind = get(baseops,split[1],22)
 
 
    #println(len)

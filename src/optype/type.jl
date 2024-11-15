@@ -162,7 +162,7 @@ function enact_init(O::Op,ψ::Psi)::Diagonal{Float64,Vector{Float64}}
    return Diagonal(out)
 end
 
-function torOp(a,b,nf,ms)::SparseMatrixCSC{Float64,Int}
+function torop(a,b,nf,ms)::SparseMatrixCSC{Float64,Int}
    out = 0.5.* (ms[1+b:end] .- nf*b).^a
    out = spdiagm(b=>out,-b=>reverse(out))
    return drOpzeros!(out)
@@ -197,11 +197,8 @@ function *(v::Number,O::Vector{Op})::Vector{Op}
    return out
 end
 
-units = Dict("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>"1e-3","Hz"=>"1e-6",
-   "mHz"=>"1e-9","GHz"=>"1e3","THz"=>"1e6")
 
-
-function ntOp_enforce(O::Op,lnfs)
+function ntop_enforce(O::Op,lnfs)
    if size(O.tp,2) < lnfs
       O.tp = hcat(O.tp,zeros(2,lnfs - size(O.tp,2)))
    end
