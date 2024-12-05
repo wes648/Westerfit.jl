@@ -161,10 +161,11 @@ function twostg_calc2(prm,stg,cdo,nf,ctrl,jlist)
    vtd = Int(vtm+1)
    msd = Int((mmax+1)*(2s+1))
    jmin = 0.5*iseven((2*s+1))
-   jmax = jlist[end,1]
+   jmax = jlist[end,1]*0.5
    jfd = Int((2s+1)*sum(2. .*collect(Float64,jmin:jmax).+1.))
    σcnt = σcount(nf)
    fvls = zeros(Float64,jfd*vtd,σcnt)
+   q = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):jmax) .+1))
    fqns = zeros(Int,jfd*vtd,6,σcnt)
    fvcs = zeros(Float64,Int((2*s+1)*(2*jmax+2)*(mmax+1)),jfd*vtd,σcnt)
    tvecs = zeros(Float64,Int(2*mcalc+1),Int(mmax+1),σcnt)

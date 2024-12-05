@@ -196,6 +196,8 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    mcalc = ctrl["mcalc"]
    #jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
+   td = round.(deriv,sigdigits=5)
+   @show td
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
@@ -321,13 +323,15 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       if stepcheck
       #@show θ
       bf = sum(βf,dims=2)[:]
-      @show round.(bf, sigdigits=5)
-      @show round.(bf./nparams[perm], sigdigits=5)
-      @show 
+      #@show round.(bf, sigdigits=5)
+      #@show round.(bf./nparams[perm], sigdigits=5)
          bad = 0
          rms = nrms
          lrms = min(lrms,rms)
          omc = nomc
+         tΔ = round.((nvals .- vals)./sum(βf), sigdigits=5)
+         @show βf
+         @show tΔ
          vals .= nvals
          params .= nparams
          vecs .= nvecs
