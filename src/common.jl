@@ -115,18 +115,18 @@ This determines the specific index of a J, S, N, Ka, Kc state in the large array
    Ka is assumed to not be signed for better compatibility with literature.
    This is the old version based on the torsional
 """
-function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
-   if nf≠zero(nf)
-   #ka = abs(ka)
-   ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
-   ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
-   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
-   ind = convert(Int,ind)
-   return ind
-   else
-   return qn2ind(j,s,n,ka,kc)
-   end
-end
+#function qn2indm(nf,mcalc,m,j,s,n,ka,kc)
+#   if nf≠zero(nf)
+#   #ka = abs(ka)
+#   ind = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(2*mcalc+1)
+#   ind += (mcalc+floor(m/nf))*(2*s+1)*(2*j+1)
+#   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
+#   ind = convert(Int,ind)
+#   return ind
+#   else
+#   return qn2ind(j,s,n,ka,kc)
+#   end
+#end
 """
 This determines the specific index of a J, S, N, Ka, Kc state in the large array.
    Ka is assumed to not be signed for better compatibility with literature.
@@ -332,9 +332,9 @@ function eyr(x::Int)::Array{Float64,2}
    diagm(ones(x))
 end
 function ur(n::Int)::SparseMatrixCSC{Float64, Int64}
-   out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
-   out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
-   return sparse(out)
+   out = spdiagm(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
+   out += rotl90(spdiagm(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
+   return out
 end
 function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
 """

@@ -97,41 +97,41 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
    return derivs
 end#function
 
-function derivmat_2stg(j,s,nf,rpid,ms,qns,tvecs,mmax)
-   if rpid ≤ 4 #pure rot
-      pr = zeros(4)
-      pr[rpid] = 1.0
-      out = hrot2(pr,qns)
-      out = kron(I(mmax+1),out)
-   elseif 5 ≤ rpid ≤ 9 #spin-rot
-      pr = zeros(5)
-      pr[rpid-4] = 1.0
-      out = hsr(pr,j,s,qns)
-      out = kron(I(mmax+1),out)
-   elseif 10 ≤ rpid ≤ 12 #qua
-      pr = zeros(3)
-      pr[rpid-9] = 1.0
-      out = hqu(pr,j,s,qns)
-      out = kron(I(mmax+1),out)
-   elseif rpid==13 # F
-      pr = [1.;0.;0.;0.]
-      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
-   elseif rpid==16 # Vnf
-      pr = [0.;0.;0.;1.]
-      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
-   elseif rpid==14 # ρzF
-      out = kron(tvecs' * pa_op(ms,1) * tvecs, nz_op(qns,1))
-   elseif rpid==15 # ρxF
-      out = kron(tvecs' * pa_op(ms,1) * tvecs, npm_op(qns,1)) 
-   elseif rpid==17 # ηz
-      out = kron(tvecs' * pa_op(ms,1) * tvecs, sz_op(j,s,qns,1)) 
-   elseif rpid==18 # ηx
-      out = kron(tvecs' * pa_op(ms,1) * tvec, spm_op(j,s,qns,1))
-   else
-      out = Diagonal(I(size(qns,1)))
-   end
-   return out
-end
+#function derivmat_2stg(j,s,nf,rpid,ms,qns,tvecs,mmax)
+#   if rpid ≤ 4 #pure rot
+#      pr = zeros(4)
+#      pr[rpid] = 1.0
+#      out = hrot2(pr,qns)
+#      out = kron(I(mmax+1),out)
+#   elseif 5 ≤ rpid ≤ 9 #spin-rot
+#      pr = zeros(5)
+#      pr[rpid-4] = 1.0
+#      out = hsr(pr,j,s,qns)
+#      out = kron(I(mmax+1),out)
+#   elseif 10 ≤ rpid ≤ 12 #qua
+#      pr = zeros(3)
+#      pr[rpid-9] = 1.0
+#      out = hqu(pr,j,s,qns)
+#      out = kron(I(mmax+1),out)
+#   elseif rpid==13 # F
+#      pr = [1.;0.;0.;0.]
+#      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+#   elseif rpid==16 # Vnf
+#      pr = [0.;0.;0.;1.]
+#      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
+#   elseif rpid==14 # ρzF
+#      out = kron(tvecs' * pa_op(ms,1) * tvecs, nz_op(qns,1))
+#   elseif rpid==15 # ρxF
+#      out = kron(tvecs' * pa_op(ms,1) * tvecs, npm_op(qns,1)) 
+#   elseif rpid==17 # ηz
+#      out = kron(tvecs' * pa_op(ms,1) * tvecs, sz_op(j,s,qns,1)) 
+#   elseif rpid==18 # ηx
+#      out = kron(tvecs' * pa_op(ms,1) * tvec, spm_op(j,s,qns,1))
+#   else
+#      out = Diagonal(I(size(qns,1)))
+#   end
+#   return out
+#end
 function anaderiv_2stg(rpid,j,s,nf,ms,qns,vec,tvec,mmax)
    mat = derivmat_2stg(j,s,nf,rpid,ms,qns,tvec,mmax)
    out = transpose(vec)*mat*vec
@@ -209,11 +209,11 @@ function lbmq_2stp!(H,jtw,omc,λ,β,prms)
    A = Hermitian(H + λ*Diagonal(H))
    #A = Hermitian(H + λ*I )
    #A = Hermitian(H + λ*Diagonal(abs.(prms)))
-   #while isposdef(A)==false #this could be tidier
-   #   λ = max(2.0*λ,1.0E-24)
-   #   A = Hermitian(H + λ*Diagonal(H))
-   #   #println(λ)
-   #end
+   while isposdef(A)==false #this could be tidier
+      λ = max(2.0*λ,1.0E-24)
+      A = Hermitian(H + λ*Diagonal(H))
+      if isinf(λ); break; end
+   end
    if isinf(λ)
       @warn "LB-MQ Matrix not pos-def!"
       println("Make sure you aren't trying to optimize a parameter with value of 0.0.")
@@ -228,7 +228,7 @@ end
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
    GEO = true
-   BOLD = 0
+   BOLD = 1
    LIMIT = ctrl["maxiter"]
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
@@ -256,14 +256,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    nparams = copy(params)
    #puncs = zero(perm)
    βf = zeros(length(perm),2) #step
-   βo = similar(βf[:,1])
+   βo = copy(βf[:,1])
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zeros(Float64,length(perm),size(inds,1))
    H = zeros(length(perm),length(perm))
-   J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
+   build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    build_hess!(H,jtw,J,W)
-   #println(H)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
@@ -294,35 +293,49 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    #   βt .*= scls[perm]
    #   βf .+= βt
    #end
-      if counter > 1
+      if counter > 0
          θ = dot(βf[:,1],βo) / (norm(βf[:,1]*norm(βo)))
-         #@show θ
+         θ = round(θ; digits=3)
+         @show θ
       end
+      #if θ < 0
+      #   βf .*= 0.5
+      #end
+      βf .*= (1-θ)/2
       #if θ > 0.99999
       #   #@show sum(βf,dims=2)
       #   βf .*= 1.2
       #end
 
-      nparams[perm] .+= sum(βf,dims=2)
-      vals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-      nrms, nomc, = rmscalc(vals,inds,ofreqs)
+      nparams[perm] .+= sum(βf,dims=2)[:]
+      nvals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      nrms, nomc, = rmscalc(nvals,inds,ofreqs)
       ρlm = lbmq_gain2(βf,J,omc,nomc)
       check = abs(nrms-rms)/rms
 
-      #if (nrms < rms) && (ρlm > 1e-3)
-      if ((nrms*(1. - θ)^BOLD)< lrms)|| ((nrms < rms) && (ρlm > 1e-3))# || bad > 2
-      #@show βf
+      #if (nrms<rms)&&(ρlm>1e-3)
+      stepcheck = ((nrms<rms)&&(ρlm>1e-4))
+      stepcheck = stepcheck || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
+
+      #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
+      if stepcheck
+      #@show θ
+      bf = sum(βf,dims=2)[:]
+      @show round.(bf, sigdigits=5)
+      @show round.(bf./nparams[perm], sigdigits=5)
+      @show 
          bad = 0
          rms = nrms
          lrms = min(lrms,rms)
          omc = nomc
+         vals .= nvals
          params .= nparams
          vecs .= nvecs
          #println(params)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
+         @time build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
-         H, jtw = build_hess!(H,jtw,J,W)
+         build_hess!(H,jtw,J,W)
          βo = βf[:,1]
             #println(diag(H))
          counter += 1

@@ -40,8 +40,8 @@ struct Psi
    nf::Vector{Int}
    ms::Array{Int,2}
    lng::Int
-   Psi(N::Int) = new(Float64(N),0.0,fill(N,2N+1),collect(-N:N),2N+1)
    Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
+   Psi(n::Int) = Psi(n,0.0)
 end
 
 mutable struct Op_old

@@ -62,7 +62,7 @@ function opreader(molnam)
    @warn "You are using a deprecated input format! Check the github for the new structure"
    end
 
-if len != zero(len) #if there are added parameters
+if len != 0 #if there are added parameters
    nams = strip.(file[:,1])
    vals = file[:,2]
    unts = strip.(file[:,3])
@@ -79,6 +79,8 @@ if len != zero(len) #if there are added parameters
       ℋ += opparse(vals[i],Opers[i])
    end#for
    return ℋ,
+else
+end#if
 end#function 
 
 

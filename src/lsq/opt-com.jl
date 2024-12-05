@@ -15,11 +15,13 @@ function lbmq_gain(β,λ::Float64,g,h,omc,nomc)::Float64
    return out
 end
 function lbmq_gain2(β,J,omc,nomc)::Float64
-   pred = -sum(abs2, (J * β) .+ omc)
+   pred = sum(abs2, (J * β) .+ omc)
    actu = sum(abs2,nomc)
    curr = sum(abs2,omc)
+   #@show -pred - curr
    #@show actu < curr
-   out = (actu - curr) / (pred - curr)
+   out = (actu - curr) / (-pred - curr)
+   #out = (curr - actu) / ( curr - pred)
    return out
 end
 
@@ -44,6 +46,7 @@ end
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
    #@show size(inds)
+   #@show inds
    #@show size(ofreqs)
    #@show size(vals)
    #@show inds[1:5,:]
@@ -252,9 +255,9 @@ function build_hess!(hssn,dk,jtw,jcbn,weights)
    return hssn, dk, jtw
 end
 function build_hess!(hssn,jtw,jcbn,weights)
-   jtw = mul!(jtw,jcbn',weights)
-   hssn = mul!(hssn,jtw,jcbn)
-   return hssn, jtw
+   mul!(jtw,jcbn',weights)
+   mul!(hssn,jtw,jcbn)
+   #return hssn, jtw
 end
 function build_hess(jtw,jcbn,weights)
    jtw = transpose(jcbn)*weights
@@ -317,6 +320,8 @@ function fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LI
       endpoint = "RMS"
       converged = true
    elseif (norm(βf))<ϵ1*(norm(prms)+ϵ1)
+   #This stopping criteria needs to be scaled for the wildly varying parameter
+   #magnitues. 3 dec 24
       slλ = (@sprintf("%0.4f", log10(λlm)))
       println("It would appear step size has converged. log₁₀(λ) = $slλ")
       @show norm(βf)
