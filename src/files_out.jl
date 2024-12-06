@@ -818,6 +818,8 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
          println(io," If you were using the turducken, try again without it.")
       elseif endpoint == "iter"
          println(io," Alas, the iteration count has exceeded the limit.")
+      elseif endpoint == "grad"
+         println(io," The gradient has converged! Hurray!")
       else
          println(" The output writer seems to be having issues.")
       end

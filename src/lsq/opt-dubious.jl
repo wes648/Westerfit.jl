@@ -197,7 +197,6 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    #jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
    td = round.(deriv,sigdigits=5)
-   @show td
    @threads for p in 1:length(perm)
    @simd for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
@@ -229,7 +228,7 @@ end
 
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   GEO = true
+   GEO = false
    BOLD = 1
    LIMIT = ctrl["maxiter"]
 
@@ -244,21 +243,21 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    W = Diagonal(1.0 ./ uncs)
    ϵ0 = 0.1E-4 #rms change threshold
-   ϵ1 = 0.1E-5 #step size threshold
+   ϵ1 = 0.1E-16 #step size threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
-   oλlm = λlm
-   oρlm = 0.0
+   #oλlm = λlm
+   #oρlm = 0.0
    println("Initial λ = $λlm")
    counter = 0
    θ = 0.0
    bad = 0
    outputstart(molnam,λlm,rms)
 
-   nparams = copy(params)
+   nparams = deepcopy(params)
    #puncs = zero(perm)
    βf = zeros(length(perm),2) #step
-   βo = copy(βf[:,1])
+   βo = zeros(length(perm),2)
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zeros(Float64,length(perm),size(inds,1))
    H = zeros(length(perm),length(perm))
@@ -272,9 +271,9 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    endpoint = "not yet"
    converged=false
    while converged==false
-      λlm = λgen(μlm, rms)
+      #λlm = λgen(μlm, lrms)
       βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
-      if GEO
+      if GEO && rms < 4.0 #only uses accelerator under 4 MHz error
          dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
          #dderiv = diag(J*βf*βf'*jtw)
          βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
@@ -285,64 +284,55 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          end
       end
       βf .*= scales[perm]
+      β = sum(βf,dims=2)[:]
       #@show βf
-   #for i in 2:tdncount
-   #   nparams[perm] .+= βf
-   #   vals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   #   nrms, omc, = rmscalc(vals,inds,ofreqs)
-   #   βt = similar(βf)
-   #   βt,λlm = lbmq_2stp!(H,jtw,omc,λ,βt,ctrl,scls,perm)
-   #   βt .*= scls[perm]
-   #   βf .+= βt
-   #end
       if counter > 0
-         θ = dot(βf[:,1],βo) / (norm(βf[:,1]*norm(βo)))
+         θ = dot(β,βo) / (norm(β*norm(βo)))
          θ = round(θ; digits=3)
-         @show θ
+         #@show θ
+         println("θ = $θ, log(λ) = $(round(log10(λlm),digits=3))")
       end
       #if θ < 0
       #   βf .*= 0.5
       #end
-      βf .*= (1-θ)/2
+      #βf .*= (3+θ)/4
       #if θ > 0.99999
       #   #@show sum(βf,dims=2)
       #   βf .*= 1.2
       #end
-
-      nparams[perm] .+= sum(βf,dims=2)[:]
-      nvals,nvecs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      β = sum(βf,dims=2)[:]
+      nparams[perm] .+= β
+      nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
       ρlm = lbmq_gain2(βf,J,omc,nomc)
       check = abs(nrms-rms)/rms
 
       #if (nrms<rms)&&(ρlm>1e-3)
-      stepcheck = ((nrms<rms)&&(ρlm>1e-4))
-      stepcheck = stepcheck || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
+      stepcheck = ((nrms<rms)&&(ρlm>1e-9))
+      #stepcheck = stepcheck || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
 
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
       if stepcheck
       #@show θ
-      bf = sum(βf,dims=2)[:]
       #@show round.(bf, sigdigits=5)
       #@show round.(bf./nparams[perm], sigdigits=5)
+         counter += 1
          bad = 0
          rms = nrms
          lrms = min(lrms,rms)
          omc = nomc
          tΔ = round.((nvals .- vals)./sum(βf), sigdigits=5)
-         @show βf
-         @show tΔ
          vals .= nvals
          params .= nparams
          vecs .= nvecs
          #println(params)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
+         @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg,tvcs)
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
-         build_hess!(H,jtw,J,W)
-         βo = βf[:,1]
+         #build_hess!(H,jtw,J,W)
+         H, jtw = build_hess(jtw,J,W)
+         βo = β
             #println(diag(H))
-         counter += 1
          paramarray[:,counter+1] = params
          #sρlm = (@sprintf("%0.4f", ρlm))
          srms = (@sprintf("%0.4f", rms))
@@ -350,9 +340,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
-         μlm /= 20.0
+         #μlm /= 20.0
+         λlm /= 20.0
       else
-         μlm = max(10.0*μlm,1.0E-24)
+         #μlm = max(10.0*μlm,1.0E-24)
+         λlm = max(10.0*λlm,1.0E-24)
          bad += 1
       end
    converged,endpoint = fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,params[perm])
