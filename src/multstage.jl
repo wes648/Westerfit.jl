@@ -97,7 +97,9 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
    else
    end
    for i in 1:length(cdf)
+      if cdf[i] ≠ 0.0
       ℋ .+= twostg_op(cdf[i],j,s,qns,ms,cdo[:,i], tvecs)
+      end
    end
    return dropzeros!(ℋ)
 end

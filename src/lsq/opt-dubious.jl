@@ -206,7 +206,7 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    return jcbn
 end
 function lbmq_2stp!(H,jtw,omc,λ,β,prms)
-   A = Hermitian(H + λ*Diagonal(abs.(prms) .* diag(H)) )
+   #A = Hermitian(H + λ*Diagonal(abs.(prms) .* diag(H)) )
    A = Hermitian(H + λ*Diagonal(H))
    #A = Hermitian(H + λ*I )
    #A = Hermitian(H + λ*Diagonal(abs.(prms)))
@@ -228,7 +228,7 @@ end
 
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-   GEO = false
+   GEO = true
    BOLD = 1
    LIMIT = ctrl["maxiter"]
 
@@ -239,13 +239,14 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    rms, omc, = rmscalc(vals, inds, ofreqs)
    lrms = rms
    perm = permdeterm(scales,stg)
-   println("Initial RMS = $rms")
-   goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    W = Diagonal(1.0 ./ uncs)^2
    wrms = √(omc' *W*omc ./ length(omc))
+   goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
+   println("Initial  RMS = $rms")
+   println("Initial WRMS = $wrms")
    ϵ0 = 0.1E-4 #rms change threshold
-   ϵ1 = 0.1E-6 #step size threshold
-   ϵ2 = 0.1E-5 #gradient threshold
+   ϵ1 = 0.1E-4 #step size threshold
+   ϵ2 = 0.1E-3 #gradient threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    #oλlm = λlm
@@ -273,9 +274,9 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    endpoint = "not yet"
    converged=false
    while converged==false
-      #λlm = λgen(μlm, lrms)
+      λlm = λgen(μlm, rms)
       βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
-      if GEO && wrms < 2e3 #only uses accelerator under 4 MHz error
+      if GEO  && wrms < 2e2 #only uses accelerator when wrms isn't outragous
          dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
          #dderiv = diag(J*βf*βf'*jtw)
          βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
@@ -289,10 +290,10 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       β = sum(βf,dims=2)[:]
       #@show βf
       if counter > 0
-         θ = dot(β,βo) / (norm(β*norm(βo)))
+         θ = dot(β,βo) / (norm(β)*norm(βo))
          θ = round(θ; digits=3)
-         #@show θ
-         println("θ = $θ, log(λ) = $(round(log10(λlm),digits=3))")
+         @show θ
+         #println("θ = $θ, log(λ) = $(round(log10(λlm),digits=3))")
       end
       #if θ < 0
       #   βf .*= 0.5
@@ -307,13 +308,17 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
       ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
-      #ρlm = lbmq_gain2(βf,J,omc,nomc)
       check = abs(nrms-rms)/rms
       println("ρlm = $ρlm, nrms = $nrms")
+      println("λlm = $λlm, norm(β) = $(norm(β))")
+      println("norm(β ./ params) = $(norm(β ./ params[perm]))")
       #if (nrms<rms)&&(ρlm>1e-3)
       #stepcheck = (ρlm>1e-5)
-      stepcheck = ((nrms<rms)&&(ρlm>1e-6))
-      #stepcheck = stepcheck || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
+      if BOLD == 0
+         stepcheck = ((nrms<rms)&&(ρlm>1e-6))
+      else
+      stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
+      end
 
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
       if stepcheck
@@ -348,9 +353,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          @show wrms
          #μlm /= 20.0
          λlm /= 20.0
+         GEO=true
       else
-         #μlm = max(10.0*μlm,1.0E-24)
-         λlm = max(18.0*λlm,1.0E-24)
+         GEO = false
+         μlm = max(10.0*μlm,1.0E-24)
+         #λlm = max(10.0*λlm,1.0E-24)
          bad += 1
       end
    converged,endpoint = fincheck!(converged,endpoint,rms,βf,
@@ -366,6 +373,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl["Irrep"])
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
+   writedlm("$molnam.der", J, ',')
    if ctrl["overwrite"]==true
       println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
       inpwriter(molnam, params, scales)
