@@ -241,9 +241,11 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    perm = permdeterm(scales,stg)
    println("Initial RMS = $rms")
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
-   W = Diagonal(1.0 ./ uncs)
+   W = Diagonal(1.0 ./ uncs)^2
+   wrms = √(omc' *W*omc ./ length(omc))
    ϵ0 = 0.1E-4 #rms change threshold
-   ϵ1 = 0.1E-16 #step size threshold
+   ϵ1 = 0.1E-6 #step size threshold
+   ϵ2 = 0.1E-5 #gradient threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    #oλlm = λlm
@@ -273,7 +275,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    while converged==false
       #λlm = λgen(μlm, lrms)
       βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
-      if GEO && rms < 4.0 #only uses accelerator under 4 MHz error
+      if GEO && wrms < 2e3 #only uses accelerator under 4 MHz error
          dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
          #dderiv = diag(J*βf*βf'*jtw)
          βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
@@ -304,11 +306,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       nparams[perm] .+= β
       nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
-      ρlm = lbmq_gain2(βf,J,omc,nomc)
+      ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
+      #ρlm = lbmq_gain2(βf,J,omc,nomc)
       check = abs(nrms-rms)/rms
-
+      println("ρlm = $ρlm, nrms = $nrms")
       #if (nrms<rms)&&(ρlm>1e-3)
-      stepcheck = ((nrms<rms)&&(ρlm>1e-9))
+      #stepcheck = (ρlm>1e-5)
+      stepcheck = ((nrms<rms)&&(ρlm>1e-6))
       #stepcheck = stepcheck || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
 
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
@@ -325,6 +329,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          vals .= nvals
          params .= nparams
          vecs .= nvecs
+         wrms = √(omc' *W*omc ./ length(omc))
          #println(params)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
          @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg,tvcs)
@@ -340,14 +345,16 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
+         @show wrms
          #μlm /= 20.0
          λlm /= 20.0
       else
          #μlm = max(10.0*μlm,1.0E-24)
-         λlm = max(10.0*λlm,1.0E-24)
+         λlm = max(18.0*λlm,1.0E-24)
          bad += 1
       end
-   converged,endpoint = fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,params[perm])
+   converged,endpoint = fincheck!(converged,endpoint,rms,βf,
+         λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,params[perm],-2jtw*omc)
    end#while
    frms, fomc, fcfrqs = rmscalc(vals, inds, ofreqs)
    puncs = zeros(size(params))

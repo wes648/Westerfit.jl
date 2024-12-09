@@ -6,12 +6,13 @@ function λgen(μ::Float64,er::Float64)::Float64
    λ += (1.0 - ρ)*μ*er/(1+er) #λARC
    return λ
 end
-function lbmq_gain(β,λ::Float64,g,h,omc,nomc)::Float64
-   out = transpose(β)*(λ*Diagonal(h)*β - g)
+function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
+   out = 2β' * (λ*Diagonal(h)*β + jtw*omc)
    if out < 0
       println("fucking gain function")
    end
-   out = 2.0*(sum(abs2, omc - sum(abs2, nomc))) / out#abs(out)
+#   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
+   out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
    return out
 end
 function lbmq_gain2(β,J,omc,nomc)::Float64
@@ -310,35 +311,40 @@ function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]
 end
 
-function fincheck!(converged,endpoint,rms,βf,λlm,goal,check,ϵ0,ϵ1,counter,LIMIT,prms)
+function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)
    if (rms ≤ goal)#&&(counter > 1)
       println("A miracle has come to pass. The fit has converged")
-      endpoint = "converge"
-      converged = true
+      endp = "converge"
+      conv = true
    elseif (check < ϵ0)
       println("The RMS has stopped decreasing. Hopefully it is low")
-      endpoint = "RMS"
-      converged = true
-   elseif (norm(βf))<ϵ1*(norm(prms)+ϵ1)
+      endp = "RMS"
+      conv = true
+#   elseif (norm(βf))<ϵ1*(norm(prms)+ϵ1)
+   elseif norm(βf ./ prms)<ϵ1
    #This stopping criteria needs to be scaled for the wildly varying parameter
    #magnitues. 3 dec 24
       slλ = (@sprintf("%0.4f", log10(λlm)))
       println("It would appear step size has converged. log₁₀(λ) = $slλ")
       @show norm(βf)
-      endpoint = "step size"
-      converged = true
+      endp = "step size"
+      conv = true
    elseif (λlm > 1.0e+9)#&&(Δlm == 0.0)
       println("λlm exceeded threshold.")
       println("If you were using the turducken, try again without it")
-      endpoint = "LMthresh"
-      converged = true
+      endp = "LMthresh"
+      conv = true
+   elseif norm(grad) < ϵ2
+      println("Gradient is now quite small! This should be good")
+      endp = "grad"
+      conv = true
    elseif counter ≥ LIMIT
       println("Alas, the iteration count has exceeded the limit")
-      endpoint = "iter"
-      converged = true
+      endp = "iter"
+      conv = true
    else
    end #check if
-   return converged, endpoint
+   return conv, endp
 end
 
 function opt_frame(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)

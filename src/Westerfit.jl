@@ -46,5 +46,9 @@ function julia_main()::Cint
   westerfit(ARGS)
   return 0 # if things finished successfully
 end
+Base.@ccallable function main()::Cint
+   westerfit(ARGS)
+   return 0
+end
 
 end # module
