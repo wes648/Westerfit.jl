@@ -224,6 +224,26 @@ function lbmq_2stp!(H,jtw,omc,λ,β,prms)
    β .= ldiv!(β, A, jtw*omc)# .* scls[perm]
    return β,λ
 end
+function dogleg_corr!(βlm,Δ,jtw,omc)
+   #This dogleg function will only run if βlm is outside trust region
+   βsd = -jtw*omc
+   if norm(βsd) > Δ #both outside trust region
+      βlm .= Δ/norm(βsd) * βsd
+   else #only GN out of trust regeion
+      #resolve t's simplification for weighted
+      t = norm(βsd' * jtw * omc) / norm(J*βsd)^2
+      s = (Δ - t*norm(βsd))/norm(βlm - βsd)
+      #figure out cleaner version to adjust s so below is less than Δ
+      #temp = t*βsd + s*(βlm - t*βsd)
+      temp = s*βlm + t*(1-s)*βsd
+      while norm(temp) > Δ
+         s *= .8
+         temp = s*βlm + t*(1-s)*βsd
+      end#while
+      βlm .= temp
+   end#end
+   return βlm
+end
 
 
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
@@ -244,11 +264,12 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl["goal"]
    println("Initial  RMS = $rms")
    println("Initial WRMS = $wrms")
-   ϵ0 = 0.1E-4 #rms change threshold
+   ϵ0 = 0.1E-5 #rms change threshold
    ϵ1 = 0.1E-4 #step size threshold
    ϵ2 = 0.1E-3 #gradient threshold
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
+   Δlm = 1.0
    #oλlm = λlm
    #oρlm = 0.0
    println("Initial λ = $λlm")
@@ -260,7 +281,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    nparams = deepcopy(params)
    #puncs = zero(perm)
    βf = zeros(length(perm),2) #step
-   βo = zeros(length(perm),2)
+   βo = zeros(length(perm))
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zeros(Float64,length(perm),size(inds,1))
    H = zeros(length(perm),length(perm))
@@ -286,38 +307,39 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
             βf[:,2] .*= 0.25*abs(norm(βf[:,1])/norm(βf[:,2]))
          end
       end
-      βf .*= scales[perm]
+      #βf .*= scales[perm]
       β = sum(βf,dims=2)[:]
-      #@show βf
+      β .*= scales[perm]
+      @show β
+      #if norm(H^(-.5)*β) > Δlm
+      if norm(β ./params[perm]) > Δlm
+      #   @show H^(-.5)*β
+      #   β = dogleg_corr!(β,Δlm,jtw,omc)
+         β *= 0.5/norm(β ./ params[perm])
+      end
+
       if counter > 0
          θ = dot(β,βo) / (norm(β)*norm(βo))
          θ = round(θ; digits=3)
          @show θ
-         #println("θ = $θ, log(λ) = $(round(log10(λlm),digits=3))")
       end
-      #if θ < 0
-      #   βf .*= 0.5
-      #end
-      #βf .*= (3+θ)/4
-      #if θ > 0.99999
-      #   #@show sum(βf,dims=2)
-      #   βf .*= 1.2
-      #end
-      β = sum(βf,dims=2)[:]
+
       nparams[perm] .+= β
       nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
+      nwrms = √(nomc' *W*nomc ./ length(nomc))
       ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
       check = abs(nrms-rms)/rms
       println("ρlm = $ρlm, nrms = $nrms")
+      println("Δlm = $Δlm, wrms = $nwrms")
       println("λlm = $λlm, norm(β) = $(norm(β))")
       println("norm(β ./ params) = $(norm(β ./ params[perm]))")
       #if (nrms<rms)&&(ρlm>1e-3)
       #stepcheck = (ρlm>1e-5)
-      if BOLD == 0
+      if (BOLD == 0)
          stepcheck = ((nrms<rms)&&(ρlm>1e-6))
       else
-      stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)&&BOLD>0
+      stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)
       end
 
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
@@ -353,10 +375,12 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          @show wrms
          #μlm /= 20.0
          λlm /= 20.0
+         Δlm *= 2.0
          GEO=true
       else
          GEO = false
          μlm = max(10.0*μlm,1.0E-24)
+         Δlm = max(Δlm*.2,1.0E-24)
          #λlm = max(10.0*λlm,1.0E-24)
          bad += 1
       end
