@@ -188,25 +188,16 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    jlist = jlister(linds)
    #@show jlist
    #opt
-#   println("Beginning optimization")
    outputinit(molnam,prm,err,linelength,ctrl)
-if ctrl["stages"] == 1
-   #tsrp, pcov, omcs, cfrqs, vals = lbmq_approx(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
-   tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
-elseif ctrl["stages"] == 2
+#if ctrl["stages"] == 1
+#   #tsrp, pcov, omcs, cfrqs, vals = lbmq_approx(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
+#   tsrp, pcov, omcs, cfrqs, vals = lbmq_opttr(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
+#elseif ctrl["stages"] == 2
    tsrp, pcov, omcs, cfrqs, vals = lbmq_2stg(ctrl,jlist,ofreqs,luncs,linds,prm,err,cdo,stg,molnam)
-else
-   @warn "I can't diagonalize in zero stages"
-end#if
-   #println(tsrp)
-   #println(puncs)
+#else
+#   @warn "I can't diagonalize in zero stages"
+#end#if
    reswritter(molnam,lines,omcs,cfrqs)
-   #println("New Parameter Vector:")
-   #println("New Energy levels")
-   #for n in 1:Nmax
-   #   vals, vecs = rotdiag(Nmax,n,rotparams)
-   #   println(vals)
-   #end
    return tsrp, pcov
 end
 

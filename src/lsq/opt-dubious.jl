@@ -205,6 +205,22 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    #@show jcbn
    return jcbn
 end
+function out_jcbn_2stg(molnam::String,ops,jlist,inds,ctrl,vecs,params,scals,stg,tvecs)
+   perm = collect(1:length(params))[(params .> 0) .* (vcat(ones(18),stgs) .> 0)]
+   nf = ctrl["NFOLD"]
+   mcalc = ctrl["mcalc"]
+   jcbn = zeros(Float64,size(inds,1),length(perm))
+   deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
+   td = round.(deriv,sigdigits=5)
+   @threads for p in 1:length(perm)
+   @simd for a in 1:size(inds,1)
+      jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
+   end
+   end
+   writedlm("$molnam.der",jcbn,';')
+   #@show jcbn
+   return jcbn
+end
 function lbmq_2stp!(H,jtw,omc,λ,β,prms)
    #A = Hermitian(H + λ*Diagonal(abs.(prms) .* diag(H)) )
    A = Hermitian(H + λ*Diagonal(H))
@@ -247,7 +263,14 @@ end
 
 
 function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
+   STAGE = ctrl["stages"]
+   if STAGE==1
+   vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+   elseif STAGE==2
    vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+   else
+   println("Someday....")
+   end
    GEO = true
    BOLD = 1
    LIMIT = ctrl["maxiter"]
@@ -270,8 +293,6 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    μlm = ctrl["λlm0"]#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
    Δlm = 1.0
-   #oλlm = λlm
-   #oρlm = 0.0
    println("Initial λ = $λlm")
    counter = 0
    θ = 0.0
@@ -285,7 +306,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    J = zeros(Float64,size(inds,1),length(perm)) #Jacobian
    jtw = zeros(Float64,length(perm),size(inds,1))
    H = zeros(length(perm),length(perm))
+   if STAGE==1
+   build_jcbn2!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
+   elseif STAGE==2
    build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
+   else
+   println("Someday....")
+   end
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    build_hess!(H,jtw,J,W)
    if true ∈ isnan.(H)
@@ -315,7 +342,7 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       if norm(β ./params[perm]) > Δlm
       #   @show H^(-.5)*β
       #   β = dogleg_corr!(β,Δlm,jtw,omc)
-         β *= 0.5/norm(β ./ params[perm])
+         β *= 0.5*Δlm/norm(β ./ params[perm])
       end
 
       if counter > 0
@@ -325,7 +352,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
       end
 
       nparams[perm] .+= β
+      if STAGE==1
+      vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      elseif STAGE==2
       nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      else
+         println("Someday....")
+      end
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
       nwrms = √(nomc' *W*nomc ./ length(nomc))
       ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
@@ -359,7 +392,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          wrms = √(omc' *W*omc ./ length(omc))
          #println(params)
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
-         @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg,tvcs)
+      if STAGE==1
+      @time J = build_jcbn2!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg)
+      elseif STAGE==2
+      @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg,tvcs)
+      else
+         println("Someday....")
+      end      
          #J, w = linereject(J,W,omc,uncs,ctrl["REJECT"])
          #build_hess!(H,jtw,J,W)
          H, jtw = build_hess(jtw,J,W)
@@ -375,12 +414,13 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
          @show wrms
          #μlm /= 20.0
          λlm /= 20.0
-         Δlm *= 2.0
+         Δlm *= min(1.1,5.0)
          GEO=true
       else
-         GEO = false
+         #GEO = false
+         GEO = GEO != true #inverts GEO
          μlm = max(10.0*μlm,1.0E-24)
-         Δlm = max(Δlm*.2,1.0E-24)
+         Δlm = max(Δlm*.8,1.0E-24)
          #λlm = max(10.0*λlm,1.0E-24)
          bad += 1
       end
@@ -397,7 +437,9 @@ function lbmq_2stg(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl["Irrep"])
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
-   writedlm("$molnam.der", J, ',')
+   if occursin("J", ctrl["RUNmode"])&&STAGE==2
+      out_jcbn_2stg(molnam,ops,nlist,inds,ctrl,vecs,params,scales,stg,tvcs)
+   end
    if ctrl["overwrite"]==true
       println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
       inpwriter(molnam, params, scales)

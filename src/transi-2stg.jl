@@ -112,6 +112,9 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
          outqns[i,7:12] = rqns[r,:]
       end
    end
+   fitler = outfrq[:,2] .≥ ctrl["INTthres"]
+   outfrq = outfrq[filter,:]
+   outqns = outqns[filter,:]
    #println(outfrq)
    #println(outqns)
    return outfrq, outqns
