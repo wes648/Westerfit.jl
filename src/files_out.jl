@@ -256,16 +256,16 @@ function linestrng(s,frql,qunl)
       part *= @sprintf("%12.6f", frql[2])*","
       part *= @sprintf("%10.4f", frql[3])
    else
-      part  = lpad(qunl[1]*0.5,4)*","
-      part *= lpad(qunl[2],3)*","
-      part *= lpad(qunl[3],3)*","
-      part *= lpad(qunl[4],3)*","
-      part *= lpad(qunl[5],3)*","
-      part *= lpad(qunl[7]*0.5,4)*","
-      part *= lpad(qunl[8],3)*","
-      part *= lpad(qunl[9],3)*","
-      part *= lpad(qunl[10],3)*","
-      part *= lpad(qunl[11],3)*","
+      part  = lpad(qunl[1]*0.5,4)*"," #J
+      part *= lpad(qunl[2],3)*","     #N
+      part *= lpad(qunl[3],3)*","     #Ka
+      part *= lpad(qunl[4],3)*","     #Kc
+      part *= lpad(qunl[5],3)*","     #m 
+      part *= lpad(qunl[7]*0.5,4)*"," #J
+      part *= lpad(qunl[8],3)*","     #N
+      part *= lpad(qunl[9],3)*","     #Ka
+      part *= lpad(qunl[10],3)*","    #Kc
+      part *= lpad(qunl[11],3)*","    #m
       part *= " "*@sprintf("%13.4f", frql[1])*","
       part *= @sprintf("%10.4f", frql[4])*","
       part *= @sprintf("%12.6f", frql[2])*","
@@ -273,7 +273,36 @@ function linestrng(s,frql,qunl)
    end
    return part
 end
-function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of SPCAT
+function qnlinSPCAT(qunus,s)
+      #J N Ka Kc m σ is the order in the array
+      #N Ka Kc v J is the order for SPCAT
+   if s==zero(s)
+      part = lpad(1404,4)
+      part *= @sprintf("%2i", qunus[2])           #N
+      part *= @sprintf("%2i", qunus[3])           #Ka
+      part *= @sprintf("%2i", qunus[4])           #Kc
+      part *= @sprintf("%2i", abs(qunus[5]))      #m
+      part *= lpad(qunus[8],6)           #N
+      part *= @sprintf("%2i", qunus[9])           #Ka
+      part *= @sprintf("%2i", qunus[10])          #Kc
+      part *= @sprintf("%2i", (qunus[11]))     #m
+   else
+      part = lpad(1415,4)
+      part *= @sprintf("%2i", qunus[2])           #N
+      part *= @sprintf("%2i", qunus[3])           #Ka
+      part *= @sprintf("%2i", qunus[4])           #Kc
+      part *= @sprintf("%2i", abs(qunus[5]))      #m
+      part *= @sprintf("%2i", ceil(Int,qunus[1])) #J
+      part *= "     "
+      part *= @sprintf("%2i", qunus[8])           #N
+      part *= @sprintf("%2i", qunus[9])           #Ka
+      part *= @sprintf("%2i", qunus[10])          #Kc
+      part *= @sprintf("%2i", abs(qunus[11]))     #m
+      part *= @sprintf("%2i", ceil(Int,qunus[7])) #J
+   end
+   return part
+end
+function TraWriterSPCAT(molnam,s,freqs, qunus) #emulates the cat file structure of SPCAT
    c = 29979.2458
    p = sortperm(freqs[:,1])
    freqs = freqs[p,:]
@@ -292,13 +321,13 @@ function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of
       #Degrees of Rotational Freedom
       part = string(part, lpad(3,2))
       #E_lower
-      modEl = freqs[i,3]/c
+      modEl = freqs[i,3]#/c
       part = string(part, @sprintf("%10.4f", modEl))
       #Upper State degeneracy
       part = string(part, lpad(1,3))
       #Tag
       part = string(part, lpad(0,7))
-      #QNFMT
+      #=#QNFMT
       part = string(part, lpad(1415,4))
       #J N Ka Kc σ vt is the order in the array
       #N Ka Kc v J is the order for SPCAT
@@ -309,7 +338,9 @@ function TraWriterSPCAT(molnam,freqs, qunus) #emulates the cat file structure of
       #qunus for lower
       out[i] = string(part, lpad(qunus[i,8],2),lpad(qunus[i,9],2),
       lpad(qunus[i,10],2), lpad(qunus[i,11],2),  lpad(qunus[i,7],2), lpad(qunus[i,12],2))
-      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))
+      #lpad(qunus[i,10],2), lpad(qunus[i,12],2), lpad(qunus[i,11],2))=#
+      part *= qnlinSPCAT(qunus[i,:],s)
+      out[i] = part
    end
    io = open("$molnam.cat", "w") do io
       for i in out
@@ -326,7 +357,7 @@ function TraWriter(molnam,s, freqs, qunus)
    for i in 1:size(freqs,1)
       out[i] = linestrng(s, freqs[i,:], qunus[i,:])
    end
-   io = open("$molnam.cat", "w") do io
+   io = open("$molnam.sim", "w") do io
       for i in out
          println(io, i)
       end
