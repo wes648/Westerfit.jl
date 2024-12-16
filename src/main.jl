@@ -118,8 +118,9 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
    #@show pcov
    perm = permdeterm(scls,stg)
    #@show perm
-   kbT = ctrl["TK"]*20836.61912 #MHz/K
-   Qrt = sum(exp.(fvls ./ -kbT))/3
+   ##kbT = ctrl["TK"]*20836.61912 #MHz/K
+   ##Qrt = sum(exp.(fvls ./ -kbT))/3
+   Qrt = qrtcalc(fvls,ctrl["TK"])
    finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
    #=

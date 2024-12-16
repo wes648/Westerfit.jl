@@ -2,6 +2,14 @@
 """
 One day I'll need to rewrite both intensity calculators
 """
+function qrtcalc(fvals::Array{Float64},TK::Float64)::Float64
+   β = -1.0/(20836.61912*TK) #K/MHz
+   out = exp.(fvals .* β)
+   if size(out,2) > 1
+      out[:,2:end] .*= 2.0
+   end
+   return sum(out)
+end
 
 function fullμmat_2stg(μs,nf,mcalc,s,jb,σb,jk,σk,tvecs)
    tvk = tvecs[:,:,σk+1]
@@ -66,6 +74,7 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
       if (jb==jk)&&(σr==σc)
          μs = sparse(UpperTriangular(μs))
       end
+      μs .^= 2
       rind, cind, tints = findnz(μs)
       for l in 1:length(tints)
          b = binds[rind[l]]
@@ -90,6 +99,8 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    len = nnz(frqs) 
    outfrq = zeros(len,4)
    outqns = zeros(Int,len,12)
+   σrd = σr==0 ? 1 : 2
+   σcd = σc==0 ? 1 : 2
    for i in 1:len
       ν = νs[i]
       r = rinds[i]
@@ -99,7 +110,8 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
          outfrq[i,3] = cvals[c] / csl
          #outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-cvals[c]/kbT) - exp(-rvals[r]/kbT))/Qrt
-         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σc+1)*100
+         thermfact *= 2*cqns[c,1] + 1
+         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*σcd*100
          outqns[i,1:6] = rqns[r,:]
          outqns[i,7:12] = cqns[c,:]
       elseif ν < 0.0
@@ -107,14 +119,12 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
          outfrq[i,3] = rvals[r] /csl
          #outfrq[i,4] = √abs(uncs[r,r]^2 + uncs[c,c]^2 - 2*uncs[r,c])
          thermfact = abs(exp(-rvals[r]/kbT) - exp(-cvals[c]/kbT))/Qrt
-         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*(σr+1)*100
+         thermfact *= 2*rqns[r,1] + 1
+         outfrq[i,2] = ints[r,c]*thermfact*(2*s+1)*σrd*100
          outqns[i,1:6] = cqns[c,:]
          outqns[i,7:12] = rqns[r,:]
       end
    end
-   filt = outfrq[:,2] .≥ ctrl["INTthres"]
-   outfrq = outfrq[filt,:]
-   outqns = outqns[filt,:]
    #println(outfrq)
    #println(outqns)
    return outfrq, outqns
