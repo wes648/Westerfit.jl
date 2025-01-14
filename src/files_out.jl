@@ -660,12 +660,6 @@ end
 """END CODE FOR INPUT FILE WRITER"""
 
 function findstrinput(molnam)
-   #findctrl = `grep -n CNTRLS $molnam.inp`
-   #strlnctrl = parse(Int,readchomp(pipeline(findctrl,`cut -d : -f1`)))
-   #find2nd = `grep -n 2NDORDER $molnam.inp`
-   #strln2nd = parse(Int,readchomp(pipeline(find2nd,`cut -d : -f1`)))
-   #findhigh = `grep -n PARAMS $molnam.inp`
-   #strlnhigh = parse(Int,readchomp(pipeline(findhigh,`cut -d : -f1`)))
    strlnctrl = blockfind(molnam,"CNTRLS")[1]
    strln2nd = blockfind(molnam,"2NDORDER")[1]
    strlnhigh = blockfind(molnam,"PARAMS")[1]
@@ -821,9 +815,8 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    srms = (@sprintf("%0.4f", frms))
    scounter = lpad(counter,3)
 
-
    secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
-             "χxx-χyy","F","ρz", "ρx", "V3","ηz","ηx"]
+             "χxx-χyy","F","ρz", "ρx", "V$(ctrl["NFOLD"])","ηz","ηx"]
    highnamall = file[strlnhigh:end,1]
    highstg= file[strlnhigh:end,end]
    highnam = highnamall[highstg .!= 0.0]
@@ -834,9 +827,8 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       #This is a super sloppy bug fix for a bug when zero iterations occur
       #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
       #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
-      println(io,"hi!! this is to fix a bug in which the first 111 characters appended to a file vanish I don't have a better fix")
+      println(io,"hi! this is to fix a bug in which the first 111 characters appended to a file vanish. I don't have a better fix")
    end
-
 
       if endpoint == "converge"
          println(io," A miracle has come to pass. The fit has converged.")
@@ -854,7 +846,6 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       else
          println(" The output writer seems to be having issues.")
       end
-
       println(io,"")
 
       println(io,"After $scounter iterations:")
@@ -907,3 +898,41 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
 
    println("Output written to $molnam.out!")
 end
+
+#function triangleprint(mat;io=stdout,d=4)
+#   io ≠ stdout ? io = open(io, "a") : io=stdout
+#   println(io,"  Correlation matrix:\n")
+#   l = size(mat,1)
+#   for i in 1:l
+#      part = prod(lpad.(round.(mat[i,1:i],digits=d),2d+2))
+#      println(io,part)
+#   end
+#   io ≠ stdout ? println(io,"\n\n") : nothing
+#   io ≠ stdout ? close(io) : nothing
+#end
+
+
+function triangleprint(mat,nams;io=stdout,d=4,col=5)
+   io ≠ stdout ? io = open(io, "a") : io=stdout
+   println(io,"  Correlation matrix:")
+   l = size(mat,1)
+   blocks = ceil(Int,l/col)
+   for j in 1:blocks
+   start = col*(j-1)+1
+   stop = min(l,col*j)
+   println(io,"\n"*prod(fill(" ",d))prod(lpad.(nams[start:stop],2d+2))*"\n")
+   for i in start:l
+      stop = min(i,col*j)
+      part = lpad(nams[i],4)*prod(lpad.(round.(mat[start:stop,i],digits=d),2d+2))
+      println(io,part)
+   end; end
+   io ≠ stdout ? println(io,"\n\n") : nothing
+   io ≠ stdout ? close(io) : nothing
+end
+
+function triangleprint(mat;io=stdout,d=4,col=5)
+   nams = string.(collect(1:size(mat,1)))
+   triangleprint(mat,nams,io=io,d=d,col=col)
+end
+
+

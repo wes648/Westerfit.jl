@@ -306,6 +306,10 @@ function covarr(corr,pσ)
    end
    return Symmetric(out)
 end
+function covarr2(hess,omc)
+   σ2 = 2*sum(abs2,omc)/(size(omc,1) - size(hess,1))^2
+   return σ2 .* inv(hess)
+end
 
 function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]

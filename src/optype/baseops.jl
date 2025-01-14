@@ -3,7 +3,9 @@ Welcome to be base Operators used in westerfit!
 This file is divided into 3 sections and to add a new Operator, all 3 must be
   edited.
 Section 1: Functions. These act on the wavefuntions to produce the matrices and
-must only take the arguments of a Psi and a power
+must use the following type annotations:
+ op(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+This should ensure consistency with the program.
 
 Section 2: Operators. These are the actual objects used by the code. Look at the
 type file to see the structure but the general set up should be:
@@ -30,7 +32,7 @@ ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
 #nt(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh.(ψ.N) .^p)
 #ns(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh(ψ.J) - eh(ψ.S) - eh.(ψ.N))^p
 #st(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh.(ψ.N) .^p)
-function np(ψ,p::Int)::SparseMatrixCSC{Float64, Int64}
+function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
    ns = ψ.N[1+p:end]
    part = ones(length(ns))
    if p ≤ ψ.lng && p ≠ 0
@@ -51,19 +53,25 @@ function np(ψ,p::Int)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 nm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = permutedims(np(ψ,p))
-npm(ψ::Psi,p::Int) = tplus!(np(ψ,p))
+npm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(np(ψ,p))
+nx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(0.5*np(ψ,p))
 
-function iny_op(qns::Matrix{Int64},p::Int)::SparseMatrixCSC{Float64,Int}
+function iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
-      out = np_op(qns,1-δi(p,0))
+      out = np_op(ψ,1-δi(p,0))
       out .-= permutedims(out)
       return dropzeros!(out)
    else
       return spdiagm(ones(ψ.lng))
    end
 end
-function sqpart(j,s,q,nb,kb,nk,kk)::Float64
-   return wig3j(nb,1,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)*powneg1(-kb)
+#iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = 
+
+function skqpart(j,s,k,q,nb,kb,nk,kk)::Float64
+   return wig3j(nb,k,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,k)*jnred(nb,nk)*powneg1(-kb)
+end
+function s0part(j,s,nb,kb,nk,kk)::Float64
+   return skqpart(j,s,1,0,nb,kb,nk,kk)::Float64
 end
 function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
    l = ψ.lng
@@ -71,7 +79,7 @@ function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
    if s≠zero(s)&&p≠0
       for a ∈ 1:l, b ∈ a:l
          if abs(ψ.N[a] - ψ.N[b])≤1 && ψ.K[a]==ψ.K[b]
-            @views out[b,a] = sqpart(j,s,0,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
+            @views out[b,a] = s0part(j,s,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
          end
       end
       dropzeros!(out)
@@ -82,7 +90,7 @@ function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
    end
    return out
 end
-sz(ψ,p)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
+sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
 
 function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    l = size(qns,1)
@@ -90,38 +98,35 @@ function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
    if s≠zero(s)
       for a ∈ 1:l, b ∈ 1:l
          if abs(qns[a,1]-qns[b,1])≤1 && (q+qns[a,2]-qns[b,2])==0
-            @views out[b,a] = sqpart(j,s,q,qns[b,:],qns[a,:])
+            @views out[b,a] = skqpart(j,s,q,q,qns[b,:],qns[a,:])
          end
       end
       drOpzeros!(out)
-      out .*= nred(s)*powneg1(s+j+1+δ(1,q))*√2
-      #the √2 is included to convert from spherical to cylinderical 
+      out .*= nred(s)*powneg1(s+j+q)
+      #The q here is because the rank and component are equal for this function
    else
       out[diagind(out)] .+= 1.0
    end
    return out
 end
+sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq_op(ψ.J,ψ.S, p,ψ)
+sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq_op(ψ.J,ψ.S,-p,ψ)
+spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq_op(ψ.J,ψ.S, p,ψ))
+function sx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   out  = sq_op(ψ.J,ψ.S, 1,ψ)
+   out -= sq_op(ψ.J,ψ.S,-1,ψ)
+   out *= -√.5
+   out ^= p
+   return out
+end
+function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   out  = sq_op(ψ.J,ψ.S, 1,ψ)
+   out += sq_op(ψ.J,ψ.S,-1,ψ)
+   out *= -√.5
+   out ^= p
+   return out
+end
 
-function sp_op(j::Real,s::Real,qns::Array{Int,2},p::Int
-         )::SparseMatrixCSC{Float64, Int64} 
-   #if p≠0
-      return sq_op(j,s,1,qns)^p
-   #else
-   #   return spdiagm(ones(size(qns,1)))
-   #end
-end
-function sm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
-         )::SparseMatrixCSC{Float64, Int64} 
-   return sq_op(j,s,-1,qns)^p
-end
-function spm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
-         )::SparseMatrixCSC{Float64, Int64} 
-   if p≠0
-      return tplus!(sp_op(j,s,qns,p))# + sm_op(j,s,qns,p)
-   else
-      return spdiagm(ones(size(qns,1)))
-   end
-end
 
 
 ################################################################################
@@ -133,7 +138,7 @@ N2 = Op(1.0,a=1)
 Np = Op(1.0,rp=[1],rf=[np])
 Nm = Op(1.0,rp=[1],rf=[nm])
 Npm = Op(1.0,rp=[1],rf=[npm])
-#=Nx = Op(1.0,rp=[1],rf=[nx])
+Nx = Op(1.0,rp=[1],rf=[nx])
 iNy = Op(1.0,rp=[1],rf=[iny])
 
 NS = Op(1.0,b=1)
@@ -152,7 +157,7 @@ cosβ = Op(1.0,tp=[0 0; 0 1])
 Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
 cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
 
-μz = Op(1.0,rp=[1],rf=[μz])
+#=μz = Op(1.0,rp=[1],rf=[μz])
 μx = Op(1.0,rp=[1],rf=[μx])
 iμy = Op(1.0,rp=[1],rf=[iμy])
 =#

@@ -33,7 +33,7 @@ end#
 function valset_withcomments(nams,vals,unts,stg)::Vector{Float64}
 #this doesn't do what I want it to do. I want a way to comment out a line so
 # it isn't used in the current calculation but it is carried over into the 
-# new input file. I leave this as an exercise for SOphie
+# new input file. I leave this as an exercise for Sophie
    conv = unitdict()
    for i in eachindex(vals)
       if stg[i] > 0
