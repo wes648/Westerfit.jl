@@ -41,7 +41,7 @@ struct Psi
    ms::Array{Int,2}
    lng::Int
    Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
-   Psi(n::Int) = Psi(n,0.0)
+   Psi(n::Int) = Psi(Float64(n),0.0)
 end
 
 mutable struct Op_old
@@ -80,7 +80,11 @@ mutable struct Op
 end
 
 #Multiplying an Operator by a number updates the value
-*(v::Number,O::Op)::Op = Op(v*O.v,O.p,O.f)
+function *(v::Number,O::Op)::Op
+   out = Op(O)
+   out.v *= v
+   return out
+end
 #Raising an Operator to a power updates the exponent
 function ^(O::Op,n::Int)::Op 
    out = Op(O)
