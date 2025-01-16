@@ -6,6 +6,9 @@ Section 1: Functions. These act on the wavefuntions to produce the matrices and
 must use the following type annotations:
  op(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
 This should ensure consistency with the program.
+Stage 0 operators (those used in the intensity calculations) have the form of:
+ op(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+This is because we can mixing of J values in transitions but not energy levels
 
 Section 2: Operators. These are the actual objects used by the code. Look at the
 type file to see the structure but the general set up should be:
@@ -16,7 +19,7 @@ a default parameter value of 1.0
 
 Section 3: Dictionary. This is the list of Operators read by the code in order
 to interpret the input file. It is wrapped inside a function so that it doesn't 
-stay in memory after being used in the inpu reading.
+stay in memory after being used in the input reading.
 Each entry should just be "Nam"=>Nam
 """
 
@@ -127,6 +130,15 @@ function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
+function μzf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+   spdiagm(ones(ψk.lng))
+end
+function μxf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+   spdiagm(ones(ψk.lng))
+end
+function iμyf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+   spdiagm(ones(ψk.lng))
+end
 
 
 ################################################################################
@@ -157,10 +169,10 @@ cosβ = Op(1.0,tp=[0 0; 0 1])
 Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
 cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
 
-#=μz = Op(1.0,rp=[1],rf=[μz])
-μx = Op(1.0,rp=[1],rf=[μx])
-iμy = Op(1.0,rp=[1],rf=[iμy])
-=#
+μz = Op(1.0,rp=[1],rf=[μzf])
+μx = Op(1.0,rp=[1],rf=[μxf])
+iμy = Op(1.0,rp=[1],rf=[iμyf])
+
 ################################################################################
 #####                         Section 3: Dictionary                        #####
 ################################################################################
