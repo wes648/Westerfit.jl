@@ -46,6 +46,7 @@ function westereng(molnam::String, prm, ctrl)
    #read input file
    sof, ser = secordinp(molnam,String(ctrl["Irrep"]))
    μs, cdf, cdn, cde, cdo, stg = opinp(molnam,ctrl["NFOLD"])
+   @show μs
    if prm==nothing
       prm = vcat(sof,cdf)
    else

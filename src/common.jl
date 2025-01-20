@@ -278,6 +278,16 @@ function mfilter(jsd,nf,mc,mm,σ)
    mlowest = σ
    mhighst = (σ + nf*mm)*powneg1(isodd(mm))
 end
+
+function cart2sphr(inp::Array{Float64,1})::Array{Float64,1}
+   #assumes a [z x y] ordering
+   out = zeros(3)
+   out[1] = (inp[2]+inp[3])/√2
+   out[2] = inp[1]
+   out[3] = -(inp[2]-inp[3])/√2
+   return out
+end
+
 ################################################################################
 #These are the various Wang Matrices
 ################################################################################

@@ -45,6 +45,7 @@ function tracalc_twostg(μ::Array{Float64},kbT,Qrt,ctrl,jmax,
    vtm = ctrl["vtmax"]
    nf = ctrl["NFOLD"]
    mΔj = 1
+   @show μ
    #println(μ)
    if σr == σc
       jbjk = jbjklister(0.5*iseven(Int(2*s+1)),jmax,mΔj)

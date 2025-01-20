@@ -219,23 +219,23 @@ end
 
 
 
-function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
-   out = zeros(9)
-   out[1] = -sum(diag(inp))/√3
-   out[2] = 0.5*(inp[1,2] - inp[2,1])
-   out[3] = 0.0
-   out[4] = 0.5*(inp[1,2] - inp[2,1])
-   out[5] = 0.5*(inp[2,2] - inp[3,3])
-   out[6] = 0.5*(inp[1,2] + inp[2,1])
-   out[7] = (3.0*inp[1,1] - sum(diag(inp)))/√6
-   out[8] = -0.5*(inp[1,2] + inp[2,1])
-   out[9] = 0.5*(inp[2,2] - inp[3,3])
-   return out
-end
-function cart2sphr(inp::Array{Float64,1})::Array{Float64,1}
-   out = zeros(3)
-   out[1] = (inp[3]+inp[1])/√2
-   out[2] = inp[2]
-   out[3] = -(inp[3]-inp[1])/√2
-   return out
-end
+#function cart2sphr(inp::Array{Float64,2})::Array{Float64,1}
+#   out = zeros(9)
+#   out[1] = -sum(diag(inp))/√3
+#   out[2] = 0.5*(inp[1,2] - inp[2,1])
+#   out[3] = 0.0
+#   out[4] = 0.5*(inp[1,2] - inp[2,1])
+#   out[5] = 0.5*(inp[2,2] - inp[3,3])
+#   out[6] = 0.5*(inp[1,2] + inp[2,1])
+#   out[7] = (3.0*inp[1,1] - sum(diag(inp)))/√6
+#   out[8] = -0.5*(inp[1,2] + inp[2,1])
+#   out[9] = 0.5*(inp[2,2] - inp[3,3])
+#   return out
+#end
+#function cart2sphr(inp::Array{Float64,1})::Array{Float64,1}
+#   out = zeros(3)
+#   out[1] = (inp[3]+inp[1])/√2
+#   out[2] = inp[2]
+#   out[3] = -(inp[3]-inp[1])/√2
+#   return out
+#end

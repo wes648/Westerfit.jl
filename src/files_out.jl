@@ -281,7 +281,7 @@ function qnlinSPCAT(qunus,s)
       part *= @sprintf("%2i", qunus[2])           #N
       part *= @sprintf("%2i", qunus[3])           #Ka
       part *= @sprintf("%2i", qunus[4])           #Kc
-      part *= @sprintf("%2i", abs(qunus[5]))      #m
+      part *= @sprintf("%2i", (qunus[5]))      #m
       part *= lpad(qunus[8],6)           #N
       part *= @sprintf("%2i", qunus[9])           #Ka
       part *= @sprintf("%2i", qunus[10])          #Kc
@@ -319,14 +319,15 @@ function TraWriterSPCAT(molnam,s,freqs, qunus) #emulates the cat file structure 
       #modint = -abs(rand(1)[1])
       part = string(part, @sprintf("%8.4f", modint))
       #Degrees of Rotational Freedom
-      part = string(part, lpad(3,2))
+      part = string(part, @sprintf("%2i",3))
       #E_lower
       modEl = freqs[i,3]#/c
       part = string(part, @sprintf("%10.4f", modEl))
       #Upper State degeneracy
-      part = string(part, lpad(1,3))
+      degen = Int(2*qunus[i,1]+1)
+      part = string(part, @sprintf("%3i",degen))
       #Tag
-      part = string(part, lpad(0,7))
+      part = string(part, @sprintf("%7i",7))
       #=#QNFMT
       part = string(part, lpad(1415,4))
       #J N Ka Kc σ vt is the order in the array
