@@ -370,7 +370,7 @@ end
       #println("inv(H)*β = $(inv(H)*β)")
       #if (nrms<rms)&&(ρlm>1e-3)
       #stepcheck = (ρlm>1e-5)
-      if (BOLD == 0)
+      if (BOLD == 0)||wrms > 1e5
          stepcheck = ((nrms<rms)&&(ρlm>1e-6))
       else
       stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)

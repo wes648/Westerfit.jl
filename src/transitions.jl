@@ -3,27 +3,16 @@
 Tμ(q::Int)::Int = q + 2
 
 function μproc(μf,μo)
-   @show μf
-   @show μo
    len = maximum(μo)+1
    μo = μo[[3;5;8;9],:]
-#   axop = μo[1:3,:]
-#   @show axop
    csop = sum(μo[3:4,:],dims=1)
-#   @show csop
-   @show μo
    out = zeros(Float64,3,len)
    for i in 1:length(μf)
-      v = μo[:,i]
-      @show typeof(v)
-      @show size(v)
-#      ax = argmax(axop[:,i])
-      @show v[[1;2;4]]
-      ax = argmax(v[[1;2;4]])
-      ind = csop[i] + 1
-      out[ax,ind] = μf[i]
+      #v = μo[:,i]
+      #ax = argmax(v[[1;2;4]])
+      #ind = csop[i] + 1
+      out[argmax(μo[[1;2;4],i]), csop[i] + 1] = μf[i]
    end
-   @show out
    @simd for i in 1:len
       out[:,i] = cart2sphr(out[:,i])
    end

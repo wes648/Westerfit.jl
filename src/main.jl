@@ -9,6 +9,8 @@ using StaticArrays
 using Base.Threads
 using Dates
 #include("@__DIR__/../WIGXJPF.jl")
+#Δ δ ρ ϵ χ
+
 
 @static if Sys.iswindows()
    using WignerSymbols
@@ -180,7 +182,7 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    prm = vcat(prm,cdf)
    err = vcat(ser,cde)
    if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check
-      lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#')
+      lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#',skipblanks=true)
       linelength = (size(lines,1))
    else # Self-consistency check
       lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
