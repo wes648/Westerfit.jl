@@ -113,7 +113,6 @@ function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
    U = kron(I(length(tvals)), ur(j,s))
    H = (U*H*U)
    vals, vecs = eigen!(Symmetric(Matrix(H)))
-
    perm = twostg_assign(vecs,j,s,mmax,vtm)
    vals = vals[perm]
    vecs = vecs[:,perm]
@@ -236,28 +235,45 @@ function nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
    return nind
 end
 function twostg_assign(vecs,j,s,mmax,vtmax)
+   @show j
+   @show size(vecs)
+   @show vecs
    md = mmax + 1
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
+   @show jsd
+   @show ni
    count = min(vtmax+4,md)
    svcs = abs.(vecs[:,1:jsd*count]).^2
    #determine vt state
    vind = vtfinder(svcs,jsd,md,vtmax)
-   #determine N state
+   @show vind
+   #determine N statecol[nfilter .* (vind .== (v+1))]
    nind = nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
+   @show nind
    #energy sort for K (done intrisnically)
    #permute to m style ordering (you didn't implement this....)
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
+   @show size(perm)
    for ng in 1:length(ns)
+      @show ng
       nfilter = (nind .== ng)
+      @show nfilter
       for v in 0:vtmax
-         mg = mmax + vt2m(v) + 1
+         @show v
+         #mg = mmax + vt2m(v) + 1
+         mg = abs(vt2m(vtmax)) + vt2m(v) + 1
+         @show mg
          frst = jsd*(mg-1) + ni[ng,1]
          last = jsd*(mg-1) + ni[ng,2]
+         @show frst
+         @show last
          part = col[nfilter .* (vind .== (v+1))]
+         @show part
          part = part[keperm(ns[ng])]
+         @show part
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end
    end
