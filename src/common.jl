@@ -147,8 +147,9 @@ function qn2ind(nf,vtm,m,j,s,n,ka,kc)
    if (nf≠zero(nf))
    #ka = abs(ka)
    ind = sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(vtm+1)
-   ind += (vtm+floor(Int,m/nf))*(2*j+1)
+   #ind += (vtm+floor(Int,m/nf))*(2*j+1) #<--- This function is wrong for vt≠0
    ind *= Int(2s+1)
+   ind += (ceil(Int,0.5*vtm) + floor(Int,m/nf))*(2*j+1)
    ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
    ind = convert(Int,ind)
    return ind

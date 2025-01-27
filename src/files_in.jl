@@ -289,10 +289,10 @@ elseif nf≠zero(nf) && iseven(nf)
    inds = zeros(Int,size(lns,1),6)
    inds[:,1] = Int.(2 .* qunus[:,1])
    inds[:,2] = (mod.(2 .*qunus[:,5],Int(0.5*nf)))
-   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,3] = qn2ind.(Int(0.5*nf),vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
    inds[:,4] = Int.(2 .* qunus[:,6])
    inds[:,5] = Int.(mod.(qunus[:,10],Int(0.5*nf)))
-   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+   inds[:,6] = qn2ind.(Int(0.5*nf),vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
 else
    qunus = lns[:,1:10]
    freqs = lns[:,11]

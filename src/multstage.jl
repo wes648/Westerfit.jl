@@ -242,8 +242,10 @@ function twostg_assign(vecs,j,s,mmax,vtmax)
    #else
    #   md = mmax + 1
    #end
+   #@show mmax
    md = mmax + iseven(mmax)
    mtemp = convert(Int,0.5*(md - 1))
+   #@show mtemp
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
@@ -255,6 +257,7 @@ function twostg_assign(vecs,j,s,mmax,vtmax)
    nind = nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
    #energy sort for K (done intrisnically)
    #permute to m style ordering (you didn't implement this....)
+   # ^doesn't my vt2m function do that?
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
    for ng in 1:length(ns)
@@ -269,5 +272,7 @@ function twostg_assign(vecs,j,s,mmax,vtmax)
       end
    end
    perm = perm[perm .!= 0]
+   @show j
+   @show perm
    return perm
 end
