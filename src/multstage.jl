@@ -235,10 +235,15 @@ function nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
    return nind
 end
 function twostg_assign(vecs,j,s,mmax,vtmax)
-   @show j
-   @show size(vecs)
-   @show vecs
-   md = mmax + 1
+#the bullshit surrounding mmax and mtemp comes from how mmax is treated as a vt_calc
+# in the two stage approach so I'm deriving an effective mmax from mmax... fuck i hate myself
+   #if isodd(mmax)
+   #   md = mmax
+   #else
+   #   md = mmax + 1
+   #end
+   md = mmax + iseven(mmax)
+   mtemp = convert(Int,0.5*(md - 1))
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
@@ -262,10 +267,7 @@ function twostg_assign(vecs,j,s,mmax,vtmax)
       nfilter = (nind .== ng)
       @show nfilter
       for v in 0:vtmax
-         @show v
-         #mg = mmax + vt2m(v) + 1
-         mg = abs(vt2m(vtmax)) + vt2m(v) + 1
-         @show mg
+         mg = mtemp + vt2m(v) + 1
          frst = jsd*(mg-1) + ni[ng,1]
          last = jsd*(mg-1) + ni[ng,2]
          @show frst
