@@ -86,7 +86,7 @@ end
 hr2on(ns,ks,bk,bn) = @. bn*eh2(ns) + bk*ks^2 
 hr2of1(ns,ks,dab) = @. dab*(ks-0.5)*fh(ns,ks-1)
 hr2of2(ns,ks,bpm) = @. bpm*fh(ns,ks-1)*fh(ns,ks-2)
-function hrot2(pr,qns)::SparseMatrixCSC{Float64, Int64}
+function hrot2(pr,qns::Array{Int,2})::SparseMatrixCSC{Float64, Int64}
    ns = view(qns,:,1)
    ks = view(qns,:,2)
    out = spzeros(size(ns,1),size(ns,1))

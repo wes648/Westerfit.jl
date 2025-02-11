@@ -72,7 +72,7 @@ struct Psi
    lng::Int
    #Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
    #Psi(n::Int) = Psi(Float64(n),0.0)
-   function Psi(J::Number=0,S::Number=0;nf=0,σ=0,mc=3) #spin (torsion) rotation
+   function Psi(J::Number=0,S::Number=0;nf=0,σ=0,mc=0) #spin (torsion) rotation
       J = convert(Float64,J)
       S = convert(Float64,S)
       N = ngen(J,S)
@@ -228,11 +228,12 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int}
 end
 
 function enact_init(O::Op,ψ::Psi)::Diagonal{Float64,Vector{Float64}}
-   if O.a≠0
-      out = O.v .* eh.(ψ.N).^O.a
-   else
-      out = fill(O.v,ψ.lng)
-   end
+   #if O.a≠0
+   #   out = O.v .* eh.(ψ.N).^O.a
+   #else
+   #   out = fill(O.v,ψ.lng)
+   #end
+   out = O.a ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    if O.b≠0; out .*= ns_el.(ψ.J,ψ.S,O.b,ψ.N)::Vector{Float64} ; end
    if O.c≠0; out .*= eh(ψ.S)^O.c ; end
    if O.d≠0; out .*= ψ.K .^ O.d ; end

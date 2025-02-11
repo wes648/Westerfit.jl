@@ -20,32 +20,53 @@ function westereng(molnam::String)
    #initialize vecs
    #initialize tvecs
    #initialize qns
-for j in jmin:jmax
-   Hrot = hrot2v2()
+end
+
+function jvdest2(j,s,vtm)
+"""
+This returns the first and final indices for a certain J value for a given S.
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+   snd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   return snd:fnd
+end
+
+#tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
+function tsrcalc!(vals,vecs,qns,jlist,ctrl,prm,stg,ℋ)
+   σs = σlist()
+   σcnt = ???
+for j in jlist
+   dest = jvdest2(j,s,vtm) 
+   ψ = Psi(J=j,S=ctrl["S"])
+   Hrot = hrot2(prm[1:4],ψ)
    if S≥1.0
-      Hrot += Hsr + Hqua
+      Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ) + Hqua(prm[10:12],ψ.J,ψ.S,ψ)
    elseif S==0.5
-      Hrot += Hsr
+      Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ)
    end
-   for σ in 1:σcnt
-      ψ = Psi()
-      vals[dest],vecs[dest] = tsrdiag_1(Hr,ℋ,ψ)
-   end
-end
-end
+   Hrot = Symmetric(Hrot)
+   for sc in 1:σcnt
+      ψ = Psi(Psi(J=j,S=ctrl["S"]),nf=ctrl["NFOLD"],σ=σs[σd],mc=ctrl["mcalc"])
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,ℋ,ψ)
+      qns[dest,sc] = qnlabv(j,s,nf,vtm,σ)
+   end#σs
+end#j
+end#f
 
 #tsr_diag variants: 0 generic universal, 1 preloads Hrs, 2 two-stage preloads Hrs
 function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
    H = enact(ℋ,ψ)
    U = sparse(ones(1))
    for i in 1:length(ψ.nf)
+#having U at the end of kron maintians the tight block structure of the lower index tops
    if ψ.σ[i] == 0
-      U = kron(u,ur(mcalc))
+      U = kron(ur(mcalc),U)
    else
-      U = kron(u,sparse(1.0I,2mcalc+1,2mcalc+1))
+      U = kron(sparse(1.0I,2mcalc+1,2mcalc+1),U)
    end;end
    U = kron(u,ur(ψ.J,ψ.S))
-   H = U*H*U
+   H = droptol!(U*H*U,2*eps())
    vals,vecs = eigen!(Symmetric(Matrix(H)))
    if (ctrl["assign"]=="ram36")||(ctrl["assign"]=="RAM36")
       perm = ramassign(vecs,j,s,mcalc,vtm)
