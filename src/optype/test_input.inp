@@ -1,6 +1,6 @@
 test input 
 %CNTRLS
-NFOLD = 2
+NFOLD = 3
 S = 0.0
 stages = 2
 RUNmode = F
@@ -8,7 +8,7 @@ TK = 8.0
 mcalc = 12
 mmax = 8
 goal = 0.01
-vtmax = 1
+vtmax = 0
 Jmax = 16
 νmin =  6.0
 νmax = 20.0
@@ -36,10 +36,6 @@ Vn;            1000.885863352911;   1.0
 
 %OPS Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ, α, β, γ
 %Name;        Val; unit; scl;stg; v v; operator
-μa;           1.0;  arb; 0.0;  0; 0 0; μz
-μa(3);        1.0;  arb; 0.0;  0; 0 0; μz cosα
-μb;           1.0;  arb; 0.0;  0; 0 0; μx
-μb(3);        1.0;  arb; 0.0;  0; 0 0; μx cosα
 ΔN;         3.000;  kHz; 1.0;  1; 0 0; N2^4
 ΔNK;        3.000;  kHz; 1.0;  1; 0 0; N2^2 Nz^2
 ΔK;         3.000;  kHz; 1.0;  1; 0 0; Nz^4

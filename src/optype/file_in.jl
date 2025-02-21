@@ -316,9 +316,19 @@ if len != 0 #if there are added parameters
    #vals, unts, ops are collected in ℋ and vibstr isn't used right now
 end#if
    stgs = vcat(stgs,nstgs)
+   #ℋ, μs = stgextract(ℋ,stg,0)
    return ℋ,stgs,errs
 end#function 
 
+function stgextract(H,stg,n)
+   yprm = [stg .== n]
+   nprm = [stg .≠ n]
+   sub = H[yperm]
+   H = H[nperm]
+   Hstg = stg[nprm]
+   sstg = stg[yprm]
+   return H, sub
+end
 
 #=
 ind = get(baseops,split[1],22)

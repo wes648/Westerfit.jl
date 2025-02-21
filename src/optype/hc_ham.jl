@@ -1,9 +1,9 @@
 
-hr2on(ns,ks,bk::Float64,bn::Float64) = @. bn*eh2(ns) + bk*ks^2 
+hr2on(ns,ks,bk::Float64,bn::Float64) = @. bn*eh(ns) + bk*ks^2 
 hr2of1(ns,ks,dab::Float64) = @. dab*(ks-0.5)*fh(ns,ks-1)
 hr2of2(ns,ks,bpm::Float64) = @. bpm*fh(ns,ks-1)*fh(ns,ks-2)
 function hrot2(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
-   out = spzeros(size(ns,1),size(ns,1))
+   out = spzeros(size(ψ.N,1),size(ψ.N,1))
    #p0 = hr2on(ns,ks,pr[1],pr[2])
    out[diagind(out)] .= hr2on(ψ.N,ψ.K,pr[1],pr[2])
    #p1 = hr2of1(ns[2:end],ks[2:end], pr[4])

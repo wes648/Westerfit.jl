@@ -95,13 +95,13 @@ function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
 end
 sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
 
-function sq_op(j,s,q,qns)::SparseMatrixCSC{Float64, Int64}
-   l = size(qns,1)
+function sq_op(j::Real,s::Real,q::Int,ψ::Psi)::SparseMatrixCSC{Float64, Int64}
+   l = ψ.lng
    out = spzeros(l,l)
    if s≠zero(s)
       for a ∈ 1:l, b ∈ 1:l
-         if abs(qns[a,1]-qns[b,1])≤1 && (q+qns[a,2]-qns[b,2])==0
-            @views out[b,a] = skqpart(j,s,q,q,qns[b,:],qns[a,:])
+         if abs(ψ.N[a] - ψ.N[b])≤q && (q+ψ.K[a]-ψ.K[b])==0
+            @views out[b,a] = skqpart(j,s,q,q,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
          end
       end
       drOpzeros!(out)

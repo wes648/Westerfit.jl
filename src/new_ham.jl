@@ -540,8 +540,8 @@ function tsrcalc(ctrl,prm,stg,cdo,nf,vtm,mcalc,jlist,s,sd,σ)
    outpasz = zeros(Float64,jfd*vtd)
    outquns = zeros(Int,jfd*vtd,6)
    outvecs = zeros(Float64,Int((2*jmax+1)*msd),jfd*vtd)
-#   for j in jlist #thread removed for troubleshooting purposes
-   @threads for j in jlist
+   for j in jlist #thread removed for troubleshooting purposes
+#   @threads for j in jlist
       jd = Int(2.0*j) + 1
       ###pull behavior should be move into TSRDIAG moving forward
       ###pull = indpuller(vtm,mcalc,σt,Int(jd*sd))

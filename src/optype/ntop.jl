@@ -22,7 +22,7 @@ function msgen(T::Type,nfold::Real,mcalc::Real,σ::Real)
    elseif (σ≠0)&&(iseven(nfold))
       lim = floor(Int,lim/2)
       marray = collect(T,-lim+σ:floor(T,nfold/2):lim+σ)
-   else
+   else #(σ≠0)&&(isodd(nfold))
       marray = collect(T,(-lim+σ):nfold:(lim+σ))
    end
    return marray
@@ -67,7 +67,7 @@ function nextσ0(nfc,nf2::Int)::Array{Int,2}
    σ2 = collect(0:σcnt2)
    t = zeros(1,nfc)
    out = hcat(repeat(t,length(σ2)), σ2)
-   return out
+   return out'
 end
 function nextσ1(σs::Array,nf2::Int)::Array{Int,2}
    σcnt2 = σcount(nf2)-1
@@ -76,19 +76,23 @@ function nextσ1(σs::Array,nf2::Int)::Array{Int,2}
    return out
 end
 function σgen_indef(nf::Array{Int})::Array{Int,2}
-#I need to make this function transposed
    old = σgen(nf[1],nf[2])
    for i in 3:length(nf)
-      lst = old[:,end]
-      new = nextσ0(i-1,nf[i])
-      for j in 2:length(lst)
-         part = nextσ1(old[j,:],nf[i])
-         new = vcat(new,part)
-       end#for j
+      σlsti = nf[i] - iseven(nf[i])
+      new = vcat(old,fill(0,size(old,2))')
+      for j in 2:σlsti
+         σ = Int(cospi(j)*floor(j/2))
+         part = vcat(old[:,1+(j==σlsti):end],fill(σ,size(old[:,1+(j==σlsti):end],2))')
+         new = hcat(new,part)
+      end#for j
       old = new
    end#for i
    return old
-end#function
+end
+function σgen_indef(nf::Int)::Array{Int}
+   return collect(0:σcount(nf[1])-1)
+end
+
 
 function msgen_2top(nf::Array,mcalc)::Array{Int,3}
    σs = σgen(nf[1],nf[2])

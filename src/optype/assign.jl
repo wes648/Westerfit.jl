@@ -2,11 +2,21 @@
 This is where the assignment routines are located for westerfit.
    The is a simple assigner based on RAM36. There are also the start of a 
    Jacobi eigenvalue routine based version. It is not done yet
+This is the new version of the file that outputs in vt ordering not -m to m ordering :(
+It's less pretty but more generalizable 
+List of fixed routines:
+ram36 (one stage)
+ram36 (two stage)
+expect appears to already work in this way
+same for expectk and eeo
+   oh those three only do vt=0 but could be generalized
 """
+vt2m(vtm)::Int = ceil(vtm/2)*cospi(vtm)
 
 
 ### EXPECTATION
-#july 28 24: fun discovery! this breaks for NFOLD=2
+#jul 28 24: fun discovery! this breaks for NFOLD=2
+#feb 13 25: rediscovered this note, is due to even/odd states/basis size. use 2stg 
 kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
 keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
@@ -89,17 +99,6 @@ function expectkassign!(vals,vecs,j,s,nf,mc,σ)
    return vals, vecs
 end
 
-"""
-the new k assignment
-avecs = abs.(vecs)
-perm = zeros(Int,2N+1)
-for i in 1:(2N+1)
-   a,b = Tuple(argmax(avecs))
-   perm[b] = a
-   arv5[:,b] *= 0.0
-   arv5[a,:] *= 0.0
-end
-"""
 ### Expect-Expect-Overlap
 function eeoassign!(vals,vecs,j,s,nf,mc,σ)
    ns, nd, ni, jsd = srprep(j,s)
@@ -146,25 +145,21 @@ function mfinder(svcs,jsd::Int,md::Int,mcalc,vtmax)
    for i in 1:md 
       ovrlp[i,:] = sum(svcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
    end
-   #ovrlp = argmax(ovrlp,dims=1)
    mind = zeros(Int,size(svcs,1))
-   #@simd for i in 1:length(mind)
-   #   mind[i] = ovrlp[i][1]
-   #end
    cap = min(vtmax+4,md)
    for v in 0:vtmax#cap #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
       mg = mcalc + vt2m(v) + 1
       perm = sort(sortperm(ovrlp[mg,:], rev=true)[1:jsd])
       ovrlp[:,perm] .= 0.0
       ovrlp[mg,:] .= 0.0
-      mind[perm] .= mg
+      mind[perm] .= v+1
    end
-   #println(mind)
    return mind
 end
+
 function nfinderv3(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
    jsd = jd*sd
-   vlist = (mc+1) .+ vt2m.(collect(0:vtmax))
+   vlist = collect(1:vtmax+1) #(mc+1) .+ vt2m.(collect(0:vtmax))
    list = collect(1:size(svcs,1))[Bool.(sum(mind .∈ vlist',dims=2))[:]]
    tvcs = svcs[:,list]
    ovrlp = zeros(length(ns),size(tvcs,2))
@@ -186,15 +181,11 @@ function nfinderv3(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
       perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])#[1:nd]
       nind[list[perm]] .= i
       ovrlp[:,perm] .= 0.0 
-      #@show perm
       #end
    end
    #println(nind)
    return nind
 end
-
-#kperm(n::Int)::Array{Int} = sortperm(Int.(cospi.(collect(-n:n).+isodd(n))) .* collect(-n:n))
-#keperm(n::Int)::Array{Int} = sortperm(sortperm(collect(-n:n), by=abs))[kperm(n)]
 
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    jd = Int(2.0*j) + 1
@@ -207,6 +198,7 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
    mind = mfinder(svcs,jsd,md,mcalc,vtmax)
+   @show mind
    nind = nfinderv3(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
    #nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    #println(mind)
@@ -215,9 +207,10 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    for ng in 1:length(ns)
       nfilter = (nind .== ng)
       for v in 0:vtmax
-         mg = mcalc + vt2m(v) + 1
-         frst = jsd*(mg-1) + ni[ng,1]
-         last = jsd*(mg-1) + ni[ng,2]
+         mg = v+1#mcalc + vt2m(v) + 1
+         @show mg
+         frst = jsd*(v+1) + ni[ng,1]
+         last = jsd*(v+1) + ni[ng,2]
          part = col[nfilter .* (mind .== mg)]
          part = part[keperm(ns[ng])]
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
@@ -227,7 +220,89 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    return perm
 end
 
-
+### TWO STAGE VERSION OF RAM36
+"""
+searches for the vt state from the two stage diagonalizer
+easily generalizable. jsd is the block size. md is the number of blocks
+vtmax sets the number of output blocks
+"""
+function vtfinder(svcs,jsd::Int,md::Int,vtmax)
+   ovrlp = zeros(md,size(svcs,2))
+   @simd for i in 1:md 
+      ovrlp[i,:] = sum(svcs[(jsd*(i-1)+1):(jsd*i), :], dims=1)
+   end
+   vind = zeros(Int,size(svcs,1))
+   cap = min(vtmax+4,md)
+   for vi in 1:(vtmax+1)#cap #THIS HAS TO BE SERIAL DON'T SIMD THIS ONE FUTURE WES
+      perm = sort(sortperm(ovrlp[vi,:], rev=true)[1:jsd])
+      ovrlp[:,perm] .= 0.0
+      ovrlp[vi,:] .= 0.0
+      vind[perm] .= vi
+   end
+   return vind
+end
+function nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
+   jsd = jd*sd
+   vlist = collect(1:(vtmax+1))
+   list = collect(1:size(svcs,1))[Bool.(sum(vind .∈ vlist',dims=2))[:]]
+   tvcs = svcs[:,list] 
+   ovrlp = zeros(length(ns),size(tvcs,2))
+   for i in 1:length(ns) 
+      nd = 2*ns[i]+1
+      for m in 1:md
+         frst = ni[i,1] + jsd*(m-1)
+         last = ni[i,2] + jsd*(m-1)
+         ovrlp[i,:] += transpose(sum(tvcs[frst:last, :], dims=1))
+      end
+   end
+   nind = zeros(Int,size(svcs,1))
+   part = zeros(Int,length(list))
+   for i in 1:length(ns)
+      nd = (2*ns[i]+1)*min((vtmax+1),md)
+      #count = min(nd*(vtmax+1),nd*(md))
+      #vlimit = min(vtmax+3,md) 
+      #for v in 0:vlimit
+      perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])#[1:nd]
+      nind[list[perm]] .= i
+      ovrlp[:,perm] .= 0.0 
+      #end
+   end
+   #println(nind)
+   return nind
+end
+function twostg_assign(vecs,j,s,md,vtmax)
+#the bullshit surrounding mmax and mtemp comes from how mmax is treated as a vt_calc
+# in the two stage approach so I'm deriving an effective mmax from mmax... fuck i hate myself
+   #md = mmax + iseven(mmax)
+   jd = Int(2.0*j) + 1
+   sd = Int(2.0*s) + 1
+   ns, nd, ni, jsd = srprep(j,s)
+   count = min(vtmax+4,md)
+   svcs = abs.(vecs[:,1:jsd*count]).^2
+   #determine vt state
+   vind = vtfinder(svcs,jsd,md,vtmax)
+   #determine N statecol[nfilter .* (vind .== (v+1))]
+   nind = nfinderv4(svcs,vind,md,vtmax,jd,sd,ns,ni)
+   #energy sort for K (done intrisnically)
+   #permute to m style ordering (you didn't implement this....)
+   # ^doesn't my vt2m function do that?
+   col = collect(1:size(vecs,1))
+   perm = zeros(Int,size(vecs,1)) #initalize big because easier
+   for ng in 1:length(ns)
+      nfilter = (nind .== ng)
+      for v in 0:vtmax
+         frst = jsd*(v+1) + ni[ng,1]
+         last = jsd*(v+1) + ni[ng,2]
+         part = col[nfilter .* (vind .== (v+1))]
+         part = part[keperm(ns[ng])]
+         perm[frst:last] = part#col[filter][keperm(ns[ng])]
+      end
+   end
+   perm = perm[perm .!= 0]
+   @show j
+   @show perm
+   return perm
+end
 ### JACOBI
 #Reorganize matrix to better match my conception of the quantum numbers
 function kperm(j,s)::Array{Int}

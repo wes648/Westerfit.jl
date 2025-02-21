@@ -233,7 +233,7 @@ function enact_init(O::Op,ψ::Psi)::Diagonal{Float64,Vector{Float64}}
    #else
    #   out = fill(O.v,ψ.lng)
    #end
-   out = O.a ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
+   out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    if O.b≠0; out .*= ns_el.(ψ.J,ψ.S,O.b,ψ.N)::Vector{Float64} ; end
    if O.c≠0; out .*= eh(ψ.S)^O.c ; end
    if O.d≠0; out .*= ψ.K .^ O.d ; end
@@ -271,6 +271,8 @@ function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64, Int}
    if O.tp ≠ zeros(Int,size(O.tp))
       part = enact_tor(O.tp,ψ)
       out = kron(part,out)
+   else
+      out = kron(I(size(ψ.ms,1)),out)
    end
    if !isdiag(out) 
       tplus!(0.5*out) 
@@ -280,8 +282,12 @@ end
 #This allows the basis set to be distributed among a list of added Operators
 function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64, Int}
    out = enact(O[1],ψ)
+   @show size(out)
    @inbounds for i in 2:length(O)
-      out += enact(O[i],ψ)
+      part = enact(O[i],ψ)
+      @show size(part)
+      @show O[i].v
+      out += part
    end
    return out
 end
