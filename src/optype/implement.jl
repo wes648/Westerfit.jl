@@ -47,7 +47,8 @@ function westereng(molnam::String)
    ℋ, stgs, errs = opreader(molnam,ctrl,ℋ,stgs,errs)
    ℋ = stgvalset(ℋ,stgs)
    σs = σgen_indef(ctrl["NFOLD"])
-   σcnt = size(σs,2)
+   @show σs
+   σcnt = maximum(size(σs))
    sd = Int(2*ctrl["S"]+1)
    jlist = collect(0.5*iseven(sd):ctrl["Jmax"])
    mcd = Int(2*ctrl["mcalc"]+1)
@@ -78,7 +79,7 @@ end
 #tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
 function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
-   msd = 
+   msd = (2*ctrl["mcalc"]+1)*length(ctrl["NFOLD"])
    for j in jlist
       jd = Int(2j+1)
       dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) 

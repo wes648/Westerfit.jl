@@ -198,7 +198,7 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
    mind = mfinder(svcs,jsd,md,mcalc,vtmax)
-   @show mind
+   #@show mind
    nind = nfinderv3(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
    #nfinder(svcs,vtmax,md,jd,sd,ns,ni)
    #println(mind)
@@ -208,7 +208,6 @@ function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
       nfilter = (nind .== ng)
       for v in 0:vtmax
          mg = v+1#mcalc + vt2m(v) + 1
-         @show mg
          frst = jsd*(v+1) + ni[ng,1]
          last = jsd*(v+1) + ni[ng,2]
          part = col[nfilter .* (mind .== mg)]

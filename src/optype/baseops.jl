@@ -31,10 +31,19 @@ eh(x::Real)::Float64 = x*(x+1)
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
 
-#nz(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(ψ.K .^p)
-#nt(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh.(ψ.N) .^p)
-#ns(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh(ψ.J) - eh(ψ.S) - eh.(ψ.N))^p
-#st(ψ::Psi,p::Int)::Diagonal{Float64} = Diagonal(eh.(ψ.N) .^p)
+#These functions are cooked into enact_init as they are purely diagonal
+#they are N^2a (NS)^b S^c Nz^d in this order
+function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
+   reduce(vcat, [fill(eh(n)^p,2n+1) for n ∈ ns])
+end
+function n2(v::Float64,ns::UnitRange{Int},p::Int)::Vector{Float64}
+   reduce(vcat, [fill(x*eh(n)^p,2n+1) for n ∈ ns])
+end
+function ns_el2(j,s,ns::UnitRange,p::Int)::Vector{Float64}
+   reduce(vcat, fill[(eh(j) - eh(n) - eh(s))^p, 2n+1 for n ∈ ns])
+end
+nz(ks::UnitRange{Int},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
+
 function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
    ns = ψ.N[1+p:end]
    part = ones(length(ns))
@@ -55,6 +64,26 @@ function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
    end
    return out
 end
+
+function npv2(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+   ns = ψ.N[1+p:end]
+   part = ones(length(ns))
+   if p ≤ ψ.lng && p ≠ 0
+      ks = ψ.K[1+p:end]
+      part = ones(length(ks))
+      for n in ns #this won't work correctly but might be closer to the ideal
+         part = prod(fh.(n,collect(ks) .- collect(1:o)),dims=2)
+      end
+      out = spdiagm(-p=>part)
+   elseif p > ψ.lng && p ≠ 0
+      out = spzeros(ψ.lng,ψ.lng)
+   else
+      out = spdiagm(ones(ψ.lng))
+   end
+   return out
+end
+
+
 nm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = permutedims(np(ψ,p))
 npm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(np(ψ,p))
 nx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(0.5*np(ψ,p))

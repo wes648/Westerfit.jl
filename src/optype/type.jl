@@ -56,6 +56,13 @@ function msgen_indef(nf::Array{Int},mcalc::Int,σs::Array{Int})::Array{Int,2}
    return out
 end
 
+Δlist2(J::Real,S::Real)::UnitRange{Int} = Int(abs(J-S)):Int(J+S)
+kgen(ns::UnitRange{Int})::Vector{UnitRange{Int}} = [-n:n for n ∈ ns]
+function nz_new(kvc)
+   return reduce(vcat, kvc)
+end
+
+
 #tplus!(a::Diagonal)::SparseMatrixCSC{Float64, Int} = sparse(a)
 #tplus!(a::Array{Float64,2})::Array{Float64,2} = hermitianpart!(2a)
 function tplus!(a::SparseMatrixCSC{Float64, Int})::SparseMatrixCSC{Float64, Int}
@@ -65,8 +72,8 @@ end
 struct Psi
    J::Float64
    S::Float64
-   N::Vector{Int}
-   K::Vector{Int}
+   N::UnitRange{Int}
+   K::UnitRange{Int}
    nf::Vector{Int}
    ms::Array{Int}
    lng::Int
@@ -228,15 +235,11 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int}
 end
 
 function enact_init(O::Op,ψ::Psi)::Diagonal{Float64,Vector{Float64}}
-   #if O.a≠0
-   #   out = O.v .* eh.(ψ.N).^O.a
-   #else
-   #   out = fill(O.v,ψ.lng)
-   #end
-   out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
-   if O.b≠0; out .*= ns_el.(ψ.J,ψ.S,O.b,ψ.N)::Vector{Float64} ; end
+   #out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
+   out = O.a≠0 ? n2(O.v, ψ.N, O.a) : fill(O.v,ψ.lng)
+   if O.b≠0; out .*= ns_el2.(ψ.J,ψ.S,ψ.N,O.b)::Vector{Float64} ; end
    if O.c≠0; out .*= eh(ψ.S)^O.c ; end
-   if O.d≠0; out .*= ψ.K .^ O.d ; end
+   if O.d≠0; out .*= nz(ψ.K, O.d) ; end
    return Diagonal(out)
 end
 
@@ -282,11 +285,8 @@ end
 #This allows the basis set to be distributed among a list of added Operators
 function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64, Int}
    out = enact(O[1],ψ)
-   @show size(out)
    @inbounds for i in 2:length(O)
       part = enact(O[i],ψ)
-      @show size(part)
-      @show O[i].v
       out += part
    end
    return out
@@ -307,42 +307,3 @@ function ntop_enforce(O::Op,lnfs)
    end
    return O
 end
-
-#=
-#Get it? \squarert? It's a more stable variant of sqrt that defaults to zero when
-#   given a negative input value
-eh(x::Real)::Float64 = x*(x+1)
-□rt(x::Real)::Float64 =√(x*(x>zero(x)))
-fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
-ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
-
-#The four nice angular momentum Operators
-function nz(ψ::Psi,p::Int)::Diagonal{Float64}
-   Diagonal(ψ.K .^p)
-end
-function nt(ψ::Psi,p::Int)::Diagonal{Float64}
-   spdiagm(fill(eh(ψ.N)^p, ψ.lng))
-end
-function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int}
-   ns = fill(ψ.N,ψ.lng-p)
-   part = ones(length(ns))
-   if p ≤ length(ns) && p ≠ 0
-      ks = ψ.K[1+p:end]
-      part = ones(length(ks))
-      for o in 1:p
-         part .*= fh.(ns,ks.-o)
-      end
-   #end#original if
-      out = spzeros(ψ.lng,ψ.lng)
-      out[diagind(out,-p)] = part
-   elseif p > length(ns) && p ≠ 0
-      out = spzeros(ψ.lng,ψ.lng)
-      out[diagind(out,-p)] = part
-   else
-      out = spdiagm(ones(ψ.lng))
-   end
-   return out
-end
-=#
-
-
