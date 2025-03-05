@@ -73,7 +73,7 @@ struct Psi
    J::Float64
    S::Float64
    N::UnitRange{Int}
-   K::UnitRange{Int}
+   K::Vector{UnitRange{Int}}
    nf::Vector{Int}
    ms::Array{Int}
    lng::Int
@@ -82,8 +82,8 @@ struct Psi
    function Psi(J::Number=0,S::Number=0;nf=0,σ=0,mc=0) #spin (torsion) rotation
       J = convert(Float64,J)
       S = convert(Float64,S)
-      N = ngen(J,S)
-      K = kgen(J,S)
+      N = Δlist2(J,S)
+      K = kgen(N)
       if length(nf) > 1
          ms = msgen_indef(nf,mc,σ)
       else

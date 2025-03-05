@@ -4,10 +4,10 @@ This file is divided into 3 sections and to add a new Operator, all 3 must be
   edited.
 Section 1: Functions. These act on the wavefuntions to produce the matrices and
 must use the following type annotations:
- op(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+ op(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
 This should ensure consistency with the program.
 Stage 0 operators (those used in the intensity calculations) have the form of:
- op(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+ op(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
 This is because we can mixing of J values in transitions but not energy levels
 
 Section 2: Operators. These are the actual objects used by the code. Look at the
@@ -44,7 +44,7 @@ function ns_el2(j,s,ns::UnitRange,p::Int)::Vector{Float64}
 end
 nz(ks::UnitRange{Int},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
 
-function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
+function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    ns = ψ.N[1+p:end]
    part = ones(length(ns))
    if p ≤ ψ.lng && p ≠ 0
@@ -65,16 +65,13 @@ function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
    return out
 end
 
-function npv2(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
-   ns = ψ.N[1+p:end]
-   part = ones(length(ns))
+function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    if p ≤ ψ.lng && p ≠ 0
-      ks = ψ.K[1+p:end]
-      part = ones(length(ks))
-      for n in ns #this won't work correctly but might be closer to the ideal
-         part = prod(fh.(n,collect(ks) .- collect(1:o)),dims=2)
-      end
-      out = spdiagm(-p=>part)
+      ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])[1+p:end]
+      ks = reduce(vcat, ψ.K)[1+p:end]
+      out = ones(length(ks))
+      out = prod(fh.(ns,ks .- collect(1:p)'),dims=2)[:]
+      out = spdiagm(-p=>out)
    elseif p > ψ.lng && p ≠ 0
       out = spzeros(ψ.lng,ψ.lng)
    else
@@ -82,22 +79,18 @@ function npv2(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64}
    end
    return out
 end
-
-
-nm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = permutedims(np(ψ,p))
-npm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(np(ψ,p))
-nx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = tplus!(0.5*np(ψ,p))
-
+nm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = permutedims(np(ψ,p))
+npm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(np(ψ,p))
+nx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,p))
 function iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
-      out = np_op(ψ,1-δi(p,0))
+      out = np_op(ψ,1)
       out .-= permutedims(out)
       return dropzeros!(out)
    else
       return spdiagm(ones(ψ.lng))
    end
 end
-#iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64, Int64} = 
 
 function skqpart(j,s,k,q,nb,kb,nk,kk)::Float64
    return wig3j(nb,k,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,k)*jnred(nb,nk)*powneg1(-kb)
@@ -105,55 +98,87 @@ end
 function s0part(j,s,nb,kb,nk,kk)::Float64
    return skqpart(j,s,1,0,nb,kb,nk,kk)::Float64
 end
-function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
-   l = ψ.lng
-   out = spzeros(l,l)
-   if s≠zero(s)&&p≠0
-      for a ∈ 1:l, b ∈ a:l
-         if abs(ψ.N[a] - ψ.N[b])≤1 && ψ.K[a]==ψ.K[b]
-            @views out[b,a] = s0part(j,s,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
-         end
-      end
-      dropzeros!(out)
-      out .*= nred(s)*powneg1(s+j+1)
-      out = Symmetric(out,:L)^p
-   else
-      out[diagind(out)] .= 1.0
-   end
-   return out
-end
-sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
+#function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
+#   l = ψ.lng
+#   out = spzeros(l,l)
+#   if s≠zero(s)&&p≠0
+#      for a ∈ 1:l, b ∈ a:l
+#         if abs(ψ.N[a] - ψ.N[b])≤1 && ψ.K[a]==ψ.K[b]
+#            @views out[b,a] = s0part(j,s,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
+#         end
+#      end
+#      dropzeros!(out)
+#      out .*= nred(s)*powneg1(s+j+1)
+#      out = Symmetric(out,:L)^p
+#   else
+#      out[diagind(out)] .= 1.0
+#   end
+#   return out
+#end
+#sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
 
-function sq_op(j::Real,s::Real,q::Int,ψ::Psi)::SparseMatrixCSC{Float64, Int64}
-   l = ψ.lng
-   out = spzeros(l,l)
-   if s≠zero(s)
-      for a ∈ 1:l, b ∈ 1:l
-         if abs(ψ.N[a] - ψ.N[b])≤q && (q+ψ.K[a]-ψ.K[b])==0
-            @views out[b,a] = skqpart(j,s,q,q,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
-         end
-      end
-      drOpzeros!(out)
-      out .*= nred(s)*powneg1(s+j+q)
-      #The q here is because the rank and component are equal for this function
-   else
-      out[diagind(out)] .+= 1.0
-   end
+sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
+       ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
+   nds = nindsgen(ns)
+   out = spzeros(lng,lng)
+   for i ∈ 1:length(ns); j ∈ max(i-1,1):i
+      nb = ns[j]; nk = ns[i]
+      blck = view(out[nds[j],nds[i])
+      blck[diagind(blck,nb-nk)] = @. wig3j(nb,1,nk,-ks[j],0,ks[i])*powneg1(-kb)
+      blck .*= wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)
+   end#n loop
+   dropzeros!(out)
+   out .*= nred(s)*powneg1(s+j+1)
+   out = Symmetric(out,:L)^p
    return out
 end
-sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq_op(ψ.J,ψ.S, p,ψ)
-sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq_op(ψ.J,ψ.S,-p,ψ)
-spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq_op(ψ.J,ψ.S, p,ψ))
+sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
+       ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
+   nds = nindsgen(ns)
+   out = spzeros(lng,lng)
+   for i ∈ 1:length(ns); j ∈ max(i-q,1):min(i+q,length(ns))
+      nb = ns[j]; nk = ns[i]
+      blck = view(out[nds[j],nds[i])
+     blck[diagind(blck,nb-nk+p)] = @. wig3j(nb,p,nk,-ks[j],p,ks[i])*powneg1(-kb)
+      blck .*= wig6j(s,nb,j,nk,s,p)*jnred(nb,nk)
+   end#n loop
+   dropzeros!(out)
+   out .*= nred(s)*powneg1(s+j+p)
+   return out
+end
+
+#function sq_op(j::Real,s::Real,q::Int,ψ::Psi)::SparseMatrixCSC{Float64,Int64}
+#   l = ψ.lng
+#   out = spzeros(l,l)
+#   if s≠zero(s)
+#      for a ∈ 1:l, b ∈ 1:l
+#         if abs(ψ.N[a] - ψ.N[b])≤q && (q+ψ.K[a]-ψ.K[b])==0
+#            @views out[b,a] = skqpart(j,s,q,q,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
+#         end
+#      end
+#      dropzeros!(out)
+#      out .*= nred(s)*powneg1(s+j+q)
+#      #The q here is because the rank and component are equal for this function
+#   else
+#      out[diagind(out)] .+= 1.0
+#   end
+#   return out
+#end
+sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
+sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)
+spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq(ψ,p))
 function sx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   out  = sq_op(ψ.J,ψ.S, 1,ψ)
-   out -= sq_op(ψ.J,ψ.S,-1,ψ)
+   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
+   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
    out *= -√.5
    out ^= p
    return out
 end
 function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   out  = sq_op(ψ.J,ψ.S, 1,ψ)
-   out += sq_op(ψ.J,ψ.S,-1,ψ)
+   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
+   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
    out *= -√.5
    out ^= p
    return out

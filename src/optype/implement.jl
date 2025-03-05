@@ -26,6 +26,15 @@ function srprep(J,S)
    jd = Int((2.0*S+1.0)*(2.0*J+1.0))
    return ns, nd, ni, jd
 end
+function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
+   ni = Vector{UnitRange{Int}}(undef,length(ns))
+   ni[1] = 1:2*ns[1]+1
+   for i in 2:length(ns)
+      ni[i] = (ni[i-1][end]+1):(ni[i-1][end]+2ns[i]+1)
+   end
+   return ni
+end
+
 function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
 """
 This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
