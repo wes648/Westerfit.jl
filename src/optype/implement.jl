@@ -4,6 +4,7 @@ This file is the actual implementation of the information in types.Jl & baseops.
 """
 
 using DelimitedFiles
+using WIGXJPFjl
 
 include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
@@ -13,6 +14,12 @@ include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
 
 const csl = 29979.2458
+"""
+powneg1(x) takes a number and returns (-1)^x. I realize this is a stupid looking
+function to have but it evalutes every so slightly faster than just (-1)^x
+"""
+powneg1(k::Real)::Int = isodd(k) ? -1 : 1
+δi(x::Real,y::Real)::Int = x==y
 
 function srprep(J,S)
    ns = Δlist(J,S)
@@ -69,7 +76,16 @@ function westereng(molnam::String)
    #initialize vecs
    vecs = zeros(Float64,Int(sd*(2*ctrl["Jmax"]+1)*mcd),jfd*vtd,σcnt)
    #initialize tvecs
-   vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
+   if ctrl["stages"]==2
+      tvecs = zeros()
+   end
+   if ctrl["stages"]==1
+      vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
+   elseif ctrl["stages"]==2
+      vals,vecs = tsrcalc_2stg!(vals,vecs,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
+   else
+      @warn "Invalid stages number"
+   end
    #qns = bigqngenv2()
    return vals,vecs #,qns
 end
@@ -107,7 +123,7 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    end#j
    return vals, vecs
 end#f
-function tsrcalc_2stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
+function tsrcalc_2stg!(vals,vecs,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
 for j in jlist
    dest = jvdest2(j,s,vtm) 

@@ -90,7 +90,7 @@ struct Psi
          ms = msgen(nf,mc,σ)
          nf = [nf]
       end
-      lng = length(K)
+      lng = convert(Int,(2J+1)*(2S+1))
       new(J,S,N,K,nf,ms,lng)
    end
    function Psi(N::Int=0;nf=0,σ=0,mc=3) # (torsion) rotation
@@ -104,7 +104,7 @@ struct Psi
          ms = msgen(nf,mc,σ)
          nf = [nf]
       end
-      lng = length(K)
+      lng = convert(Int,(2J+1)*(2S+1))
       new(J,S,N,K,nf,ms,lng)
    end
    function Psi(nf=0,σ=0,mc=3) #torsion
@@ -118,7 +118,7 @@ struct Psi
          ms = msgen(nf,mc,σ)
          nf = [nf]
       end
-      lng = length(K)
+      lng = convert(Int,(2J+1)*(2S+1))
       new(J,S,N,K,nf,ms,lng)
    end
 end
@@ -264,12 +264,10 @@ function enact_tor(tp::Array{Int,2},ψ::Psi)::SparseMatrixCSC{Float64, Int}
    return out
 end
 
-function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64, Int}
-#   out = O.v*O.f[1](ψ, O.p[1])::Diagonal{Float64,Vector{Float64}} #<- dispatch
+function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}
    out = enact_init(O,ψ)
    @inbounds for i in 1:length(O.rp)
-#      mul!(out, out, O.f[i](ψ,O.p[i])::SparseMatrixCSC{Float64, Int}) #<- dispatch
-      out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64, Int}
+      out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
    end
    if O.tp ≠ zeros(Int,size(O.tp))
       part = enact_tor(O.tp,ψ)
@@ -283,14 +281,57 @@ function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64, Int}
    return out #<- dispatch 
 end
 #This allows the basis set to be distributed among a list of added Operators
-function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64, Int}
+function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    out = enact(O[1],ψ)
    @inbounds for i in 2:length(O)
-      part = enact(O[i],ψ)
-      out += part
+      #part = enact(O[i],ψ)
+      out += enact(O[i],ψ)::SparseMatrixCSC{Float64,Int}
    end
    return out
 end
+function torbuild(O::Vector{Op},ψ::Psi,stgs,siz)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(siz,siz)
+   @inbounds for i in 1:length(O)
+      if stgs[i] < 0
+         out += enact_tor(O[i].tp,ψ)*O[i-stgs[i]].v
+      elseif stgs[i]==1
+         out += enact_tor(O[i].tp,ψ)
+      else
+      end
+   end
+   return out
+end
+function enact_stg2(O::Op,ψ::Psi,tvcs)::SparseMatrixCSC{Float64,Int}
+   out = enact_init(O,ψ)
+   @inbounds for i in 1:length(O.rp)
+      out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
+   end
+   if O.tp ≠ zeros(Int,size(O.tp))
+      part = sparse(tvcs' * enact_tor(O.tp,ψ) * tvcs)
+      droptol!(out,2eps())
+      out = kron(part,out)
+   else
+      out = kron(I(size(ψ.ms,1)),out)
+   end
+   if !isdiag(out) 
+      tplus!(0.5*out) 
+   end
+   return out #<- dispatch 
+end
+function h_stg2build(O::Vector{Op},ψ::Psi,stgs,siz,tvcs)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(siz,siz)
+   @inbounds for i in 1:length(O)
+      if stgs[i] < 0
+         out += enact_stg2(O[i].tp,ψ,tvs)*O[i-stgs[i]].v
+      elseif stgs[i]==1
+         out += enact_stg2(O[i].tp,ψ,tvcs)
+      else
+      end
+   end
+   return out
+end
+
+
 #This allows a scalar to be distributed among a list of added Operators
 function *(v::Number,O::Vector{Op})::Vector{Op}
    out = similar(O)
@@ -307,3 +348,6 @@ function ntop_enforce(O::Op,lnfs)
    end
    return O
 end
+
+
+

@@ -29,7 +29,11 @@ Each entry should just be "Nam"=>Nam
 eh(x::Real)::Float64 = x*(x+1)
 □rt(x::Real)::Float64 =√(x*(x>zero(x)))
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
+fhv(x::Float64,y::Int)::Float64 = □rt(x - eh(y))
 ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
+n2gen(ns::UnitRange{Int})::Vector{Float64} = reduce(vcat, [fill(eh(n),2n+1) for n ∈ ns])
+nsgen(ns::UnitRange{Int})::Vector{Int} = reduce(vcat, [fill(n,2n+1) for n ∈ ns])
+ksgen(ks::Vector{UnitRange{Int}})::Vector{Int} = reduce(vcat, ks)
 
 #These functions are cooked into enact_init as they are purely diagonal
 #they are N^2a (NS)^b S^c Nz^d in this order
@@ -37,10 +41,10 @@ function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
    reduce(vcat, [fill(eh(n)^p,2n+1) for n ∈ ns])
 end
 function n2(v::Float64,ns::UnitRange{Int},p::Int)::Vector{Float64}
-   reduce(vcat, [fill(x*eh(n)^p,2n+1) for n ∈ ns])
+   reduce(vcat, [fill(v*eh(n)^p,2n+1) for n ∈ ns])
 end
 function ns_el2(j,s,ns::UnitRange,p::Int)::Vector{Float64}
-   reduce(vcat, fill[(eh(j) - eh(n) - eh(s))^p, 2n+1 for n ∈ ns])
+   reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
 end
 nz(ks::UnitRange{Int},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
 
@@ -98,24 +102,6 @@ end
 function s0part(j,s,nb,kb,nk,kk)::Float64
    return skqpart(j,s,1,0,nb,kb,nk,kk)::Float64
 end
-#function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
-#   l = ψ.lng
-#   out = spzeros(l,l)
-#   if s≠zero(s)&&p≠0
-#      for a ∈ 1:l, b ∈ a:l
-#         if abs(ψ.N[a] - ψ.N[b])≤1 && ψ.K[a]==ψ.K[b]
-#            @views out[b,a] = s0part(j,s,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
-#         end
-#      end
-#      dropzeros!(out)
-#      out .*= nred(s)*powneg1(s+j+1)
-#      out = Symmetric(out,:L)^p
-#   else
-#      out[diagind(out)] .= 1.0
-#   end
-#   return out
-#end
-#sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
 
 sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
 function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
@@ -124,8 +110,10 @@ function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out = spzeros(lng,lng)
    for i ∈ 1:length(ns); j ∈ max(i-1,1):i
       nb = ns[j]; nk = ns[i]
-      blck = view(out[nds[j],nds[i])
-      blck[diagind(blck,nb-nk)] = @. wig3j(nb,1,nk,-ks[j],0,ks[i])*powneg1(-kb)
+      blck = view(out,nds[j],nds[i])
+      for k ∈ -2:2
+      blck[diagind(blck,nb-nk+k)] = @. wig3j(nb,1,nk,-ks[j],k,ks[i])*powneg1(-kb)
+      end
       blck .*= wig6j(s,nb,j,nk,s,1)*jnred(nb,nk)
    end#n loop
    dropzeros!(out)
@@ -140,7 +128,7 @@ function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out = spzeros(lng,lng)
    for i ∈ 1:length(ns); j ∈ max(i-q,1):min(i+q,length(ns))
       nb = ns[j]; nk = ns[i]
-      blck = view(out[nds[j],nds[i])
+      blck = view(out,nds[j],nds[i])
      blck[diagind(blck,nb-nk+p)] = @. wig3j(nb,p,nk,-ks[j],p,ks[i])*powneg1(-kb)
       blck .*= wig6j(s,nb,j,nk,s,p)*jnred(nb,nk)
    end#n loop
@@ -149,23 +137,6 @@ function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
    return out
 end
 
-#function sq_op(j::Real,s::Real,q::Int,ψ::Psi)::SparseMatrixCSC{Float64,Int64}
-#   l = ψ.lng
-#   out = spzeros(l,l)
-#   if s≠zero(s)
-#      for a ∈ 1:l, b ∈ 1:l
-#         if abs(ψ.N[a] - ψ.N[b])≤q && (q+ψ.K[a]-ψ.K[b])==0
-#            @views out[b,a] = skqpart(j,s,q,q,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
-#         end
-#      end
-#      dropzeros!(out)
-#      out .*= nred(s)*powneg1(s+j+q)
-#      #The q here is because the rank and component are equal for this function
-#   else
-#      out[diagind(out)] .+= 1.0
-#   end
-#   return out
-#end
 sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
 sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)
 spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq(ψ,p))
@@ -236,3 +207,44 @@ out = Dict{String,Op}("E"=>E,"Nz"=>Nz, "N2"=>N2,"Np"=>Np,"Nm"=>Np,"Npm"=>Npm,
     "Sx"=>Sx,"iSy"=>iSy,"Pα"=>Pα,"cosα"=>cosα,"Pβ"=>Pβ,"cosβ"=>cosβ,"Pγ"=>Pγ,
     "cosγ"=>cosγ,"μz"=>μz,"μx"=>μx,"iμy"=>iμy)
 end
+
+
+
+
+#= Graveyard
+#function sq_op(j::Real,s::Real,q::Int,ψ::Psi)::SparseMatrixCSC{Float64,Int64}
+#   l = ψ.lng
+#   out = spzeros(l,l)
+#   if s≠zero(s)
+#      for a ∈ 1:l, b ∈ 1:l
+#         if abs(ψ.N[a] - ψ.N[b])≤q && (q+ψ.K[a]-ψ.K[b])==0
+#            @views out[b,a] = skqpart(j,s,q,q,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
+#         end
+#      end
+#      dropzeros!(out)
+#      out .*= nred(s)*powneg1(s+j+q)
+#      #The q here is because the rank and component are equal for this function
+#   else
+#      out[diagind(out)] .+= 1.0
+#   end
+#   return out
+#end
+#function sz_op(j::Real,s::Real,ψ::Psi,p::Int)
+#   l = ψ.lng
+#   out = spzeros(l,l)
+#   if s≠zero(s)&&p≠0
+#      for a ∈ 1:l, b ∈ a:l
+#         if abs(ψ.N[a] - ψ.N[b])≤1 && ψ.K[a]==ψ.K[b]
+#            @views out[b,a] = s0part(j,s,ψ.N[b],ψ.K[b],ψ.N[a],ψ.K[a])
+#         end
+#      end
+#      dropzeros!(out)
+#      out .*= nred(s)*powneg1(s+j+1)
+#      out = Symmetric(out,:L)^p
+#   else
+#      out[diagind(out)] .= 1.0
+#   end
+#   return out
+#end
+#sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
+=#
