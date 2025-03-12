@@ -46,6 +46,9 @@ end
 function ns_el2(j,s,ns::UnitRange,p::Int)::Vector{Float64}
    reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
 end
+function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
+   reduce(vcat, [fill(0.5*(eh(j) - eh(n) - eh(s)), 2n+1) for n ∈ ns ])
+end
 nz(ks::UnitRange{Int},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
 
 function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}

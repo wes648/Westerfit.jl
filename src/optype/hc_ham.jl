@@ -35,10 +35,17 @@ function nsred2(nb::Int,nk::Int)::Float64
 end
 jnred(j::Real,n::Real)::Float64 = √((2*j+1)*(2*n+1))
 nred(n::Real)::Float64 = √(n*(n+1)*(2*n+1))
-
 function jsred(j,s,nb::Int,nk::Int)::Float64
    return wig6j(nk, s, j,
                  s,nb, 1)*jnred(nb,nk)
+end
+
+function srelem(pr::Float64,nb::Int,nk::Int,
+         kl::UnitRange{Int},q::Int)::Vector{Float64}
+   out = wig3j.(nb,2,nk,-kl,q,kl.-q) 
+   out .*= powneg1.(kl)
+   out .*= pr
+   return out
 end
 
 function hsr_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
@@ -47,20 +54,22 @@ function hsr_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    S = ψ.S
    nds = nindsgen(ψ.N)
    out = spzeros(ψ.lng,ψ.lng)
-   for i ∈ 1:length(ψ.N), j ∈ max(i-1,1):i
-      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[j]; Δ = nk - nb
-      blck = view(out,nds[i],nds[j])
+   sfact = √3*nred(S)*powneg1(J+S)
+   for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      frac = jsred(J,S,nb,nk)*nsred2(nb,nk)*sfact
       for p ∈ (-2-Δ):Δ
          q = Δ+p
          dest = diagind(blck,p)
          kl = ks[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         @. blck[dest] = pr[2+abs(q)]*wig3j(nb,2,nk,-kl,q,kl-q)*powneg1(-kl+δi(q,-1))
-      end
-      blck .*= jsred(J,S,nb,nk)*nsred2(nb,nk)*√3
+#         @. blck[dest] = pr[2+abs(q)]*wig3j(nb,2,nk,-kl,q,kl-q)*powneg1(-kl)
+         blck[dest] = srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,q)
+      end#p loop
    end
    dropzeros!(out)
-   out .*= nred(S)*powneg1(J+S)
+   #out .*= nred(S)*powneg1(J+S)
    out[diagind(out)] .+= -√(1/3)*pr[1] .* ns_el2(J,S,ψ.N,1)
    return out
 end
@@ -69,6 +78,12 @@ function qured(j,s,nb,nk)
    return jnred(nb,nk)*wig6j(j, s,nb,
                              2,nk, s)
 end
+function quelem(pr::Float64,nb::Int,nk::Int,
+         kl::UnitRange{Int},q::Int)::Vector{Float64}
+   out = wig3j.(nb,2,nk,-kl,q,kl.-q) 
+   out .*= powneg1.(kl)
+   out .*= pr
+end
 
 function hqu_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    #pr = [T2_0 T2_1 T2_2]
@@ -76,20 +91,21 @@ function hqu_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    S = ψ.S
    nds = nindsgen(ψ.N)
    out = spzeros(ψ.lng,ψ.lng)
-   for i ∈ 1:length(ψ.N), j ∈ max(i-2,1):i
-      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[j]; Δ = nk - nb
-      blck = view(out,nds[i],nds[j])
-      for p ∈ (-2-Δ):δi(Δ,1) #starts at 0 for Δ=0 rather than 2 to skip portion of upper triangle
+   sfact = 0.25*inv(wig3j(S,2,S, -S,0,S))*powneg1(J+S+1)
+   for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      fac = qured(J,S,nb,nk)*powneg1(nb+nk)*sfact
+      #starts at 0 for Δ=0 rather than 2 to skip portion of upper triangle
+      for p ∈ (-2-Δ):δi(Δ,1) 
          q = Δ+p
          dest = diagind(blck,p)
          kl = ks[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         @. blck[dest] = pr[1+abs(q)]*wig3j(nb,2,nk,-kl,q,kl .-q)*powneg1(-kl+δi(q,-1))
+         blck[dest] = srelem(pr[1+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,q)
       end
-      blck .*= qured(J,S,nb,nk)*0.25*powneg1(nb+nk)
    end
    dropzeros!(out)
-   out .*= inv(wig3j(S,2,S, -S,0,S))*powneg1(J+S+1)
    return out
 end
 
