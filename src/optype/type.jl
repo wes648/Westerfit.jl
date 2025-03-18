@@ -292,10 +292,10 @@ end
 function torbuild(O::Vector{Op},ψ::Psi,stgs,siz)::SparseMatrixCSC{Float64,Int}
    out = spzeros(siz,siz)
    @inbounds for i in 1:length(O)
-      if stgs[i] < 0
-         out += enact_tor(O[i].tp,ψ)*O[i-stgs[i]].v
-      elseif stgs[i]==1
+      if stgs[i]==1
          out += enact_tor(O[i].tp,ψ)
+      elseif stgs[i] < 0
+         out += enact_tor(O[i].tp,ψ)*O[i-stgs[i]].v
       else
       end
    end
@@ -321,10 +321,10 @@ end
 function h_stg2build(O::Vector{Op},ψ::Psi,stgs,siz,tvcs)::SparseMatrixCSC{Float64,Int}
    out = spzeros(siz,siz)
    @inbounds for i in 1:length(O)
-      if stgs[i] < 0
-         out += enact_stg2(O[i].tp,ψ,tvs)*O[i-stgs[i]].v
-      elseif stgs[i]==1
+      if stgs[i] ≥ 2 #this is for future oddities 
          out += enact_stg2(O[i].tp,ψ,tvcs)
+      elseif stgs[i] < 0
+         out += enact_stg2(O[i].tp,ψ,tvs)*O[i-stgs[i]].v
       else
       end
    end

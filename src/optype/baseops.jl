@@ -49,7 +49,7 @@ end
 function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
    reduce(vcat, [fill(0.5*(eh(j) - eh(n) - eh(s)), 2n+1) for n ∈ ns ])
 end
-nz(ks::UnitRange{Int},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
+nz(ks::Vector{UnitRange{Int}},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
 
 function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    ns = ψ.N[1+p:end]
@@ -124,12 +124,31 @@ function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out = Symmetric(out,:L)^p
    return out
 end
+function sz_op_new(ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   #pr = [T0_0 T2_0 T2_1 T2_2]
+   J = ψ.J
+   S = ψ.S
+   nds = nindsgen(ψ.N)
+   out = spzeros(ψ.lng,ψ.lng)
+   sfact = nred(S)*powneg1(J+S)
+   for i ∈ 1:length(ψ.N), j ∈ max(i-1,1):min(i+1,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      frac = wig6j(S,nb,J,nk,S,1)*jnred(nb,nk)*sfact
+      p = Δ
+      dest = diagind(blck,p)
+      kl = ks[(1:length(dest)).+δi(1,p)]
+      blck[dest] = srelem(frac,nb,nk,kl,1,0)
+   end
+   dropzeros!(out)
+   return out
+end
 sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
 function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)
    out = spzeros(lng,lng)
-   for i ∈ 1:length(ns); j ∈ max(i-q,1):min(i+q,length(ns))
+   for i ∈ 1:length(ns); j ∈ max(i-p,1):min(i+p,length(ns))
       nb = ns[j]; nk = ns[i]
       blck = view(out,nds[j],nds[i])
      blck[diagind(blck,nb-nk+p)] = @. wig3j(nb,p,nk,-ks[j],p,ks[i])*powneg1(-kb)
@@ -139,6 +158,26 @@ function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out .*= nred(s)*powneg1(s+j+p)
    return out
 end
+function sq_op_new(ψ::Psi,q::Int)::SparseMatrixCSC{Float64,Int}
+   #pr = [T0_0 T2_0 T2_1 T2_2]
+   J = ψ.J
+   S = ψ.S
+   nds = nindsgen(ψ.N)
+   out = spzeros(ψ.lng,ψ.lng)
+   sfact = nred(S)*powneg1(J+S+q)
+   for i ∈ 1:length(ψ.N), j ∈ max(i-q,1):min(i+q,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      frac = wig6j(S,nb,J,nk,S,q)*jnred(nb,nk)*sfact
+      p = Δ+q
+      dest = diagind(blck,p)
+      kl = ks[(1:length(dest))] .+ Δ
+      blck[dest] = srelem(frac,nb,nk,kl,q,-q)
+   end
+   dropzeros!(out)
+   return out
+end
+
 
 sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
 sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)

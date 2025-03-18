@@ -41,6 +41,12 @@ BLAS.set_num_threads(Threads.nthreads())
 
 const csl = 29979.2458
 
+function paste_input()
+   d = @__DIR__
+   Base.Filesystem.cp(d*"/../molecule.inp", pwd()*"/molecule.inp")
+end
+
+
 function westereng(molnam::String, prm, ctrl)
    println("westersim!")
    molnam = String(split(molnam,'.')[1])

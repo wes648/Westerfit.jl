@@ -65,10 +65,10 @@ end
 
 function secordinit_lim()::Dict{String,Int}
    prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, 
-      "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 9,
-      "Czz" => 5, "Cxx" => 6, "Cyy" => 7, "Czx" => 8, "Cxz" => 9,
-      "χzz"=> 10, "χxz"=> 11, "χxmy"=> 12, "χxx-χyy"=>12,
-      "α"=>10, "δ"=>11, "β"=>12)#,
+      "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 8,
+      "Czz" => 5, "Cxx" => 6, "Cyy" => 7, "Czx" => 8, "Cxz" => 8,
+      "χzz"=> 9, "χxz"=> 10, "χxmy"=> 11, "χxx-χyy"=>11,
+      "α"=>9, "δ"=>10, "β"=>11)#,
       #"F" => 13, "ρz" => 14, "ρ" => 14, "ρx" =>15, "Vn" => 16, "V3" =>16,
       #"ηz" => 17, "η" => 17, "ηx" => 18)
    return prd
@@ -83,14 +83,14 @@ function sod2prep_lim(prd::Array{Float64})::Array{Float64}
    out[4] = prd[4]                                #Dab
 
    out[5] = -(prd[5] + prd[6] + prd[7]) / √3      #T⁰₀(ϵ)
-   out[6] = 0.5*(prd[8] - prd[9])                 #T¹₁(ϵ)
-   out[7] = (2*prd[5] - prd[6] - prd[7]) / √6     #T²₀(ϵ)
-   out[8] = -0.5*(prd[8] + prd[9])                #T²₁(ϵ)
-   out[9] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
+#   out[6] = 0.5*(prd[8] - prd[9])                 #T¹₁(ϵ)
+   out[6] = (2*prd[5] - prd[6] - prd[7]) / √6     #T²₀(ϵ)
+   out[7] = -prd[8]                               #T²₁(ϵ)
+   out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
    
-   out[10] = prd[10]                              #T²₀(χ)
-   out[11] = -√(2.0/3.0)*prd[11]                  #T²₁(χ)
-   out[12] = prd[12] / √(6.0)                     #T²₂(χ)
+   out[ 9] = prd[9]                              #T²₀(χ)
+   out[10] = -√(2.0/3.0)*prd[10]                  #T²₁(χ)
+   out[11] = prd[11] / √(6.0)                     #T²₂(χ)
    #the factor of 0.5 on the x terms is from 2lₓ = l_+ + l_-
    #out[13] = prd[13]*csl                          #F
    #out[14] = -2.0*prd[13]*prd[14]*csl             #ρzF
@@ -166,8 +166,8 @@ function secordinp(molnam::String,ctrl)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
    #println(file)
    tpz = zeros(Int,2,length(ctrl["NFOLD"]))
-   val = zeros(Float64,13)
-   err = zeros(Float64,13)
+   val = zeros(Float64,12)
+   err = zeros(Float64,12)
    for i in 1:len
       nam = string(strip(file[i,1]))
       #ind = secns[nam]
@@ -219,18 +219,18 @@ function secordinp(molnam::String,ctrl)
       end#else
    end#for
    pop!(val)
-   popat!(err,13)
+   popat!(err,12)
    popfirst!(ℋ)
    popfirst!(stg)
    val = sod2prep_lim(val)
-   val, err = epszxcheck!(val,err)
+   #val, err = epszxcheck!(val,err)
    #@show val
    return val, err, ℋ, stg
 end
 
 function unitdict()::Dict{String,Float64}
 out = Dict{String,Float64}("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>1e-3,"Hz"=>1e-6,
-   "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"nm"=>2.99792458e11,"arb"=>1.,
+   "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"arb"=>1.,
    "eV"=>241_798_840.7662022,"Hart"=>6_579_681_360.732768)
 end
 

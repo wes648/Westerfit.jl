@@ -111,9 +111,9 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       ψ = Psi(j,ctrl["S"])
       Hrot = hrot2(prm[1:4],ψ)
       if ctrl["S"]≥1.0
-         Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ) + Hqua(prm[10:12],ψ.J,ψ.S,ψ)
+         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ) + Hqua(prm[9:11],ψ.J,ψ.S,ψ)
       elseif ctrl["S"]==0.5
-         Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ)
+         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
       end
       Hrot = sparse(Symmetric(Hrot))
       for sc in 1:σcnt
@@ -125,19 +125,27 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
 end#f
 function tsrcalc_2stg!(vals,vecs,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
+   tsize = (2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"])
+   for sc in 1:σcnt
+      ϕ = Psi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"])
+      tvals,tecss = eigen!(torbuild(ℋ,ϕ,stg,tsize))
+   end
 for j in jlist
    dest = jvdest2(j,s,vtm) 
    ψ = Psi(J=j,S=ctrl["S"])
    Hrot = hrot2(prm[1:4],ψ)
    if S≥1.0
-      Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ) + Hqua(prm[10:12],ψ.J,ψ.S,ψ)
+      Hrot += Hqua(prm[9:11],ψ.J,ψ.S,ψ)
+      if norm(prm[5:8]) > 0.0
+         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
+      end
    elseif S==0.5
-      Hrot += Hsr(prm[5:9],ψ.J,ψ.S,ψ)
+      Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
    end
    Hrot = Symmetric(Hrot)
    for sc in 1:σcnt
-      ψ = Psi(Psi(J=j,S=ctrl["S"]),nf=ctrl["NFOLD"],σ=σs[σd],mc=ctrl["mcalc"])
-      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,ctrl,ℋ,ψ,σs[:,sc])
+      ψ = Psi(Psi(j,ctrl["S"]),nf=ctrl["NFOLD"],σ=σs[σd],mc=ctrl["mcalc"])
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals,tvecs,ℋ,ψ,σs[:,sc])
    end#σs
 end#j
 end#f

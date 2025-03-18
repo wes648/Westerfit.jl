@@ -41,8 +41,8 @@ function jsred(j,s,nb::Int,nk::Int)::Float64
 end
 
 function srelem(pr::Float64,nb::Int,nk::Int,
-         kl::UnitRange{Int},q::Int)::Vector{Float64}
-   out = wig3j.(nb,2,nk,-kl,q,kl.-q) 
+         kl::UnitRange{Int},l::Int,q::Int)::Vector{Float64}
+   out = wig3j.(nb,l,nk,-kl,q,kl.-q) 
    out .*= powneg1.(kl)
    out .*= pr
    return out
@@ -65,7 +65,7 @@ function hsr_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
          kl = ks[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
 #         @. blck[dest] = pr[2+abs(q)]*wig3j(nb,2,nk,-kl,q,kl-q)*powneg1(-kl)
-         blck[dest] = srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,q)
+         blck[dest] = srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
       end#p loop
    end
    dropzeros!(out)
@@ -109,6 +109,8 @@ function hqu_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
+#= This is the graveyard
+
 function hsr_coarse(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])
    ks = reduce(vcat, ψ.K)
@@ -120,6 +122,21 @@ function hsr_coarse(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    out[abs.(ns' .- ns) .> 1] .*= 0.0
    return out
 end
+function sz_coarse(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])
+   ks = reduce(vcat, ψ.K)
+   out = @. wig3j(ns', 2, ns, -ks',  0, ks)
+   out[abs.(ns' .- ns) .> 1] .*= 0.0
+   return out
+end
+function sp_coarse(ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])
+   ks = reduce(vcat, ψ.K)
+   out = @. wig3j(ns', 1, ns, -ks',  1, ks)
+   out[abs.(ns' .- ns) .> 1] .*= 0.0
+   return out
+end
+
 function hqu_coarse(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])
    ks = reduce(vcat, ψ.K)
@@ -132,7 +149,6 @@ function hqu_coarse(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-#= This is the graveyard
 
 function hrot2_old(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
    out = spzeros(size(ψ.N,1),size(ψ.N,1))
