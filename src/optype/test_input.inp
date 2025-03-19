@@ -2,7 +2,7 @@ test input
 %CNTRLS
 NFOLD = 3
 S = 0.0
-stages = 1
+stages = 2
 RUNmode = F
 TK = 8.0
 mcalc = 12
@@ -36,13 +36,13 @@ Vn;            1000.885863352911;   1.0
 
 %OPS Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ, α, β, γ
 %Name;        Val; unit; scl;stg; v v; operator
-ΔN;         3.000;  kHz; 1.0;  1; 0 0; N2^4
-ΔNK;        3.000;  kHz; 1.0;  1; 0 0; N2^2 Nz^2
-ΔK;         3.000;  kHz; 1.0;  1; 0 0; Nz^4
-δN;         3.000;  kHz; 1.0;  1; 0 0; N2^2 Npm^2
-δK;         3.000;  kHz; 1.0;  1; 0 0; Nz^2 Npm^2
-ρbc3;       3.000;  kHz; 1.0;  1; 0 0; Nz Npm^2 Pα cosα
+ΔN;         3.000;  kHz; 1.0;  2; 0 0; N2^4
+ΔNK;        3.000;  kHz; 1.0;  2; 0 0; N2^2 Nz^2
+ΔK;         3.000;  kHz; 1.0;  2; 0 0; Nz^4
+δN;         3.000;  kHz; 1.0;  2; 0 0; N2^2 Npm^2
+δK;         3.000;  kHz; 1.0;  2; 0 0; Nz^2 Npm^2
+ρbc3;       3.000;  kHz; 1.0;  2; 0 0; Nz Npm^2 Pα cosα
 V6;        5.0000; cm-1; 1.0;  1; 0 0; E
 V6;          -1.0; cm-1; 1.0; -1; 0 0; cosα^2
-dS2;        2.000;  kHz; 1.0;  1; 0 0; Np^3 Sp
+dS2;        2.000;  kHz; 1.0;  2; 0 0; Np^3 Sp
 dS2;        1.000;  kHz; 1.0; -1; 0 0; Sm Nm^3

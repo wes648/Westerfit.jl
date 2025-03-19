@@ -110,8 +110,8 @@ struct Psi
    function Psi(nf=0,σ=0,mc=3) #torsion
       J = 0.0
       S = 0.0
-      N = [0]
-      K = [0]
+      N = Δlist2(0,0)
+      K = kgen(0:0)
       if length(nf) > 1
          ms = msgen_indef(nf,mc,σ)
       else
@@ -294,7 +294,7 @@ function torbuild(O::Vector{Op},ψ::Psi,stgs,siz)::SparseMatrixCSC{Float64,Int}
    @inbounds for i in 1:length(O)
       if stgs[i]==1
          out += enact_tor(O[i].tp,ψ)
-      elseif stgs[i] < 0
+      elseif (stgs[i] < 0)&&(stgs[i+stgs[i]] == 1)
          out += enact_tor(O[i].tp,ψ)*O[i-stgs[i]].v
       else
       end

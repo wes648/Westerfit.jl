@@ -106,7 +106,8 @@ function s0part(j,s,nb,kb,nk,kk)::Float64
    return skqpart(j,s,1,0,nb,kb,nk,kk)::Float64
 end
 
-sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+#sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_new_op(ψ)^p
 function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)
@@ -143,7 +144,8 @@ function sz_op_new(ψ::Psi)::SparseMatrixCSC{Float64,Int}
    dropzeros!(out)
    return out
 end
-sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+#sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op_new(ψ,p)
 function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)
@@ -183,8 +185,10 @@ sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
 sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)
 spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq(ψ,p))
 function sx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
-   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
+#   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
+#   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
+   out  = sq_op_new(ψ, 1)
+   out -= sq_op_new(ψ,-1)
    out *= -√.5
    out ^= p
    return out
@@ -211,7 +215,7 @@ end
 ################################################################################
 #####                         Section 2: Operators                         #####
 ################################################################################
-E = Op(1.0)
+E = Op(1.0,tp=[0;0;;])
 Nz = Op(1.0,d=1)
 N2 = Op(1.0,a=1)
 Np = Op(1.0,rp=[1],rf=[np])
