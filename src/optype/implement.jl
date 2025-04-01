@@ -226,7 +226,7 @@ function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},ctrl,ℋ::Vector{Op},ψ::Psi
    return vals, vecs
 end
 function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},ψ::Psi,stg)
-   @show ψ.J
+   #printstyled("ψ.J = $(ψ.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
    H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
    H[diagind(H)] += kron(tvals, ones(Int((2ψ.J+1)*(2ψ.S+1)) ))
    h_stg2build!(H,ℋ,ψ,stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),tvecs,ctrl["mcalc"])
@@ -236,7 +236,7 @@ function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector
       U = kron(U,sparse(1.0I,l,l))
    end
    U = kron(U,ur(ψ.J,ψ.S))
-   @show H
+   #@show H
    H = U*H*U
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    #@show vecs

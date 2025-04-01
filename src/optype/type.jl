@@ -313,13 +313,13 @@ function torbuild(O::Vector{Op},ψ::Psi,stgs,msz,mc)::SparseMatrixCSC{Float64,In
    return dropzeros!(out)
 end
 function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
-   println("start")
-   @show O.v
+   #printstyled("start\n",color=:green)
+   #@show O.v
    out = enact_init(O,ψ)
    @inbounds for i in 1:length(O.rp)
       out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
    end
-   @show out
+   #@show out
    if O.tp ≠ zeros(Int,size(O.tp))
       part = enact_tor(O.tp,ψ)
       if iszero(ψ.σ)
@@ -328,7 +328,7 @@ function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
          mul!(part,part,U)
       end
       part = dropzeros!(sparse(tvcs' * part * tvcs))
-      @show part
+      #@show part
       out = kron(part,out)
    else
       out = kron(I(size(tvcs,2)),out)
@@ -336,16 +336,16 @@ function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
    if !isdiag(out) 
       tplus!(0.5*out) 
    end
-   @show out
-   println("stop")
+   #@show out
+   #printstyled("stop\n",color=:red)
    return out #<- dispatch 
 end
 function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,stgs,siz,tvcs,mc)::SparseMatrixCSC{Float64,Int}
       @inbounds for i in 1:length(O)
       if stgs[i] ≥ 2 #this is for future oddities 
-         Hmat += enact_stg2(O[i],ψ,tvcs,mc)
+         Hmat .+= enact_stg2(O[i],ψ,tvcs,mc)
       elseif stgs[i] < 0 && stgs[i] ≥ 2
-         Hmat += enact_stg2(O[i],ψ,tvs,mc)*O[i+stgs[i]].v
+         Hmat .+= enact_stg2(O[i],ψ,tvs,mc)*O[i+stgs[i]].v
       else
       end
    end
