@@ -76,6 +76,7 @@ struct Psi
    K::Vector{UnitRange{Int}}
    nf::Vector{Int}
    ms::Array{Int}
+   σ::Vector{Int}
    lng::Int
    #Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
    #Psi(n::Int) = Psi(Float64(n),0.0)
@@ -89,9 +90,10 @@ struct Psi
       else
          ms = msgen(nf,mc,σ)
          nf = [nf]
+         σ = [σ]
       end
       lng = convert(Int,(2J+1)*(2S+1))
-      new(J,S,N,K,nf,ms,lng)
+      new(J,S,N,K,nf,ms,σ,lng)
    end
    function Psi(N::Int=0;nf=0,σ=0,mc=3) # (torsion) rotation
       J = convert(Float64,N)
@@ -102,10 +104,11 @@ struct Psi
          ms = msgen_indef(nf,mc,σ)
       else
          ms = msgen(nf,mc,σ)
+         σ = [σ]
          nf = [nf]
       end
       lng = convert(Int,(2J+1)*(2S+1))
-      new(J,S,N,K,nf,ms,lng)
+      new(J,S,N,K,nf,ms,σ,lng)
    end
    function Psi(nf=0,σ=0,mc=3) #torsion
       J = 0.0
@@ -116,10 +119,11 @@ struct Psi
          ms = msgen_indef(nf,mc,σ)
       else
          ms = msgen(nf,mc,σ)
+         σ = [σ]
          nf = [nf]
       end
       lng = convert(Int,(2J+1)*(2S+1))
-      new(J,S,N,K,nf,ms,lng)
+      new(J,S,N,K,nf,ms,σ,lng)
    end
 end
 
@@ -254,6 +258,7 @@ function torop(a::Int,b::Int,nf::Int,ms::Array{Int})::SparseMatrixCSC{Float64,In
    else
       out = spdiagm(ones(size(ms)))
    end
+   #@show out
    return out
 end
 function enact_tor(tp::Array{Int,2},ψ::Psi)::SparseMatrixCSC{Float64, Int}
@@ -289,46 +294,62 @@ function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64,Int}
    end
    return out
 end
-function torbuild(O::Vector{Op},ψ::Psi,stgs,siz)::SparseMatrixCSC{Float64,Int}
-   out = spzeros(siz,siz)
+function torbuild(O::Vector{Op},ψ::Psi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(msz,msz)
    @inbounds for i in 1:length(O)
       if stgs[i]==1
-         out += enact_tor(O[i].tp,ψ)
+         out += enact_tor(O[i].tp,ψ)*O[i].v
       elseif (stgs[i] < 0)&&(stgs[i+stgs[i]] == 1)
-         out += enact_tor(O[i].tp,ψ)*O[i-stgs[i]].v
+         out += enact_tor(O[i].tp,ψ)*O[i+stgs[i]].v*O[i].v
       else
       end
    end
-   return out
+   if iszero(ψ.σ)
+   U = ur(mc)
+   mul!(out,U,out)
+   mul!(out,out,U)
+   end
+   #@show out
+   return dropzeros!(out)
 end
-function enact_stg2(O::Op,ψ::Psi,tvcs)::SparseMatrixCSC{Float64,Int}
+function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
+   println("start")
+   @show O.v
    out = enact_init(O,ψ)
    @inbounds for i in 1:length(O.rp)
       out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
    end
+   @show out
    if O.tp ≠ zeros(Int,size(O.tp))
-      part = sparse(tvcs' * enact_tor(O.tp,ψ) * tvcs)
-      droptol!(out,2eps())
+      part = enact_tor(O.tp,ψ)
+      if iszero(ψ.σ)
+         U = ur(mc)
+         mul!(part,U,part)
+         mul!(part,part,U)
+      end
+      part = dropzeros!(sparse(tvcs' * part * tvcs))
+      @show part
       out = kron(part,out)
    else
-      out = kron(I(size(ψ.ms,1)),out)
+      out = kron(I(size(tvcs,2)),out)
    end
    if !isdiag(out) 
       tplus!(0.5*out) 
    end
+   @show out
+   println("stop")
    return out #<- dispatch 
 end
-function h_stg2build(O::Vector{Op},ψ::Psi,stgs,siz,tvcs)::SparseMatrixCSC{Float64,Int}
-   out = spzeros(siz,siz)
-   @inbounds for i in 1:length(O)
+function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,stgs,siz,tvcs,mc)::SparseMatrixCSC{Float64,Int}
+      @inbounds for i in 1:length(O)
       if stgs[i] ≥ 2 #this is for future oddities 
-         out += enact_stg2(O[i].tp,ψ,tvcs)
-      elseif stgs[i] < 0
-         out += enact_stg2(O[i].tp,ψ,tvs)*O[i-stgs[i]].v
+         Hmat += enact_stg2(O[i],ψ,tvcs,mc)
+      elseif stgs[i] < 0 && stgs[i] ≥ 2
+         Hmat += enact_stg2(O[i],ψ,tvs,mc)*O[i+stgs[i]].v
       else
       end
    end
-   return out
+   return Hmat
 end
 
 

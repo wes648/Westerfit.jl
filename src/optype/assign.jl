@@ -298,8 +298,6 @@ function twostg_assign(vecs,j,s,md,vtmax)
       end
    end
    perm = perm[perm .!= 0]
-   @show j
-   @show perm
    return perm
 end
 ### JACOBI

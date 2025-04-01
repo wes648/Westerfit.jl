@@ -42,12 +42,12 @@ function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    return ni
 end
 
-function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
 """
 This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
    This will be kronecker producted with an identy matrix of size 2*m+1 for the
    torsional-rotational nature. A purely rotational form can be built using m=0
 """
+function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
    ns, nd, ni, jsd = srprep(j,s)
    out = spzeros(jsd,jsd)
    for i in 1:length(ns)
@@ -61,9 +61,8 @@ function westereng(molnam::String)
    ctrl = ctrlinp(molnam)
    prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
    ℋ, stgs, errs = opreader(molnam,ctrl,ℋ,stgs,errs)
-   ℋ = stgvalset(ℋ,stgs)
+   #ℋ = stgvalset(ℋ,stgs)
    σs = σgen_indef(ctrl["NFOLD"])
-   @show σs
    σcnt = maximum(size(σs))
    sd = Int(2*ctrl["S"]+1)
    jlist = collect(0.5*iseven(sd):ctrl["Jmax"])
@@ -74,15 +73,20 @@ function westereng(molnam::String)
    jfd = sd*Int(sum(2.0 .* jlist .+ 1.0))
    vals = zeros(Float64,jfd*vtd,σcnt)
    #initialize vecs
-   vecs = zeros(Float64,Int(sd*(2*ctrl["Jmax"]+1)*mcd),jfd*vtd,σcnt)
-   #initialize tvecs
-   if ctrl["stages"]==2
-      tvecs = zeros()
+   if ctrl["stages"]==1
+      vecs = zeros(Float64,Int(sd*(2*ctrl["Jmax"]+1)*mcd),jfd*vtd,σcnt)
+   elseif ctrl["stages"]==2
+      vl = sd*(2*ctrl["Jmax"]+1)*(ctrl["mmax"]+1)
+      vecs = zeros(Float64,Int(vl),jfd*vtd,σcnt)
+      #initialize tvecs
+      tvals = zeros(ctrl["mmax"]+1,σcnt)
+      tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
    end
+   #do the energy level calculation
    if ctrl["stages"]==1
       vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
    elseif ctrl["stages"]==2
-      vals,vecs = tsrcalc_2stg!(vals,vecs,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
+   vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
    else
       @warn "Invalid stages number"
    end
@@ -115,7 +119,7 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       elseif ctrl["S"]==0.5
          Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
       end
-      Hrot = sparse(Symmetric(Hrot))
+      Hrot = sparse(Symmetric(Hrot,:L))
       for sc in 1:σcnt
          ψ = Psi(j,ctrl["S"],nf=ctrl["NFOLD"],σ=σs[sc],mc=ctrl["mcalc"])
          vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,ctrl,ℋ,ψ,σs[:,sc])
@@ -123,17 +127,28 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    end#j
    return vals, vecs
 end#f
-function tsrcalc_2stg!(vals,vecs,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
-   σcnt = size(σs,2)
+
+function torcalc!(tvals,tvecs,ctrl,ℋ,ϕ,stg,sc)
+   tsize = (2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"])
+   dest = 1:ctrl["mmax"]+1
+   H = torbuild(ℋ,ϕ,stg,tsize,ctrl["mcalc"])
+   H = Matrix(H)
+   H = eigen!(H)
+   tvals[dest,sc] = H.values[dest]
+   tvecs[:,dest,sc] = H.vectors[:,dest]
+end
+
+function tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
+   σcnt = size(σs,2)#this doesn't work for 1 top
    tsize = (2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"])
    for sc in 1:σcnt
-      @show ctrl["NFOLD"]
-      @show σs[sc]
-      @show ctrl["mcalc"]
       ϕ = Psi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"])
-      tvals,tecss = eigen!(Matrix(torbuild(ℋ,ϕ,stg,tsize)))
+      torcalc!(tvals,tvecs,ctrl,ℋ,ϕ,stg,sc)
+      #tvals,tvecs = eigen!(Matrix(torbuild(ℋ,ϕ,stg,tsize)))
    end
+   msd = Int(2ctrl["S"]+1)*(ctrl["mmax"]+1)
 for j in jlist
+   jd = Int(2j+1)
    dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) 
    ψ = Psi(j,ctrl["S"])
    Hrot = hrot2(prm[1:4],ψ)
@@ -145,12 +160,13 @@ for j in jlist
    elseif ctrl["S"]==0.5
       Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
    end
-   Hrot = Symmetric(Hrot)
+   Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt
-      ψ = Psi(Psi(j,ctrl["S"]),nf=ctrl["NFOLD"],σ=σs[σd],mc=ctrl["mcalc"])
-      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals,tvecs,ℋ,ψ,σs[:,sc])
+      ψ = Psi(j,ctrl["S"],nf=ctrl["NFOLD"],σ=σs[sc],mc=ctrl["mcalc"])
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals[:,sc],tvecs[:,:,sc],ℋ,ψ,stg)
    end#σs
 end#j
+   return vals,vecs,tvals,tvecs
 end#f
 
 #tsr_diag variants: 0 generic universal, 1 preloads Hrs, 2 two-stage preloads Hrs
@@ -209,25 +225,27 @@ function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},ctrl,ℋ::Vector{Op},ψ::Psi
    end
    return vals, vecs
 end
-function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},tvals,tvecs,ℋ::Vector{Op},ψ::Psi)
-   H = kron(I(2md+1)^length(nfold),Hr) + diagm(kron(tvals,ones((2j+1)(2s+1))))
-   H += enact2stg(ℋ,ψ,tvecs)
+function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},ψ::Psi,stg)
+   @show ψ.J
+   H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
+   H[diagind(H)] += kron(tvals, ones(Int((2ψ.J+1)*(2ψ.S+1)) ))
+   h_stg2build!(H,ℋ,ψ,stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),tvecs,ctrl["mcalc"])
    U = sparse(ones(1))
    for i in 1:length(ψ.nf)
-   if ψ.σ[i] == 0
-      U = kron(u,ur(mcalc))
-   else
-      U = kron(u,sparse(1.0I,2mcalc+1,2mcalc+1))
-   end;end
-   U = kron(u,ur(ψ.J,ψ.S))
+      l = ctrl["mmax"]+1
+      U = kron(U,sparse(1.0I,l,l))
+   end
+   U = kron(U,ur(ψ.J,ψ.S))
+   @show H
    H = U*H*U
-   vals,vecs = eigen!(Symmetric(Matrix(H)))
-   perm = twostg_assign(vecs,j,s,mmax,vtm)
+   vals,vecs = eigen!(Symmetric(Matrix(H),:L))
+   #@show vecs
+   perm = twostg_assign(vecs,ψ.J,ψ.S,ctrl["mmax"],ctrl["vtmax"])
    vals = vals[perm]
    vecs = vecs[:,perm]
+   #@show nnz(dropzeros(sparse(vals)))
    return vals, vecs
 end
-
 
 function qnlabv2(j,s,vtm,σ)::Array{Int,2}
    nlist = Δlist(j,s)

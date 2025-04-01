@@ -107,7 +107,7 @@ function s0part(j,s,nb,kb,nk,kk)::Float64
 end
 
 #sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
-sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_new_op(ψ)^p
+sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op_new(ψ)^p
 function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)

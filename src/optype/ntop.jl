@@ -90,7 +90,7 @@ function σgen_indef(nf::Array{Int})::Array{Int,2}
    return old
 end
 function σgen_indef(nf::Int)::Array{Int}
-   return collect(0:σcount(nf[1])-1)
+   return collect(0:σcount(nf[1])-1)'
 end
 
 

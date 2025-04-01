@@ -199,10 +199,11 @@ function secordinp(molnam::String,ctrl)
             val[2] += csl*file[i-2,2]*file[i,2]^2 #B -> Beff
          else#this is for z!!!!
             ℋ += Op(-2*csl*file[i,2]*file[i-1,2],d=1,tp=tmp)
-            val[1] += csl*file[i-2,2]*file[i,2]^2 #A -> Aeff
+            val[1] += csl*file[i-1,2]*file[i,2]^2 #A -> Aeff
+            @show file[i-1,2]*file[i,2]
          end
          err = vcat(err,file[i,3])
-         stg = vcat(stg,1)
+         stg = vcat(stg,2)
       elseif occursin("η",nam)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
@@ -210,15 +211,17 @@ function secordinp(molnam::String,ctrl)
          if occursin("x",nam)
             ℋ += Op(-2*csl*file[i,2]*file[i-2,2],tp=tmp,rp=[1],rf=[sx])
          else
-            ℋ += Op(-2*csl*file[i,2]*file[i-2,2],d=1,tp=tmp)
+            ℋ += Op(-2*csl*file[i,2]*file[i-2,2],tp=tmp,rp=[1],rf=[sz])
          end
          err = vcat(err,file[i,3])
-         stg = vcat(stg,1)
+         stg = vcat(stg,2)
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
    pop!(val)
+   @show val
+   @show ℋ
    popat!(err,12)
    popfirst!(ℋ)
    popfirst!(stg)
