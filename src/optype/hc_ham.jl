@@ -3,9 +3,9 @@ hr2on(ns,ks,bk::Float64,bn::Float64) = @. bn*eh(ns) + bk*ks^2
 hr2of1(ns,ks,dab::Float64) = @. dab*(ks-0.5)*fh(ns,ks-1)
 hr2of2(ns,ks,bpm::Float64) = @. bpm*fh(ns,ks-1)*fh(ns,ks-2)
 
-hr2onv(ns,ks,bk::Float64,bn::Float64) = @. bn*ns + bk*ks^2 
-hr2of1v(ns,ks,dab::Float64) = @. dab*(ks-0.5)*fhv(ns,ks-1)
-hr2of2v(ns,ks,bpm::Float64) = @. bpm*fh(ns,ks-1)*fhv(ns,ks-2)
+hr2onv(ns,ks,bk::Float64,bn::Float64) = bn*ns + bk*ks^2 
+hr2of1v(ns,ks,dab::Float64) = dab*(ks-0.5)*fhv(ns,ks-1)
+hr2of2v(ns,ks,bpm::Float64) = bpm*fhv(ns,ks-1)*fhv(ns,ks-2)
 
 function hrot2(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
    ns = nsgen(ψ.N)
@@ -18,9 +18,9 @@ end
 function hrot2v(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
    n2 = n2gen(ψ.N)
    ks = reduce(vcat, ψ.K)
-   out = spdiagm(hr2onv(n2,ks,pr[1],pr[2]))
-   out[diagind(out,-1)] .= hr2of1v(n2[2:end],ks[2:end], pr[4])
-   out[diagind(out,-2)] .= hr2of2v(n2[3:end],ks[3:end], pr[3])
+   out = spdiagm(hr2onv.(n2,ks,pr[1],pr[2]))
+   out[diagind(out,-1)] .= hr2of1v.(n2[2:end],ks[2:end], pr[4])
+   out[diagind(out,-2)] .= hr2of2v.(n2[3:end],ks[3:end], pr[3])
    return dropzeros!(out)
 end
 

@@ -4,7 +4,14 @@ This file is the actual implementation of the information in types.Jl & baseops.
 """
 
 using DelimitedFiles
+using FunctionWrappers
+import FunctionWrappers: FunctionWrapper
+using LinearAlgebra
+using SparseArrays
 using WIGXJPFjl
+#using JET
+#using BenchmarkTools
+#using ProfileView
 
 include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
@@ -84,9 +91,9 @@ function westereng(molnam::String)
    end
    #do the energy level calculation
    if ctrl["stages"]==1
-      vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
+      @time vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
    elseif ctrl["stages"]==2
-   vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
+      @time vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
    else
       @warn "Invalid stages number"
    end
@@ -94,14 +101,14 @@ function westereng(molnam::String)
    return vals,vecs #,qns
 end
 
-function jvdest2(j,s,vtm)
+function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
 """
 This returns a unit range spanning from the first to the final indices for a 
    certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-   snd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
-   fnd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   snd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):(j-1)) .+0.5))+1
+   fnd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):j) .+0.5))
    return snd:fnd
 end
 
@@ -111,18 +118,18 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    msd = (2*ctrl["mcalc"]+1)*length(ctrl["NFOLD"])
    for j in jlist
       jd = Int(2j+1)
-      dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) 
-      ψ = Psi(j,ctrl["S"])
-      Hrot = hrot2(prm[1:4],ψ)
+      dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) #<--------- CHECK
+      ψ = Psi(j,ctrl["S"]) #<--------- CHECK msgen
+      Hrot = hrot2(prm[1:4],ψ) #<--------- CHECK spdiagm
       if ctrl["S"]≥1.0
          Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ) + Hqua(prm[9:11],ψ.J,ψ.S,ψ)
       elseif ctrl["S"]==0.5
          Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
       end
-      Hrot = sparse(Symmetric(Hrot,:L))
+      Hrot = sparse(Symmetric(Hrot,:L)) #<--------- CHECK maybe cleaner way to do this
       for sc in 1:σcnt
-         ψ = Psi(j,ctrl["S"],nf=ctrl["NFOLD"],σ=σs[sc],mc=ctrl["mcalc"])
-         vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,ctrl,ℋ,ψ,σs[:,sc])
+         ψ = Psi(j,ctrl["S"],nf=ctrl["NFOLD"],σ=σs[sc],mc=ctrl["mcalc"]) #<--------- CHECK
+         vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,ctrl,ℋ,ψ,σs[:,sc]) #<--------- CHECK
       end#σs
    end#j
    return vals, vecs
@@ -198,22 +205,22 @@ function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
 end
 
 function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},ctrl,ℋ::Vector{Op},ψ::Psi,σs)
-   H = kron(I(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),Hr) 
+   H = kron(I(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),Hr) #<--------- CHECK
    #@show size(H)
    #@show size(enact(ℋ,ψ))
-   H += enact(ℋ,ψ)
+   H += enact(ℋ,ψ) #<--------- CHECK
    U = sparse(ones(1))
    for i in 1:length(ψ.nf)
    if σs[i] == 0
-      U = kron(U,ur(ctrl["mcalc"]))
+      U = kron(U,ur(ctrl["mcalc"])) #<--------- CHECK
    else
       U = kron(U,sparse(1.0I,2ctrl["mcalc"]+1,2ctrl["mcalc"]+1))
    end;end
    U = kron(U,ur(ψ.J,ψ.S))
-   H = U*H*U
+   H = U*H*U #<--------- CHECK
    vals,vecs = eigen!(Symmetric(Matrix(H)))
    if (ctrl["assign"]=="ram36")||(ctrl["assign"]=="RAM36")
-      perm = ramassign(vecs,ψ.J,ψ.S,ctrl["mcalc"],ctrl["vtmax"])
+      perm = ramassign(vecs,ψ.J,ψ.S,ctrl["mcalc"],ctrl["vtmax"]) #<--------- CHECK
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl["assign"]=="expectk"
@@ -225,19 +232,25 @@ function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},ctrl,ℋ::Vector{Op},ψ::Psi
    end
    return vals, vecs
 end
+
+function wangtrans2!(H,mmax,ψ)
+   U = sparse(ones(1))
+   for i in 1:length(ψ.nf)
+      l = mmax+1
+      U = kron(U,sparse(1.0I,l,l))
+   end
+   U = kron(U,ur(ψ.J,ψ.S))
+   mul!(H,U,H)
+   mul!(H,H,U)
+end
+
+
 function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},ψ::Psi,stg)
    #printstyled("ψ.J = $(ψ.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
    H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
    H[diagind(H)] += kron(tvals, ones(Int((2ψ.J+1)*(2ψ.S+1)) ))
    h_stg2build!(H,ℋ,ψ,stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),tvecs,ctrl["mcalc"])
-   U = sparse(ones(1))
-   for i in 1:length(ψ.nf)
-      l = ctrl["mmax"]+1
-      U = kron(U,sparse(1.0I,l,l))
-   end
-   U = kron(U,ur(ψ.J,ψ.S))
-   #@show H
-   H = U*H*U
+   wangtrans2!(H,ctrl["mmax"],ψ)
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    #@show vecs
    perm = twostg_assign(vecs,ψ.J,ψ.S,ctrl["mmax"],ctrl["vtmax"])

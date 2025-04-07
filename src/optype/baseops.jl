@@ -31,6 +31,7 @@ eh(x::Real)::Float64 = x*(x+1)
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 fhv(x::Float64,y::Int)::Float64 = □rt(x - eh(y))
 ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
+
 n2gen(ns::UnitRange{Int})::Vector{Float64} = reduce(vcat, [fill(eh(n),2n+1) for n ∈ ns])
 nsgen(ns::UnitRange{Int})::Vector{Int} = reduce(vcat, [fill(n,2n+1) for n ∈ ns])
 ksgen(ks::Vector{UnitRange{Int}})::Vector{Int} = reduce(vcat, ks)
@@ -43,7 +44,7 @@ end
 function n2(v::Float64,ns::UnitRange{Int},p::Int)::Vector{Float64}
    reduce(vcat, [fill(v*eh(n)^p,2n+1) for n ∈ ns])
 end
-function ns_el2(j,s,ns::UnitRange,p::Int)::Vector{Float64}
+function ns_el2(j::Float64,s::Float64,ns::UnitRange,p::Int)::Vector{Float64}
    reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
 end
 function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
@@ -136,9 +137,9 @@ function sz_op_new(ψ::Psi)::SparseMatrixCSC{Float64,Int}
       nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
       blck = view(out,nds[j],nds[i])
       frac = wig6j(S,nb,J,nk,S,1)*jnred(nb,nk)*sfact
-      p = Δ
-      dest = diagind(blck,p)
-      kl = ks[(1:length(dest)).+δi(1,p)]
+      #p = Δ
+      dest = diagind(blck,Δ)
+      kl = ks[(1:length(dest)).+δi(1,Δ)]
       blck[dest] = srelem(frac,nb,nk,kl,1,0)
    end
    dropzeros!(out)

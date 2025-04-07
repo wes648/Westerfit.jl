@@ -1,8 +1,4 @@
 
-using JET
-using LinearAlgebra
-using SparseArrays
-using BenchmarkTools
 import Base.*
 import Base.^
 import Base.+
@@ -58,10 +54,6 @@ end
 
 Δlist2(J::Real,S::Real)::UnitRange{Int} = Int(abs(J-S)):Int(J+S)
 kgen(ns::UnitRange{Int})::Vector{UnitRange{Int}} = [-n:n for n ∈ ns]
-function nz_new(kvc)
-   return reduce(vcat, kvc)
-end
-
 
 #tplus!(a::Diagonal)::SparseMatrixCSC{Float64, Int} = sparse(a)
 #tplus!(a::Array{Float64,2})::Array{Float64,2} = hermitianpart!(2a)
@@ -130,17 +122,6 @@ end
 mutable struct Op_old
    #v for value as in parameter value
    v::Float64
-   #p for power as in Operator power
-   rp::Vector{Int}
-   #f for function as in the matrix element function
-   f::Vector{Function}
-   #forces the vector structure for even a single function
-   Op_old(v::Number,rp::Int,f::Function) = new(Float64(v),[rp],[f])
-   Op_old(v::Number,rp::Vector{Int},f::Vector{Function}) = new(Float64(v),rp,f)
-end
-mutable struct Op
-   #v for value as in parameter value
-   v::Float64
    #rp for rotation Operator powers
    rp::Vector{Int}
    #rf for rotation Operator functions
@@ -155,12 +136,43 @@ mutable struct Op
    d::Int
    #forces the vector structure for even a single function
    #Op(v::Number,p::Int,f::Function;a=0,b=0,c=0,d=0) = new(Float64(v),[p],[f],a,b,c,d)
-   function Op(v::Number;rp=Vector{Int}[],rf=Vector{Function}[],
+   function Op_old(v::Number;rp=Vector{Int}[],rf=Vector{Function}[],
                tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
       return new(Float64(v),rp,rf,tp,a,b,c,d)
    end
-   Op(O::Op) = new(Float64(O.v),O.rp,O.rf,O.tp,O.a,O.b,O.c,O.d)
+   Op_old(O::Op) = new(Float64(O.v),O.rp,O.rf,O.tp,O.a,O.b,O.c,O.d)
 end
+
+struct OpFunc
+   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{Psi,Int}}
+   p::Int
+end
+mutable struct Op
+   #v for value as in parameter value
+   v::Float64
+   #rf for rotation Operators
+   rf::Vector{OpFunc}
+   #tor powers. each column is for the consecutive rotors 
+   tp::Array{Int,2}
+   #a,b,c,d are powers for N^2a (NS)^b S^2c Nz^d
+   #this is to initialize the purely diagonal part of the matrix first
+   a::Int
+   b::Int
+   c::Int
+   d::Int
+   #forces the vector structure for even a single function
+   function Op(v::Number;rf=Vector{Opfunc}[],tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
+      return new(Float64(v),rf,tp,a,b,c,d)
+   end
+   Op(O::Op) = new(Float64(O.v),O.rf,O.tp,O.a,O.b,O.c,O.d)
+end
+
+eval_op(op::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.p)
+
+################################################################################################
+#   HI FUTURE WES!!! As of Apr7,'25 @ 13:43 You changed the definition of Op and need to fix 
+#                      everything after this block
+################################################################################################
 
 #Multiplying an Operator by a number updates the value
 function *(v::Number,O::Op)::Op
@@ -238,20 +250,20 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int}
    return sparse(out)
 end
 
-function enact_init(O::Op,ψ::Psi)::Diagonal{Float64,Vector{Float64}}
+function enact_init(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}#::Diagonal{Float64,Vector{Float64}}
    #out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    out = O.a≠0 ? n2(O.v, ψ.N, O.a) : fill(O.v,ψ.lng)
-   if O.b≠0; out .*= ns_el2.(ψ.J,ψ.S,ψ.N,O.b)::Vector{Float64} ; end
+   if O.b≠0; out .*= ns_el2(ψ.J,ψ.S,ψ.N,O.b); end
    if O.c≠0; out .*= eh(ψ.S)^O.c ; end
    if O.d≠0; out .*= nz(ψ.K, O.d) ; end
-   return Diagonal(out)
+   return spdiagm(out)
 end
 
 function torop(a::Int,b::Int,nf::Int,ms::Array{Int})::SparseMatrixCSC{Float64,Int}
 #performance of this function is deeply lacking
    if b≠zero(b)
       @inbounds out = 0.5.* (ms[1+b:end] .- nf*b).^a
-      out = spdiagm(b=>out,-b=>reverse(out))
+      out = spdiagm(b=>out,-b=>reverse(-out))
       dropzeros!(out)
    elseif a≠zero(a) && b==zero(b)
       out = spdiagm(0=>ms .^a)
@@ -262,25 +274,34 @@ function torop(a::Int,b::Int,nf::Int,ms::Array{Int})::SparseMatrixCSC{Float64,In
    return out
 end
 function enact_tor(tp::Array{Int,2},ψ::Psi)::SparseMatrixCSC{Float64, Int}
-   out = sparse([1],[1],[1.0])
-   @inbounds for i in 1:size(tp,2)
+   out = torop(tp[1,1],tp[2,1],ψ.nf[1],ψ.ms[:,1])
+   @inbounds for i in 2:size(tp,2)
       out = kron(torop(tp[1,i],tp[2,i],ψ.nf[i],ψ.ms[:,i]),out)
    end
    return out
 end
 
+function mateval(f::Function,ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   return f(ψ,p)
+end
+
 function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}
    out = enact_init(O,ψ)
    @inbounds for i in 1:length(O.rp)
-      out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
+      #part::SparseMatrixCSC{Float64,Int} = mateval(O.rf[i],ψ,O.rp[i])
+      #out *= part
+      #mul!(out,out,mateval(O.rf[i],ψ,O.rp[i]))
+      out *= O.rf[i](ψ::Psi,O.rp[i]::Int)::SparseMatrixCSC{Float64,Int} #<--------- CHECK
    end
-   if O.tp ≠ zeros(Int,size(O.tp))
-      part = enact_tor(O.tp,ψ)
+   #This block causes lots of JET errors
+   if !iszero(O.tp) #O.tp ≠ zeros(Int,size(O.tp))
+      part = enact_tor(O.tp,ψ)#<--------- CHECK
       out = kron(part,out)
    else
       out = kron(I(size(ψ.ms,1)),out)
    end
-   if !isdiag(out) 
+   #end said block of errors
+   if !isdiag(out) #<--------- CHECK
       tplus!(0.5*out) 
    end
    return out #<- dispatch 
