@@ -22,32 +22,28 @@ function kgen(J::Real,S::Real)::Vector{Int}
    end
    return out
 end
-function msgen(nfold::Int,mcalc::Int,σ::Int)::Vector{Int}
-   if nfold==0
+function msgen(nfold::Int,mcalc::Int,σ::Int)::UnitRange{Int}
+   if iszero(nfold)
       return zeros(Int,1)
    else
-   lim = mcalc*nfold
-   if (σ==0)&&(isodd(nfold))
-      marray = collect(-lim:nfold:lim)
-   elseif (σ==0)&&(iseven(nfold))
+   if isodd(nfold)
+      lim = mcalc*nfold
+      marray = (-lim+σ):nfold:(lim+σ)
+   else iseven(nfold)
       lim = floor(Int,lim/2)
-      marray = collect(-lim:floor(Int,nfold/2):lim)
-   elseif (σ≠0)&&(iseven(nfold))
-      lim = floor(Int,lim/2)
-      marray = collect(-lim+σ:floor(Int,nfold/2):lim+σ)
-   else
-      marray = collect((-lim+σ):nfold:(lim+σ))
-   end
+      marray = -lim:floor(Int,nfold/2):lim
+      marray = (-lim+σ):nfold:(lim+σ)
    end
    if σ < 0
       marray .*= -1
+      reverse!(marray)
    end
    return marray
 end
-function msgen_indef(nf::Array{Int},mcalc::Int,σs::Array{Int})::Array{Int,2}
-   out = zeros(Int,2mcalc+1,length(nf))
-   for j in 1:length(nf)
-      out[:,j] = sort!(msgen(nf[j],mcalc,σs[j]))
+function msgen_indef(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{UnitRange{Int}}
+   out = Vector{UnitRange{Int}}(undef,length(nf))
+   for j in eachindex(nf)
+      out[j] = msgen(nf[j],mcalc,σs[j])
    end
    return out
 end
@@ -67,7 +63,7 @@ struct Psi
    N::UnitRange{Int}
    K::Vector{UnitRange{Int}}
    nf::Vector{Int}
-   ms::Array{Int}
+   ms::Vector{UnitRange{Int}}
    σ::Vector{Int}
    lng::Int
    #Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
@@ -147,7 +143,9 @@ struct OpFunc
    f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{Psi,Int}}
    p::Int
 end
-mutable struct Op
+struct Op
+   #this is a nam field
+   nam::String
    #v for value as in parameter value
    v::Float64
    #rf for rotation Operators
@@ -161,10 +159,10 @@ mutable struct Op
    c::Int
    d::Int
    #forces the vector structure for even a single function
-   function Op(v::Number;rf=Vector{Opfunc}[],tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
+   function Op(nam::String,v::Number;rf=Vector{Opfunc}[],tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
       return new(Float64(v),rf,tp,a,b,c,d)
    end
-   Op(O::Op) = new(Float64(O.v),O.rf,O.tp,O.a,O.b,O.c,O.d)
+   Op(O::Op) = new(O.nam,Float64(O.v),O.rf,O.tp,O.a,O.b,O.c,O.d)
 end
 
 eval_op(op::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.p)
@@ -176,16 +174,16 @@ eval_op(op::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.p)
 
 #Multiplying an Operator by a number updates the value
 function *(v::Number,O::Op)::Op
-   out = Op(O)
-   out.v *= v
+   out = Op(O.nam,v*O.v,O.rf,O.tp,O.a,O.b,O.b,O.c,O.d)
    return out
 end
 #Raising an Operator to a power updates the exponent
 function ^(O::Op,n::Int)::Op 
-   out = Op(O.v,rp=O.rp.*n,rf=O.rf,tp=O.tp.*n,
+   out = Op(O.nam,O.v,rf=O.rf[:].p.*n,tp=O.tp.*n,
       a=O.a*n,b=O.b*n,c=O.c*n,d=O.d*n)
    return out
 end
+
 
 function tarraysum(a::Array{Int,2},b::Array{Int,2})::Array{Int,2}
    if size(a,2) < size(b,2)
@@ -196,16 +194,16 @@ function tarraysum(a::Array{Int,2},b::Array{Int,2})::Array{Int,2}
    return a .+ b
 end
 
-function ^(O::Vector{Op},n::Int)::Vector{Op}
-   out = O
-   for i in 2:n
-      out *= O
-   end
-   return out
-end
+#function ^(O::Vector{Op},n::Int)::Vector{Op}
+#   out = O
+#   for i in 2:n
+#      out *= O
+#   end
+#   return out
+#end
 #Multiplying two Operators multiplies the values & concatenates the powers + functions
 function *(O::Op,P::Op)::Op
-   Op(O.v*P.v,rp=vcat(O.rp,P.rp),rf=vcat(O.rf, P.rf),tp=tarraysum(O.tp,P.tp),a=O.a+P.a,
+   Op(O.nam,O.v*P.v,rf=vcat(O.rf, P.rf),tp=tarraysum(O.tp,P.tp),a=O.a+P.a,
       b=O.b+P.b,c=O.c+P.c,d=O.d+P.d)
 end
 function *(O::Op,P::Vector{Op})::Vector{Op}
@@ -259,13 +257,14 @@ function enact_init(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}#::Diagonal{Floa
    return spdiagm(out)
 end
 
-function torop(a::Int,b::Int,nf::Int,ms::Array{Int})::SparseMatrixCSC{Float64,Int}
+function torop(a::Int,b::Int,nf::Int,ms::UnitRange{Int})::SparseMatrixCSC{Float64,Int}
 #performance of this function is deeply lacking
-   if b≠zero(b)
+   if !iszero(b)
       @inbounds out = 0.5.* (ms[1+b:end] .- nf*b).^a
-      out = spdiagm(b=>out,-b=>reverse(-out))
+      out = spdiagm(b=>out)
+      out[diagind(out,-b)] .= reverse!(-out))
       dropzeros!(out)
-   elseif a≠zero(a) && b==zero(b)
+   elseif !iszero(a) && iszero(b)
       out = spdiagm(0=>ms .^a)
    else
       out = spdiagm(ones(size(ms)))
@@ -274,15 +273,11 @@ function torop(a::Int,b::Int,nf::Int,ms::Array{Int})::SparseMatrixCSC{Float64,In
    return out
 end
 function enact_tor(tp::Array{Int,2},ψ::Psi)::SparseMatrixCSC{Float64, Int}
-   out = torop(tp[1,1],tp[2,1],ψ.nf[1],ψ.ms[:,1])
+   out = torop(tp[1,1],tp[2,1],ψ.nf[1],ψ.ms[1])
    @inbounds for i in 2:size(tp,2)
-      out = kron(torop(tp[1,i],tp[2,i],ψ.nf[i],ψ.ms[:,i]),out)
+      out = kron(torop(tp[1,i],tp[2,i],ψ.nf[i],ψ.ms[i]),out)
    end
    return out
-end
-
-function mateval(f::Function,ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   return f(ψ,p)
 end
 
 function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}
@@ -291,7 +286,8 @@ function enact(O::Op,ψ::Psi)::SparseMatrixCSC{Float64,Int}
       #part::SparseMatrixCSC{Float64,Int} = mateval(O.rf[i],ψ,O.rp[i])
       #out *= part
       #mul!(out,out,mateval(O.rf[i],ψ,O.rp[i]))
-      out *= O.rf[i](ψ::Psi,O.rp[i]::Int)::SparseMatrixCSC{Float64,Int} #<--------- CHECK
+      #out *= O.rf[i](ψ::Psi,O.rp[i]::Int)::SparseMatrixCSC{Float64,Int} #<--------- CHECK
+      out *= eval_op(O[i],ψ)
    end
    #This block causes lots of JET errors
    if !iszero(O.tp) #O.tp ≠ zeros(Int,size(O.tp))
@@ -318,9 +314,9 @@ end
 function torbuild(O::Vector{Op},ψ::Psi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
    out = spzeros(msz,msz)
    @inbounds for i in 1:length(O)
-      if stgs[i]==1
+      if isone(stgs[i])
          out += enact_tor(O[i].tp,ψ)*O[i].v
-      elseif (stgs[i] < 0)&&(stgs[i+stgs[i]] == 1)
+      elseif (stgs[i] < 0) && isone(stgs[i+stgs[i]])
          out += enact_tor(O[i].tp,ψ)*O[i+stgs[i]].v*O[i].v
       else
       end
@@ -341,7 +337,7 @@ function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
       out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
    end
    #@show out
-   if O.tp ≠ zeros(Int,size(O.tp))
+   if !iszero(O.tp) #O.tp ≠ zeros(Int,size(O.tp))
       part = enact_tor(O.tp,ψ)
       if iszero(ψ.σ)
          U = ur(mc)
@@ -362,7 +358,7 @@ function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
    return out #<- dispatch 
 end
 function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,stgs,siz,tvcs,mc)::SparseMatrixCSC{Float64,Int}
-      @inbounds for i in 1:length(O)
+      @inbounds for i in eachindex(O) #1:length(O)
       if stgs[i] ≥ 2 #this is for future oddities 
          Hmat .+= enact_stg2(O[i],ψ,tvcs,mc)
       elseif stgs[i] < 0 && stgs[i] ≥ 2
