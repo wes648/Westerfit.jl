@@ -202,6 +202,8 @@ function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
+E(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
+
 function μzf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
@@ -216,42 +218,42 @@ end
 ################################################################################
 #####                         Section 2: Operators                         #####
 ################################################################################
-E = Op(1.0,tp=[0;0;;])
-Nz = Op(1.0,d=1)
-N2 = Op(1.0,a=1)
-Np = Op(1.0,rp=[1],rf=[np])
-Nm = Op(1.0,rp=[1],rf=[nm])
-Npm = Op(1.0,rp=[1],rf=[npm])
-Nx = Op(1.0,rp=[1],rf=[nx])
-iNy = Op(1.0,rp=[1],rf=[iny])
-
-NS = Op(1.0,b=1)
-S2 = Op(1.0,c=1)
-Sz = Op(1.0,rp=[1],rf=[sz])
-Sp = Op(1.0,rp=[1],rf=[sp])
-Sm = Op(1.0,rp=[1],rf=[sm])
-Spm = Op(1.0,rp=[1],rf=[spm])
-Sx = Op(1.0,rp=[1],rf=[sx])
-iSy = Op(1.0,rp=[1],rf=[isy])
-
-Pα = Op(1.0,tp=[1;0;;])
-cosα = Op(1.0,tp=[0;1;;])
-Pβ = Op(1.0,tp=[0 1; 0 0])
-cosβ = Op(1.0,tp=[0 0; 0 1])
-Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
-cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
-
-μz = Op(1.0,rp=[1],rf=[μzf])
-μx = Op(1.0,rp=[1],rf=[μxf])
-iμy = Op(1.0,rp=[1],rf=[iμyf])
+#E = Op(1.0,tp=[0;0;;])
+#Nz = Op(1.0,d=1)
+#N2 = Op(1.0,a=1)
+#Np = Op(1.0,rp=[1],rf=[np])
+#Nm = Op(1.0,rp=[1],rf=[nm])
+#Npm = Op(1.0,rp=[1],rf=[npm])
+#Nx = Op(1.0,rp=[1],rf=[nx])
+#iNy = Op(1.0,rp=[1],rf=[iny])
+#
+#NS = Op(1.0,b=1)
+#S2 = Op(1.0,c=1)
+#Sz = Op(1.0,rp=[1],rf=[sz])
+#Sp = Op(1.0,rp=[1],rf=[sp])
+#Sm = Op(1.0,rp=[1],rf=[sm])
+#Spm = Op(1.0,rp=[1],rf=[spm])
+#Sx = Op(1.0,rp=[1],rf=[sx])
+#iSy = Op(1.0,rp=[1],rf=[isy])
+#
+#Pα = Op(1.0,tp=[1;0;;])
+#cosα = Op(1.0,tp=[0;1;;])
+#Pβ = Op(1.0,tp=[0 1; 0 0])
+#cosβ = Op(1.0,tp=[0 0; 0 1])
+#Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
+#cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
+#
+#μz = Op(1.0,rp=[1],rf=[μzf])
+#μx = Op(1.0,rp=[1],rf=[μxf])
+#iμy = Op(1.0,rp=[1],rf=[iμyf])
 
 ################################################################################
 #####                         Section 3: Dictionary                        #####
 ################################################################################
-function Opsdict()::Dict{String,Op}
-out = Dict{String,Op}("E"=>E,"Nz"=>Nz, "N2"=>N2,"Np"=>Np,"Nm"=>Np,"Npm"=>Npm,
-    "Nx"=>Nx,"iNy"=>iNy,"NS"=>NS,"S2"=>S2,"Sz"=>Sz,"Sp"=>Sp,"Sm"=>Sm,"Spm"=>Spm,
-    "Sx"=>Sx,"iSy"=>iSy,"Pα"=>Pα,"cosα"=>cosα,"Pβ"=>Pβ,"cosβ"=>cosβ,"Pγ"=>Pγ,
+function Opsdict()::Dict{String,Function}
+out = Dict{String,Op}("E"=>E,"Nz"=>Nz, "N2"=>N2,"Np"=>np,"Nm"=>nm,"Npm"=>npm,
+    "Nx"=>nx,"iNy"=>iny,"NS"=>NS,"S2"=>S2,"Sz"=>sz,"Sp"=>sp,"Sm"=>sm,"Spm"=>spm,
+    "Sx"=>sx,"iSy"=>isy,"Pα"=>Pα,"cosα"=>cosα,"Pβ"=>Pβ,"cosβ"=>cosβ,"Pγ"=>Pγ,
     "cosγ"=>cosγ,"μz"=>μz,"μx"=>μx,"iμy"=>iμy)
 end
 

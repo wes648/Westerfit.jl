@@ -64,7 +64,8 @@ function ctrlinp(molnam::String)
 end
 
 function secordinit_lim()::Dict{String,Int}
-   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4, "Dxz" => 4, 
+   prd = Dict("A" => 1, "B" => 2, "C" => 3, "Dab" => 4,
+              "Z" => 1, "X" => 2, "Y" => 3, "Dxz" => 4, 
       "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 8,
       "Czz" => 5, "Cxx" => 6, "Cyy" => 7, "Czx" => 8, "Cxz" => 8,
       "χzz"=> 9, "χxz"=> 10, "χxmy"=> 11, "χxx-χyy"=>11,
@@ -73,8 +74,11 @@ function secordinit_lim()::Dict{String,Int}
       #"ηz" => 17, "η" => 17, "ηx" => 18)
    return prd
 end
+function secnam_init()::Vector{String}
+   return ["AZ"; "BX"; "CY"; "Dab"; "ϵzz"; "ϵxx"; "ϵyy"; "ϵzx"; "χzz"; "χxx-χyy"; "χxz"]
+end
 function sod2prep_lim(prd::Array{Float64})::Array{Float64}
-   out = zeros(12)
+   out = zeros(11)
    ##tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρz²
    ##tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρx²
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])          #BK
@@ -159,8 +163,9 @@ function secordinp(molnam::String,ctrl)
    #println(len)
 #      ℋ = Op(1.0,tp=[2;0;;]) + Op(0.5) - Op(1.0,tp=[1+iseven(ctrl["NFOLD"][1]);0;;])
 #      stgs = [1;1;-1]
-   ℋ = Op(0.0)
-   stg = [0]
+   ℋ = Vector{Op}(undef,0)
+   nams = secnam_init()
+   stg = zeros(Int,0)
    secns = secordinit_lim()
    secns = irrepswap(ctrl["Irrep"],secns)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
@@ -168,63 +173,66 @@ function secordinp(molnam::String,ctrl)
    tpz = zeros(Int,2,length(ctrl["NFOLD"]))
    val = zeros(Float64,12)
    err = zeros(Float64,12)
+   nams = 
    for i in 1:len
       nam = string(strip(file[i,1]))
+      nvl = file[i,2]
       #ind = secns[nam]
       if nam ∈ keys(secns)
          ind = secns[nam] #get(secns, nam, 19)
-         val[ind] = file[i,2]
+         val[ind] = nvl
          err[ind] = file[i,3]
-      elseif occursin("F",nam)
+      elseif occursin("F",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[1,n] = 2
-         ℋ += Op(csl*file[i,2],tp=tmp)
-         err = vcat(err,file[i,3])
-         stg = vcat(stg,1)
-      elseif occursin("V",nam)
+         push!(val,csl*nvl)
+         push!(ℋ, Op(nam,tp=tmp))
+         push!(err,file[i,3])
+         push!(stg,1)
+      elseif occursin("V",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[2,n] = 1+iseven(ctrl["NFOLD"][n])
-         ℋ += Op(0.5*csl*file[i,2],tp=zero(tmp)) + Op(-1.0,tp=tmp)
-         err = vcat(err,[file[i,3];0])
-         stg = vcat(stg,[1;-1])
-      elseif occursin("ρ",nam)
+         push!(ℋ, Op(nam,tp=zero(tmp)), Op(nam,tp=tmp))
+         push!(val,0.5*csl*nvl,0.0)
+         push!(err,file[i,3],0)
+         push!(stg,1,-1)
+      elseif occursin("ρ",nam) && !iszero(nvl)
          #okay so users will be restriced to an F ρz ρx ordering
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[1,n] = 1
          if occursin("x",nam)
-            ℋ += Op(-2*csl*file[i,2]*file[i-2,2],tp=tmp,rp=[1],rf=[nx])
-            val[2] += csl*file[i-2,2]*file[i,2]^2 #B -> Beff
+            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(nx,1)] ))
+            push!(val,-2*csl*nvl*file[i-2,2])
+            val[2] += csl*file[i-2,2]*nvl^2 #B -> Beff
          else#this is for z!!!!
-            ℋ += Op(-2*csl*file[i,2]*file[i-1,2],d=1,tp=tmp)
-            val[1] += csl*file[i-1,2]*file[i,2]^2 #A -> Aeff
+            push!(ℋ, Op(nam,d=1,tp=tmp))
+            push!(val,-2*csl*nvl*file[i-1,2])
+            val[1] += csl*file[i-1,2]*nvl^2 #A -> Aeff
             #@show file[i-1,2]*file[i,2]
          end
-         err = vcat(err,file[i,3])
-         stg = vcat(stg,2)
-      elseif occursin("η",nam)
+         push!(err,file[i,3])
+         push!(stg,2)
+      elseif occursin("η",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[1,n] = 1
          if occursin("x",nam)
-            ℋ += Op(-2*csl*file[i,2]*file[i-2,2],tp=tmp,rp=[1],rf=[sx])
+            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sx,1)] ))
          else
-            ℋ += Op(-2*csl*file[i,2]*file[i-2,2],tp=tmp,rp=[1],rf=[sz])
+            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sz,1)] ))
          end
-         err = vcat(err,file[i,3])
-         stg = vcat(stg,2)
+         push!(val,nvl)
+         push!(err,file[i,3])
+         push!(stg,2)
+      elseif iszero(nvl)
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
-   pop!(val)
-   #@show val
-   #@show ℋ
-   popat!(err,12)
-   popfirst!(ℋ)
-   popfirst!(stg)
+   @show ℋ
    val = sod2prep_lim(val)
    #val, err = epszxcheck!(val,err)
    #@show val
@@ -250,6 +258,42 @@ function opparse(v::Float64,s::String,list::Dict{String,Op})::Op
          println("don't raise operators to multiple powers")
       end
    end
+   return out
+end
+
+function opstrproc!(abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
+                    str::String,pow::Int,dict::Dict{String,Function}
+                    )::Tuple{Vector{Int},Array{Int,2},Vector{OpFunc}}
+   rcheck = findall(isequal(str),["N2";"NS";"S2";"Nz"])
+   tcheck = findall(isequal(str),["Pα" "Pβ" "Pγ"; "cosα" "cosβ" "cosγ"])
+   if isempty(rcheck) && isempty(tcheck)
+      push!( fvec, OpFunc(dict[str],pow) )
+   elseif !isempty(rcheck) && isempty(tcheck)
+      abcd[rcheck] = pow
+   elseif isempty(rcheck) && !isempty(tcheck)
+      tops[tcheck] = pow
+   else
+      @warn "This operator isn't defined. Contact westerfit support for help"
+      println("Seriously Wes needs more people to talk to about this")
+   end
+   return abcd,tops,fvec
+end
+function opparse2(nam::String,s::String,lnf::Int,list::Dict{String,Function})::Op
+   s = split(s,' ')
+   fvec = Vector{Function}(undef,0)
+   abcd = zeros(Int,4)
+   tops = zeros(Int,2,lnf)
+   for i in eachindex(s)
+      part = split(s[i],"^")
+      if length(part)==1
+         abcd,tops,fvec = opstrproc!(abcd,fvec,s[i],1,list)
+      elseif length(part)==2
+         abcd,tops,fvec = opstrproc!(abcd,fvec,part[1],parse(Int,part[2],list))
+      else
+         println("don't raise operators to multiple powers")
+      end
+   end
+   out = Op(nam,fvec,abcd,tops)
    return out
 end
 
@@ -285,7 +329,7 @@ function opreader(molnam,ctrl,ℋ,stgs,errs)
    blk[1] += 1
    len = blk[2] - blk[1] + 1
    ctrl["opbk"] = blk
-
+   lnf = length(ctrl["NFOLD"])
    file = try
       readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,
          comment_char='#')
@@ -300,25 +344,26 @@ function opreader(molnam,ctrl,ℋ,stgs,errs)
    end
 
 if len != 0 #if there are added parameters
-   nams = strip.(file[:,1])
-   vals = Float64.(file[:,2])
+   push!(nams,strip.(file[:,1]))
+   push!(vals,Float64.(file[:,2]))
    unts = string.(strip.(file[:,3]))
-   errs = vcat(errs,file[:,4])
+   push!(errs,file[:,4])
    nstgs = Int.(file[:,5])
    vibstring = strip.(file[:,6])
    Opers = string.(strip.(file[:,7]))
    vals = valset(nams,vals,unts,nstgs)
 
    opdict = Opsdict()
-   ℋ += opparse(vals[1],Opers[1],opdict)
+   push!(ℋ,opparse2(nams[1+11],Opers[1],lnf,opdict))
    for i in 2:len
       #this is technically concatination but I don't know how to initialize an
       #array of Ops of specified length efficiently
-      ℋ += opparse(vals[i],Opers[i],opdict)
+      #ℋ += opparse(vals[i],Opers[i],opdict)
+      push!(ℋ,opparse2(nams[i+11],Opers[i],lnf,opdict))
    end#for
    #vals, unts, ops are collected in ℋ and vibstr isn't used right now
 end#if
-   stgs = vcat(stgs,nstgs)
+   push!(stgs,nstgs)
    #ℋ, μs = stgextract(ℋ,stg,0)
    return ℋ,stgs,errs
 end#function 

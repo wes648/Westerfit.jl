@@ -89,16 +89,16 @@ function westereng(molnam::String)
       tvals = zeros(ctrl["mmax"]+1,σcnt)
       tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
    end
-   #do the energy level calculation
-   if ctrl["stages"]==1
-      @time vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
-   elseif ctrl["stages"]==2
-      @time vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
-   else
-      @warn "Invalid stages number"
-   end
-   #qns = bigqngenv2()
-   return vals,vecs #,qns
+#   #do the energy level calculation
+#   if ctrl["stages"]==1
+#      @time vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
+#   elseif ctrl["stages"]==2
+#      @time vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stgs,ℋ)
+#   else
+#      @warn "Invalid stages number"
+#   end
+#   #qns = bigqngenv2()
+#   return vals,vecs #,qns
 end
 
 function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
@@ -250,7 +250,8 @@ function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector
    H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
    H[diagind(H)] += kron(tvals, ones(Int((2ψ.J+1)*(2ψ.S+1)) ))
    h_stg2build!(H,ℋ,ψ,stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),tvecs,ctrl["mcalc"])
-   wangtrans2!(H,ctrl["mmax"],ψ)
+   tplus!(H)
+   #wangtrans2!(H,ctrl["mmax"],ψ)
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    #@show vecs
    perm = twostg_assign(vecs,ψ.J,ψ.S,ctrl["mmax"],ctrl["vtmax"])
