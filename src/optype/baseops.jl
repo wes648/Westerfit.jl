@@ -44,7 +44,7 @@ end
 function n2(v::Float64,ns::UnitRange{Int},p::Int)::Vector{Float64}
    reduce(vcat, [fill(v*eh(n)^p,2n+1) for n ∈ ns])
 end
-function ns_el2(j::Float64,s::Float64,ns::UnitRange,p::Int)::Vector{Float64}
+function ns(j::Float64,s::Float64,ns::UnitRange,p::Int)::Vector{Float64}
    reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
 end
 function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
@@ -73,7 +73,7 @@ function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    return out
 end
 
-function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
+function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
    if p ≤ ψ.lng && p ≠ 0
       ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])[1+p:end]
       ks = reduce(vcat, ψ.K)[1+p:end]
@@ -87,10 +87,10 @@ function np(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    end
    return out
 end
-nm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = permutedims(np(ψ,p))
-npm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(np(ψ,p))
-nx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,p))
-function iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+nm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = permutedims(np(ψ,p))
+npm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(np(ψ,p))
+nx(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,p))
+function iny(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
       out = np_op(ψ,1)
       out .-= permutedims(out)
@@ -98,6 +98,10 @@ function iny(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    else
       return spdiagm(ones(ψ.lng))
    end
+end
+
+function s2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
+   return spdiagm( fill(eh(ψ.S)^p,ψ.lng) )
 end
 
 function skqpart(j,s,k,q,nb,kb,nk,kk)::Float64
@@ -108,7 +112,7 @@ function s0part(j,s,nb,kb,nk,kk)::Float64
 end
 
 #sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
-sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op_new(ψ)^p
+sz(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op_new(ψ)^p
 function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)
@@ -126,7 +130,7 @@ function sz_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out = Symmetric(out,:L)^p
    return out
 end
-function sz_op_new(ψ::Psi)::SparseMatrixCSC{Float64,Int}
+function sz_op_new(ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
@@ -146,7 +150,7 @@ function sz_op_new(ψ::Psi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 #sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
-sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op_new(ψ,p)
+sq(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op_new(ψ,p)
 function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
        ks::Vector{UnitRange{Int}},lng::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ns)
@@ -161,7 +165,7 @@ function sq_op(j::Float64,s::Float64,ns::UnitRange{Int},
    out .*= nred(s)*powneg1(s+j+p)
    return out
 end
-function sq_op_new(ψ::Psi,q::Int)::SparseMatrixCSC{Float64,Int}
+function sq_op_new(ψ::RPsi,q::Int)::SparseMatrixCSC{Float64,Int}
    #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
@@ -182,10 +186,10 @@ function sq_op_new(ψ::Psi,q::Int)::SparseMatrixCSC{Float64,Int}
 end
 
 
-sp(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
-sm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)
-spm(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq(ψ,p))
-function sx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+sp(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,p)
+sm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*sq(ψ,-p)
+spm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*sq(ψ,p))
+function sx(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
 #   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
 #   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
    out  = sq_op_new(ψ, 1)
@@ -194,7 +198,7 @@ function sx(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    out ^= p
    return out
 end
-function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+function isy(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
    out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
    out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
    out *= -√.5
@@ -202,19 +206,23 @@ function isy(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-E(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
+E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
-function μzf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+function μzf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
-function μxf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+function μxf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
-function iμyf(ψb::Psi,ψk::Psi,p)::SparseMatrixCSC{Float64,Int}
+function iμyf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
-
-
+function cosα_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+end
+function cosβ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+end
+function cosγ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+end
 ################################################################################
 #####                         Section 2: Operators                         #####
 ################################################################################
@@ -251,10 +259,10 @@ end
 #####                         Section 3: Dictionary                        #####
 ################################################################################
 function Opsdict()::Dict{String,Function}
-out = Dict{String,Op}("E"=>E,"Nz"=>Nz, "N2"=>N2,"Np"=>np,"Nm"=>nm,"Npm"=>npm,
-    "Nx"=>nx,"iNy"=>iny,"NS"=>NS,"S2"=>S2,"Sz"=>sz,"Sp"=>sp,"Sm"=>sm,"Spm"=>spm,
-    "Sx"=>sx,"iSy"=>isy,"Pα"=>Pα,"cosα"=>cosα,"Pβ"=>Pβ,"cosβ"=>cosβ,"Pγ"=>Pγ,
-    "cosγ"=>cosγ,"μz"=>μz,"μx"=>μx,"iμy"=>iμy)
+out = Dict{String,Function}("E"=>E,"Nz"=>nz, "N2"=>n2,"Np"=>np,"Nm"=>nm,"Npm"=>npm,
+    "Nx"=>nx,"iNy"=>iny,"NS"=>ns,"S2"=>s2,"Sz"=>sz,"Sp"=>sp,"Sm"=>sm,"Spm"=>spm,
+    "Sx"=>sx,"iSy"=>isy)#,"Pα"=>Pα,"cosα"=>cosα,"Pβ"=>Pβ,"cosβ"=>cosβ,"Pγ"=>Pγ,
+    #"cosγ"=>cosγ,"μz"=>μz,"μx"=>μx,"iμy"=>iμy)
 end
 
 

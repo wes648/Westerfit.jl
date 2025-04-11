@@ -7,7 +7,7 @@ hr2onv(ns,ks,bk::Float64,bn::Float64) = bn*ns + bk*ks^2
 hr2of1v(ns,ks,dab::Float64) = dab*(ks-0.5)*fhv(ns,ks-1)
 hr2of2v(ns,ks,bpm::Float64) = bpm*fhv(ns,ks-1)*fhv(ns,ks-2)
 
-function hrot2(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
+function hrot2(pr::Vector{Float64},ψ::RPsi)::SparseMatrixCSC{Float64, Int64}
    ns = nsgen(ψ.N)
    ks = ksgen(ψ.K)
    out = spdiagm(hr2on(ns,ks,pr[1],pr[2]))
@@ -15,7 +15,7 @@ function hrot2(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
    out[diagind(out,-2)] .= hr2of2(ns[3:end],ks[3:end], pr[3])
    return dropzeros!(out)
 end
-function hrot2v(pr::Vector{Float64},ψ::Psi)::SparseMatrixCSC{Float64, Int64}
+function hrot2v(pr::Vector{Float64},ψ::RPsi)::SparseMatrixCSC{Float64, Int64}
    n2 = n2gen(ψ.N)
    ks = reduce(vcat, ψ.K)
    out = spdiagm(hr2onv.(n2,ks,pr[1],pr[2]))
@@ -48,7 +48,7 @@ function srelem(pr::Float64,nb::Int,nk::Int,
    return out
 end
 
-function hsr_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+function hsr_new(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
@@ -85,7 +85,7 @@ function quelem(pr::Float64,nb::Int,nk::Int,
    out .*= pr
 end
 
-function hqu_new(pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+function hqu_new(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S

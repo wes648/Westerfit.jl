@@ -3,6 +3,7 @@ import Base.*
 import Base.^
 import Base.+
 import Base.-
+import Base: convert
 
 Δlist(J::Real,S::Real)::Array{Int} = collect(Int(abs(J-S)):Int(J+S))
 function ngen(J::Real,S::Real)::Vector{Int}
@@ -52,13 +53,14 @@ function tplus!(a::SparseMatrixCSC{Float64, Int})::SparseMatrixCSC{Float64, Int}
    a .+= permutedims(a)
 end
 
+#=
 struct Psi
    J::Float64
    S::Float64
    N::UnitRange{Int}
    K::Vector{UnitRange{Int}}
    nf::Vector{Int}
-   ms::StepRange{Int,Int}
+   ms::Vector{StepRange{Int,Int}}
    σ::Vector{Int}
    lng::Int
    #Psi(J::Real,S::Real) = new(Float64(J),Float64(S),ngen(J,S),kgen(J,S),Int((2J+1)*(2S+1)))
@@ -71,7 +73,7 @@ struct Psi
       if length(nf) > 1
          ms = msgen_indef(nf,mc,σ)
       else
-         ms = msgen(nf,mc,σ)
+         ms = [msgen(nf,mc,σ)]
          nf = [nf]
          σ = [σ]
       end
@@ -87,8 +89,8 @@ struct Psi
          ms = msgen_indef(nf,mc,σ)
       else
          ms = msgen(nf,mc,σ)
-         σ = [σ]
          nf = [nf]
+         σ = [σ]
       end
       lng = convert(Int,(2J+1)*(2S+1))
       new(J,S,N,K,nf,ms,σ,lng)
@@ -101,7 +103,7 @@ struct Psi
       if length(nf) > 1
          ms = msgen_indef(nf,mc,σ)
       else
-         ms = msgen(nf,mc,σ)
+         ms = [msgen(nf,mc,σ)]
          σ = [σ]
          nf = [nf]
       end
@@ -109,6 +111,61 @@ struct Psi
       new(J,S,N,K,nf,ms,σ,lng)
    end
 end
+=#
+
+struct RPsi
+   J::Float64
+   S::Float64
+   N::UnitRange{Int}
+   K::Vector{UnitRange{Int}}
+   lng::Int
+   function RPsi(J::Number,S::Number)
+      J = convert(Float64,J)
+      S = convert(Float64,S)
+      N = Δlist2(J,S)
+      K = kgen(N)
+      lng = convert(Int,(2J+1)*(2S+1))
+      new(J,S,N,K,lng)
+   end
+   function RPsi(N::Int)
+      J = convert(Float64,N)
+      S = 0.0
+      N = Δlist2(J,0.0)
+      K = kgen(N)
+      lng = convert(Int,(2J+1)*(2S+1))
+      new(J,S,N,K,lng)
+   end
+end
+struct TPsi
+   nf::Vector{Int}
+   ms::Vector{StepRange{Int,Int}}
+   σ::Vector{Int}
+   lng::Int
+   function TPsi(nf,σ,mc=3)
+      if length(nf) > 1
+         ms = msgen_indef(nf,mc,σ)
+      else
+         ms = [msgen(nf,mc,σ)]
+         σ = [σ]
+         nf = [nf]
+      end
+      lng = sum(length.(ms))
+      new(nf,ms,σ,lng)
+   end
+end
+struct VPsi
+   #each column refer to a vibrational polyad state
+   #each row refers to the quanta of a given mode
+   #thus nus[a,b] is the quanta of mode a in state b
+   nus::Matrix{Int}
+end
+mutable struct Psi
+   R::RPsi
+   T::TPsi
+end
+
+convert(T::Type{Psi},ϕ::RPsi) = Psi(ϕ,TPsi(0,0,0))
+convert(T::Type{Psi},ϕ::TPsi) = Psi(RPsi(0),ϕ)
 
 #mutable struct Op_old
 #   #v for value as in parameter value
@@ -135,16 +192,15 @@ end
 #end
 
 struct OpFunc
-   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{Psi,Int}}
+   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{RPsi,Int}}
    p::Int
 end
+eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.p)
 struct Op
    #this is a nam field
    nam::String
    #v for value as in parameter value
    #v::Float64
-   #I've removed this field to make Ops fully immutable. the values will be in their own vector
-   # since I need the mutability for the optimizer and have the hard coded 2nd order hamiltonian
    #rf for rotation Operators
    rf::Vector{OpFunc}
    #tor powers. each column is for the consecutive rotors 
@@ -156,7 +212,7 @@ struct Op
    c::Int
    d::Int
    #forces the vector structure for even a single function
-   function Op(nam::String;rf=Vector{OpFunc}[],tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
+   function Op(nam::String,;rf=Vector{OpFunc}[],tp=zeros(Int,2,0),a=0,b=0,c=0,d=0)
       return new(nam,rf,tp,a,b,c,d)
    end
    function Op(nam::String,rf::Vector{OpFunc},abcd::Vector{Int},tp::Array{Int,2})
@@ -164,6 +220,7 @@ struct Op
    end
    Op(O::Op) = new(O.nam,O.rf,O.tp,O.a,O.b,O.c,O.d)
 end
+
 
 ################################################################################################
 #   HI FUTURE WES!!! As of Apr7,'25 @ 13:43 You changed the definition of Op and need to fix 
@@ -179,16 +236,10 @@ function tarraysum(a::Array{Int,2},b::Array{Int,2})::Array{Int,2}
    return a .+ b
 end
 
-function ur(n::Int)::SparseMatrixCSC{Float64, Int}
-   out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
-   out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
-   return sparse(out)
-end
-
-function enact_init(O::Op,ψ::Psi,val)::SparseMatrixCSC{Float64,Int}#::Diagonal{Float64,Vector{Float64}}
+function enact_init(O::Op,ψ::RPsi,val)::SparseMatrixCSC{Float64,Int}#::Diagonal{Float64,Vector{Float64}}
    #out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    out = O.a≠0 ? n2(0.5*val, ψ.N, O.a) : fill(0.5*val,ψ.lng)
-   if O.b≠0; out .*= ns_el2(ψ.J,ψ.S,ψ.N,O.b); end
+   if O.b≠0; out .*= ns(ψ.J,ψ.S,ψ.N,O.b); end
    if O.c≠0; out .*= eh(ψ.S)^O.c ; end
    if O.d≠0; out .*= nz(ψ.K, O.d) ; end
    return spdiagm(out)
@@ -197,9 +248,9 @@ end
 function torop(a::Int,b::Int,nf::Int,ms::StepRange{Int,Int})::SparseMatrixCSC{Float64,Int}
 #performance of this function is deeply lacking
    if !iszero(b)
-      @inbounds out = 0.5.* (ms[1+b:end] .- nf*b).^a
-      out = spdiagm(b=>out)
-      out[diagind(out,-b)] .= reverse!(-out)
+      @inbounds part = 0.5.* (ms[1+b:end] .- nf*b).^a
+      out = spdiagm(b=>part)
+      out[diagind(out,-b)] .= reverse!(part * powneg1(a))
       dropzeros!(out)
    elseif !iszero(a) && iszero(b)
       out = spdiagm(0=>ms .^a)
@@ -209,7 +260,7 @@ function torop(a::Int,b::Int,nf::Int,ms::StepRange{Int,Int})::SparseMatrixCSC{Fl
    #@show out
    return out
 end
-function enact_tor(tp::Array{Int,2},ψ::Psi,
+function enact_tor(tp::Array{Int,2},ψ::TPsi,
                    ut::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
    out = torop(tp[1,1],tp[2,1],ψ.nf[1],ψ.ms[1])
    if iszero(ψ.σ[1])
@@ -227,70 +278,53 @@ end
 
 function enact(O::Op,ψ::Psi,val::Float64,ur::SparseMatrixCSC{Float64,Int},
                ut::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
-   out = enact_init(O,ψ,val)
-   @inbounds for i in 1:length(O.rp)
-      #part::SparseMatrixCSC{Float64,Int} = mateval(O.rf[i],ψ,O.rp[i])
-      #out *= part
-      #mul!(out,out,mateval(O.rf[i],ψ,O.rp[i]))
-      #out *= O.rf[i](ψ::Psi,O.rp[i]::Int)::SparseMatrixCSC{Float64,Int} #<--------- CHECK
-      out *= eval_op(O[i],ψ)
+   out = enact_init(O,ψ.R,val)
+   @inbounds for i in 1:length(O.rf)
+      out *= eval_rop(O.rf[i],ψ.R)
    end
    out = dropzeros!(ur*out*ur)
-   #This block causes lots of JET errors
-   if !iszero(O.tp) #O.tp ≠ zeros(Int,size(O.tp))
-      part = enact_tor(O.tp,ψ)#<--------- CHECK
+   if !iszero(O.tp) 
+      part = enact_tor(O.tp,ψ.T,ut)
       out = kron(part,out)
    else
-      out = kron(I(size(ψ.ms,1)),out)
-   end
-   #end said block of errors
-   #if !isdiag(out) #<--------- CHECK
-   #   tplus!(0.5*out) 
-   #end
-   return out #<- dispatch 
-end
-#This allows the basis set to be distributed among a list of added Operators
-function enact(O::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64,Int}
-   out = enact(O[1],ψ)
-   @inbounds for i in 2:length(O)
-      #part = enact(O[i],ψ)
-      out += enact(O[i],ψ)::SparseMatrixCSC{Float64,Int}
+      out = kron(I(ψ.T.lng),out)
    end
    return out
 end
-function torbuild(O::Vector{Op},ψ::Psi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
+#This allows the basis set to be distributed among a list of added Operators
+function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},ur::SparseMatrixCSC{Float64,Int},
+               ut::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
+   out = enact(O[1],ψ,val[1],ur,ut)
+   @inbounds for i in 2:length(O)
+      part = enact(O[i],ψ,val[i],ur,ut)
+      out += part
+   end
+   return out
+end
+function torbuild(vals,O::Vector{Op},ψ::TPsi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
    out = spzeros(msz,msz)
+   U = ur(mc)
    @inbounds for i in 1:length(O)
       if isone(stgs[i])
-         out += enact_tor(O[i].tp,ψ)*O[i].v
+         out += enact_tor(O[i].tp,ψ,U)*vals[i]
       elseif (stgs[i] < 0) && isone(stgs[i+stgs[i]])
-         out += enact_tor(O[i].tp,ψ)*O[i+stgs[i]].v*O[i].v
+         out += enact_tor(O[i].tp,ψ,U)*vals[i+stgs[i]]*vals[i]
       else
       end
-   end
-   if iszero(ψ.σ)
-   U = ur(mc)
-   mul!(out,U,out)
-   mul!(out,out,U)
    end
    #@show out
    return dropzeros!(out)
 end
-function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
+function enact_stg2(O::Op,ψ::Psi,val,tvcs,mc,ur,ut)::SparseMatrixCSC{Float64,Int}
    #printstyled("start\n",color=:green)
    #@show O.v
-   out = enact_init(O,ψ)
-   @inbounds for i in 1:length(O.rp)
-      out *= O.rf[i](ψ,O.rp[i])::SparseMatrixCSC{Float64,Int}
+   out = enact_init(O,ψ.R,val)
+   @inbounds for i in 1:length(O.rf)
+      out *= eval_rop(O.rf[i],ψ.R)
    end
    #@show out
    if !iszero(O.tp) #O.tp ≠ zeros(Int,size(O.tp))
-      part = enact_tor(O.tp,ψ)
-      if iszero(ψ.σ)
-         U = ur(mc)
-         mul!(part,U,part)
-         mul!(part,part,U)
-      end
+      part = enact_tor(O.tp,ψ.T,ut)
       part = dropzeros!(sparse(tvcs' * part * tvcs))
       #@show part
       out = kron(part,out)
@@ -305,9 +339,11 @@ function enact_stg2(O::Op,ψ::Psi,tvcs,mc)::SparseMatrixCSC{Float64,Int}
    return out #<- dispatch 
 end
 function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,stgs,siz,tvcs,mc)::SparseMatrixCSC{Float64,Int}
+   Ur = ur(ψ.R.J,ψ.R.S)
+   Ut = ur(mc)
       @inbounds for i in eachindex(O) #1:length(O)
-      if stgs[i] ≥ 2 #this is for future oddities 
-         Hmat .+= enact_stg2(O[i],ψ,tvcs,mc)
+      if iszero(stgs[i]) #this is for future oddities 
+         Hmat .+= enact_stg2(O[i],ψ,1.0,tvcs,mc,Ur,Ut)
       elseif stgs[i] < 0 && stgs[i] ≥ 2
          Hmat .+= enact_stg2(O[i],ψ,tvs,mc)*O[i+stgs[i]].v
       else

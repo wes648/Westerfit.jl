@@ -232,7 +232,6 @@ function secordinp(molnam::String,ctrl)
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
-   @show ℋ
    val = sod2prep_lim(val)
    #val, err = epszxcheck!(val,err)
    #@show val
@@ -269,9 +268,9 @@ function opstrproc!(abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
    if isempty(rcheck) && isempty(tcheck)
       push!( fvec, OpFunc(dict[str],pow) )
    elseif !isempty(rcheck) && isempty(tcheck)
-      abcd[rcheck] = pow
+      abcd[rcheck] .+= pow
    elseif isempty(rcheck) && !isempty(tcheck)
-      tops[tcheck] = pow
+      tops[tcheck] .+= pow
    else
       @warn "This operator isn't defined. Contact westerfit support for help"
       println("Seriously Wes needs more people to talk to about this")
@@ -279,16 +278,16 @@ function opstrproc!(abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
    return abcd,tops,fvec
 end
 function opparse2(nam::String,s::String,lnf::Int,list::Dict{String,Function})::Op
-   s = split(s,' ')
-   fvec = Vector{Function}(undef,0)
+   s = string.(split(s,' '))
+   fvec = Vector{OpFunc}(undef,0)
    abcd = zeros(Int,4)
    tops = zeros(Int,2,lnf)
    for i in eachindex(s)
-      part = split(s[i],"^")
+      part = string.(split(s[i],"^"))
       if length(part)==1
-         abcd,tops,fvec = opstrproc!(abcd,fvec,s[i],1,list)
+         abcd,tops,fvec = opstrproc!(abcd,tops,fvec,s[i],1,list)
       elseif length(part)==2
-         abcd,tops,fvec = opstrproc!(abcd,fvec,part[1],parse(Int,part[2],list))
+         abcd,tops,fvec = opstrproc!(abcd,tops,fvec,part[1],parse(Int,part[2]),list)
       else
          println("don't raise operators to multiple powers")
       end
@@ -304,7 +303,7 @@ function valset(nams,vals,unts,stg)::Vector{Float64}
 # calculating the matrix elements and then multiplying by 0
 #I leave this as an exercise for Sophie
    conv = unitdict()
-   for i in eachindex(vals)
+   for i in eachindex(nams)
       #vals[i] *= nam[i][1]≠'#'
       if stg[i] > 0
          vals[i] *= conv[unts[i]] * (nams[i][1]≠'#')
@@ -323,7 +322,7 @@ function stgvalset(H,stg)
    return H
 end
 
-function opreader(molnam,ctrl,ℋ,stgs,errs)
+function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
    molnam = "test_input"
    blk = blockfind(molnam, "%OPS")
    blk[1] += 1
@@ -344,26 +343,26 @@ function opreader(molnam,ctrl,ℋ,stgs,errs)
    end
 
 if len != 0 #if there are added parameters
-   push!(nams,strip.(file[:,1]))
-   push!(vals,Float64.(file[:,2]))
+   nams = string.(strip.(file[:,1]))
+   append!(vals,Float64.(file[:,2]))
    unts = string.(strip.(file[:,3]))
-   push!(errs,file[:,4])
+   append!(errs,file[:,4])
    nstgs = Int.(file[:,5])
    vibstring = strip.(file[:,6])
    Opers = string.(strip.(file[:,7]))
    vals = valset(nams,vals,unts,nstgs)
 
    opdict = Opsdict()
-   push!(ℋ,opparse2(nams[1+11],Opers[1],lnf,opdict))
+   push!(ℋ,opparse2(nams[1],Opers[1],lnf,opdict))
    for i in 2:len
       #this is technically concatination but I don't know how to initialize an
       #array of Ops of specified length efficiently
       #ℋ += opparse(vals[i],Opers[i],opdict)
-      push!(ℋ,opparse2(nams[i+11],Opers[i],lnf,opdict))
+      push!(ℋ,opparse2(nams[i],Opers[i],lnf,opdict))
    end#for
    #vals, unts, ops are collected in ℋ and vibstr isn't used right now
 end#if
-   push!(stgs,nstgs)
+   append!(stgs,nstgs)
    #ℋ, μs = stgextract(ℋ,stg,0)
    return ℋ,stgs,errs
 end#function 
