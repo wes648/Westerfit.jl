@@ -61,7 +61,6 @@ function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
       for o in 1:p
          part .*= fh.(ns,ks.-o)
       end
-   #end#original if
       out = spzeros(ψ.lng,ψ.lng)
       out[diagind(out,-p)] = part
    elseif p > ψ.lng && p ≠ 0
@@ -223,37 +222,6 @@ function cosβ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
 end
 function cosγ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
 end
-################################################################################
-#####                         Section 2: Operators                         #####
-################################################################################
-#E = Op(1.0,tp=[0;0;;])
-#Nz = Op(1.0,d=1)
-#N2 = Op(1.0,a=1)
-#Np = Op(1.0,rp=[1],rf=[np])
-#Nm = Op(1.0,rp=[1],rf=[nm])
-#Npm = Op(1.0,rp=[1],rf=[npm])
-#Nx = Op(1.0,rp=[1],rf=[nx])
-#iNy = Op(1.0,rp=[1],rf=[iny])
-#
-#NS = Op(1.0,b=1)
-#S2 = Op(1.0,c=1)
-#Sz = Op(1.0,rp=[1],rf=[sz])
-#Sp = Op(1.0,rp=[1],rf=[sp])
-#Sm = Op(1.0,rp=[1],rf=[sm])
-#Spm = Op(1.0,rp=[1],rf=[spm])
-#Sx = Op(1.0,rp=[1],rf=[sx])
-#iSy = Op(1.0,rp=[1],rf=[isy])
-#
-#Pα = Op(1.0,tp=[1;0;;])
-#cosα = Op(1.0,tp=[0;1;;])
-#Pβ = Op(1.0,tp=[0 1; 0 0])
-#cosβ = Op(1.0,tp=[0 0; 0 1])
-#Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
-#cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
-#
-#μz = Op(1.0,rp=[1],rf=[μzf])
-#μx = Op(1.0,rp=[1],rf=[μxf])
-#iμy = Op(1.0,rp=[1],rf=[iμyf])
 
 ################################################################################
 #####                         Section 3: Dictionary                        #####
@@ -304,4 +272,36 @@ end
 #   return out
 #end
 #sz(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sz_op(ψ.J,ψ.S,ψ,p)
+################################################################################
+#####                         Section 2: Operators                         #####
+################################################################################
+#E = Op(1.0,tp=[0;0;;])
+#Nz = Op(1.0,d=1)
+#N2 = Op(1.0,a=1)
+#Np = Op(1.0,rp=[1],rf=[np])
+#Nm = Op(1.0,rp=[1],rf=[nm])
+#Npm = Op(1.0,rp=[1],rf=[npm])
+#Nx = Op(1.0,rp=[1],rf=[nx])
+#iNy = Op(1.0,rp=[1],rf=[iny])
+#
+#NS = Op(1.0,b=1)
+#S2 = Op(1.0,c=1)
+#Sz = Op(1.0,rp=[1],rf=[sz])
+#Sp = Op(1.0,rp=[1],rf=[sp])
+#Sm = Op(1.0,rp=[1],rf=[sm])
+#Spm = Op(1.0,rp=[1],rf=[spm])
+#Sx = Op(1.0,rp=[1],rf=[sx])
+#iSy = Op(1.0,rp=[1],rf=[isy])
+#
+#Pα = Op(1.0,tp=[1;0;;])
+#cosα = Op(1.0,tp=[0;1;;])
+#Pβ = Op(1.0,tp=[0 1; 0 0])
+#cosβ = Op(1.0,tp=[0 0; 0 1])
+#Pγ = Op(1.0,tp=[0 0 1; 0 0 0])
+#cosγ = Op(1.0,tp=[0 0 0; 0 0 1])
+#
+#μz = Op(1.0,rp=[1],rf=[μzf])
+#μx = Op(1.0,rp=[1],rf=[μxf])
+#iμy = Op(1.0,rp=[1],rf=[iμyf])
+
 =#

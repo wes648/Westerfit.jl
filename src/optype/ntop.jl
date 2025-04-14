@@ -27,3 +27,25 @@ end
 function σgen_indef(nf::Int)::Array{Int}
    return collect(0:σcount(nf[1])-1)'
 end
+
+function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
+   if iszero(nfold)
+      marray = 0:0
+   elseif isodd(nfold)
+      lim = mcalc*nfold
+      marray = (-lim+σ):nfold:(lim+σ)
+   else #iseven(nfold)
+      lim = floor(Int,lim/2)
+      marray = -lim:floor(Int,nfold/2):lim
+      marray = (-lim+σ):nfold:(lim+σ)
+   end
+   return marray
+end
+
+function msgen_indef(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,Int}}
+   out = Vector{StepRange{Int,Int}}(undef,length(nf))
+   for j in eachindex(nf)
+      out[j] = msgen(nf[j],mcalc,σs[j])
+   end
+   return out
+end
