@@ -66,6 +66,9 @@ struct OpFunc{T <: Number}
    function OpFunc(T::Type,f::Function,p::Int)
       new{T}(f,p)
    end
+   function OpFunc(f::Function,p::Int)
+      new{Float64}(f,p)
+   end
 end
 
 #struct OpFunc

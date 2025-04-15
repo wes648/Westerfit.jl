@@ -207,9 +207,23 @@ end
 
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
-function μzf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   spdiagm(ones(ψk.lng))
-end
+function μzf(ψb::Psi,ψk::Psi,k::Int,q::int)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(ψk.R.lng,ψb.R.lng)
+   nbinds = nindsgen(ψb.R.N)
+   nkinds = nindsgen(ψk.R.N)
+   for a ∈ 1:length(ψb.R.N); b ∈ 1:length(ψk.R.N); if abs(nb-nk) ≤ k
+   nbind = nbinds[a] 
+   nkind = nkinds[b]
+   factr = wig6j()
+   for i ∈ 1:length(nbind), j ∈ 1:length(nkind)
+      kb = -nb + i - 1
+      kk = -nk + i - 1
+      if (kk+q-kb)==0
+         out[nbinds[i],nkinds[j]] = wig3j(nb,k,nk,-kb,q,kk)*factor
+      end;end #k loop;if
+   end;end#n loop;if
+   return out
+end#function
 function μxf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
@@ -217,6 +231,9 @@ function iμyf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    spdiagm(ones(ψk.lng))
 end
 function cosα_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   if ψb.T==ψk.T
+   else
+   end
 end
 function cosβ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
 end

@@ -3,7 +3,7 @@ test input
 NFOLD = 3
 S = 0.0
 stages = 2
-RUNmode = F
+RUNmode = EF
 TK = 8.0
 mcalc = 8
 mmax = 6

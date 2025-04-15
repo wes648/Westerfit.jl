@@ -4,7 +4,7 @@ function ctrlinit()
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
       "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true,
       "assign"=>"ram36", "REJECT"=>1.0e+1, "Irrep"=>"Ir", "goal"=>1.0, "mmax"=>6, "stages"=>1,
-      "ctbk"=>[0;0],"sobk"=>[0;0],"opbk"=>[0;0])
+      "ctbk"=>[0;0],"sobk"=>[0;0],"inbk"=>[0;0],"opbk"=>[0;0])
    return ctrl
 end
 function blockfind(molnam::String,blknam::String)
@@ -26,16 +26,46 @@ function blockfind(molnam::String,blknam::String)
       end
    end
    close(io)
-   #@show blknam
-   #@show out
+   @show blknam
+   @show out
    return out
 end
-
-function ctrlinp(molnam::String)
+function blockfind_all(molnam::String)#,ctrl)
+   count = 0
+   inblock = false
+   blck = "init"
+   blknams = ["%CNTRLS"; "%2NDORDER"; "%INTS"; "%OPS"]
+   ctrlnms = ["ctbk"; "sobk"; "inbk"; "opbk"]
    ctrl = ctrlinit()
-   blk = blockfind(molnam, "%CNTRLS")
+   io = open("$molnam.inp")
+   for i in eachline(io)
+      count += 1
+      check = contains.(i,blknams)
+      if true ∈ check
+         blck = ctrlnms[findfirst(check)]
+         ctrl[blck][1] = count
+         inblock = true
+      elseif isempty( filter(x -> !isspace(x), i) )&& inblock==true
+         ctrl[blck][2] = count
+         #break
+      elseif eof(io)
+         ctrl[blck][2] = count
+         break
+      end
+   end
+   close(io)
+   #@show ctrl["ctbk"]
+   #@show ctrl["sobk"]
+   #@show ctrl["inbk"]
+   #@show ctrl["opbk"]
+   return ctrl
+end
+
+function ctrlinp(molnam::String,ctrl)
+#   ctrl = ctrlinit()
+   blk = ctrl["ctbk"] #blockfind(molnam, "%CNTRLS")
    len = blk[2] - blk[1] - 1
-   ctrl["ctbk"] = blk
+#   ctrl["ctbk"] = blk
    file = readdlm(pwd()*"/"*molnam*".inp",'=', skipstart=blk[1],comments=true,comment_char='#')
    for i in 1:len
       nam = strip(file[i,1])
@@ -56,6 +86,9 @@ function ctrlinp(molnam::String)
    if ctrl["NFOLD"]==0
       ctrl["mcalc"] = 0
       ctrl["vtmax"] = 0
+   elseif length(ctrl["NFOLD"]) > 1
+      println("\nYou are running westerfit in ntop mode")
+      println("By using this mode, you agree to not complain about the runtime of the program\n")
    end
    ctrl["assign"] = strip(ctrl["assign"])
    ctrl["Irrep"] = String(strip(ctrl["Irrep"]))
@@ -158,7 +191,7 @@ function secordinp(molnam::String,ctrl)
 #initialize a f v3 rhoz rhox array for each rotor and fill in with read params
 #then adjustvalues of rhos by corresponding Fs
 #then convert to Op structure and start ℋ
-   blk = blockfind(molnam, "%2NDORDER")
+   blk = ctrl["sobk"] #blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
    #println(len)
 #      ℋ = Op(1.0,tp=[2;0;;]) + Op(0.5) - Op(1.0,tp=[1+iseven(ctrl["NFOLD"][1]);0;;])
@@ -323,8 +356,8 @@ function stgvalset(H,stg)
 end
 
 function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
-   molnam = "test_input"
-   blk = blockfind(molnam, "%OPS")
+   #molnam = "test_input"
+   blk = ctrl["opbk"] #blockfind(molnam, "%OPS")
    blk[1] += 1
    len = blk[2] - blk[1] + 1
    ctrl["opbk"] = blk
