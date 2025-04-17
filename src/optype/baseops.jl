@@ -207,32 +207,45 @@ end
 
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
-function μzf(ψb::Psi,ψk::Psi,k::Int,q::int)::SparseMatrixCSC{Float64,Int}
+function μ_gen(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    out = spzeros(ψk.R.lng,ψb.R.lng)
    nbinds = nindsgen(ψb.R.N)
    nkinds = nindsgen(ψk.R.N)
    for a ∈ 1:length(ψb.R.N); b ∈ 1:length(ψk.R.N); if abs(nb-nk) ≤ k
    nbind = nbinds[a] 
    nkind = nkinds[b]
-   factr = wig6j()
+   nb = ψb.R.N[a]
+   nk = ψk.R.N[b]
+   factr = wig6j(    nb,ψb.R.J,ψb.R.S, 
+                 ψk.R.J,    nk,     k)*
+           jnred(ψb.R.J,ψk.R.J)*jnred(nb,nk)*powneg1(nb+nb+ψk.R.S+ψk.R.J + k)
    for i ∈ 1:length(nbind), j ∈ 1:length(nkind)
       kb = -nb + i - 1
       kk = -nk + i - 1
       if (kk+q-kb)==0
-         out[nbinds[i],nkinds[j]] = wig3j(nb,k,nk,-kb,q,kk)*factor
+         out[nbinds[i],nkinds[j]] = wig3j(nb,k,nk,-kb,q,kk)*factr
       end;end #k loop;if
    end;end#n loop;if
+   dropzeros!(out)
    return out
 end#function
-function μxf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   spdiagm(ones(ψk.lng))
+function μzf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   return μ_gen(ψb,ψk,1,0)^k
 end
-function iμyf(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
-   spdiagm(ones(ψk.lng))
+function μxf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   return dropzeros!(√0.5 .*(μ_gen(ψb,ψk,1,-1) - μ_gen(ψb,ψk,1,1)))^k
+end
+function iμyf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   return dropzeros!(-√0.5 .*(μ_gen(ψb,ψk,1,-1) + μ_gen(ψb,ψk,1,1)))^k
+end
+function μyf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{ComplexF64,Int}
+   return dropzeros!(im*√0.5 .*(μ_gen(ψb,ψk,1,-1) + μ_gen(ψb,ψk,1,1)))^k
 end
 function cosα_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
    if ψb.T==ψk.T
+      out = spdiagm(p=>fill(0.5,ψb.T.lng-p),-p=>fill(0.5,ψb.T.lng-p))
    else
+      out = dropzeros!(sparse(δi.(ψb.T.ms',ψk.T.ms+p) +δi.(ψb.T.ms',ψk.T.ms-p)))
    end
 end
 function cosβ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}

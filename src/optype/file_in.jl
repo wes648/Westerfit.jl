@@ -293,13 +293,13 @@ function opparse(v::Float64,s::String,list::Dict{String,Op})::Op
    return out
 end
 
-function opstrproc!(abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
+function opstrproc!(T::Type,abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
                     str::String,pow::Int,dict::Dict{String,Function}
                     )::Tuple{Vector{Int},Array{Int,2},Vector{OpFunc}}
    rcheck = findall(isequal(str),["N2";"NS";"S2";"Nz"])
    tcheck = findall(isequal(str),["Pα" "Pβ" "Pγ"; "cosα" "cosβ" "cosγ"])
    if isempty(rcheck) && isempty(tcheck)
-      push!( fvec, OpFunc(dict[str],pow) )
+      push!( fvec, OpFunc(T,dict[str],pow) )
    elseif !isempty(rcheck) && isempty(tcheck)
       abcd[rcheck] .+= pow
    elseif isempty(rcheck) && !isempty(tcheck)
@@ -313,17 +313,24 @@ end
 function opparse2(nam::String,s::String,lnf::Int,list::Dict{String,Function})::Op
    s = string.(split(s,' '))
    fvec = Vector{OpFunc}(undef,0)
+   partype = Float64
+   typecheck = 1
    abcd = zeros(Int,4)
    tops = zeros(Int,2,lnf)
    for i in eachindex(s)
       part = string.(split(s[i],"^"))
+      #if part[1] ∈ imlist
+      #   typecheck *= -1
+      #   partype = ComplexF64
+      #end
       if length(part)==1
-         abcd,tops,fvec = opstrproc!(abcd,tops,fvec,s[i],1,list)
+         abcd,tops,fvec = opstrproc!(partype,abcd,tops,fvec,s[i],1,list)
       elseif length(part)==2
-         abcd,tops,fvec = opstrproc!(abcd,tops,fvec,part[1],parse(Int,part[2]),list)
+         abcd,tops,fvec = opstrproc!(partype,abcd,tops,fvec,part[1],parse(Int,part[2]),list)
       else
          println("don't raise operators to multiple powers")
       end
+      partype = Float64
    end
    out = Op(nam,fvec,abcd,tops)
    return out

@@ -272,7 +272,7 @@ function twostg_assign(vecs,j,s,mmax,vtmax)
       end
    end
    perm = perm[perm .!= 0]
-   @show j
-   @show perm
+   #@show j
+   #@show perm
    return perm
 end
