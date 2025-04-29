@@ -121,7 +121,7 @@ function bigqngen(l,jlist,s,vtm,σs)
    for j ∈ jlist
       dest = jvdest2(j,s,vtm)
       for σ in 1:σcnt
-      out[dest,:,σ] = qnlab(j,s,vtm,σ)
+      out[dest,:,σ] = qnlab(j,s,vtm,σ-1)
    end;end
    return out
 end

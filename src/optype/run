@@ -1,0 +1,2 @@
+#!/bin/bash
+time julia -e 'include("./implement.jl"); @time westereng("./test_input")'

@@ -3,13 +3,13 @@ test input
 NFOLD = 3
 S = 0.0
 stages = 2
-RUNmode = EF
+RUNmode = E
 TK = 8.0
 mcalc = 8
 mmax = 6
 goal = 0.01
 vtmax = 0
-Jmax = 16
+Jmax = 1
 νmin =  6.0
 νmax = 20.0
 overwrite = false
@@ -42,6 +42,7 @@ V3;            1.009028077688395;   1.0
 
 %OPS Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ, α, β, γ
 %Name;        Val; unit; scl;stg; v v; operator
+#ΔN;                        0.0; MHz; 1.0; 0; 0 0; N2^2
 ΔN;       -4.36707802770381e-5; MHz; 1.0; 0; 0 0; N2^2
 ΔNK;     -0.011352074685446559; MHz; 1.0; 0; 0 0; N2 Nz^2
 ΔK;      -0.002639063914417349; MHz; 1.0; 0; 0 0; Nz^4

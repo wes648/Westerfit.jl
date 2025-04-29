@@ -114,9 +114,9 @@ function sod2prep_lim(prd::Array{Float64})::Array{Float64}
    out = zeros(11)
    ##tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρz²
    ##tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρx²
-   out[1] = prd[1] - 0.5*(prd[2] + prd[3])          #BK
-   out[2] = 0.5*(prd[2] + prd[3])                  #BN
-   out[3] = 0.25*(prd[2] - prd[3])                 #B±
+   out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
+   out[2] = 0.5*(prd[2] + prd[3])                 #BN
+   out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
 
    out[5] = -(prd[5] + prd[6] + prd[7]) / √3      #T⁰₀(ϵ)
@@ -204,8 +204,8 @@ function secordinp(molnam::String,ctrl)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
    #println(file)
    tpz = zeros(Int,2,length(ctrl["NFOLD"]))
-   val = zeros(Float64,12)
-   err = zeros(Float64,12)
+   val = zeros(Float64,11)
+   err = zeros(Float64,11)
    nams = 
    for i in 1:len
       nam = string(strip(file[i,1]))
@@ -227,8 +227,8 @@ function secordinp(molnam::String,ctrl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[2,n] = 1+iseven(ctrl["NFOLD"][n])
-         push!(ℋ, Op(nam,tp=zero(tmp)), Op(nam,tp=tmp))
-         push!(val,0.5*csl*nvl,0.0)
+         push!(ℋ, Op(nam,rf=[OpFunc(E,1)],tp=zero(tmp)), Op(nam,tp=tmp))
+         push!(val, 0.5*csl*nvl, -1.0)
          push!(err,file[i,3],0)
          push!(stg,1,-1)
       elseif occursin("ρ",nam) && !iszero(nvl)
@@ -247,7 +247,7 @@ function secordinp(molnam::String,ctrl)
             #@show file[i-1,2]*file[i,2]
          end
          push!(err,file[i,3])
-         push!(stg,2)
+         push!(stg,0)
       elseif occursin("η",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
@@ -259,13 +259,13 @@ function secordinp(molnam::String,ctrl)
          end
          push!(val,nvl)
          push!(err,file[i,3])
-         push!(stg,2)
+         push!(stg,0)
       elseif iszero(nvl)
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
-   val = sod2prep_lim(val)
+   val[1:11] = sod2prep_lim(val[1:11])
    #val, err = epszxcheck!(val,err)
    #@show val
    return val, err, ℋ, stg
@@ -273,7 +273,7 @@ end
 
 function unitdict()::Dict{String,Float64}
 out = Dict{String,Float64}("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>1e-3,"Hz"=>1e-6,
-   "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"arb"=>1.,
+   "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"arb"=>1.,"z"=>0.0,
    "eV"=>241_798_840.7662022,"Hart"=>6_579_681_360.732768)
 end
 
