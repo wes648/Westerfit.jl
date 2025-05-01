@@ -24,6 +24,7 @@ include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamiltonian.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
+include("@__DIR__/../transitions.jl")
 
 const csl::Float64 = 29979.2458
 
@@ -68,6 +69,9 @@ function westereng(molnam::String)
    if occursin("E",ctrl["RUNmode"])
       engwriter(molnam,ctrl,vals,qns)
    end
+
+   μf = [μOb(1.0,μzf,Et_int,1,0,0)]
+   intcalc(ctrl,vecs[:,:,1],μf,0)
    return vals,vecs,qns, tvecs
 end
 

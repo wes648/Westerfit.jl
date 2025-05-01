@@ -207,29 +207,31 @@ end
 
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
-function μ_gen(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
-   out = spzeros(ψk.R.lng,ψb.R.lng)
-   nbinds = nindsgen(ψb.R.N)
-   nkinds = nindsgen(ψk.R.N)
-   for a ∈ 1:length(ψb.R.N); b ∈ 1:length(ψk.R.N); if abs(nb-nk) ≤ k
+function μ_gen(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+#This matrix is transposed FUCK FUCK FUCK apr 29
+   out = spzeros(ψb.lng,ψk.lng)
+   nbinds = nindsgen(ψb.N)
+   nkinds = nindsgen(ψk.N)
+   for a ∈ 1:length(ψb.N), b ∈ 1:length(ψk.N)
    nbind = nbinds[a] 
    nkind = nkinds[b]
-   nb = ψb.R.N[a]
-   nk = ψk.R.N[b]
-   factr = wig6j(    nb,ψb.R.J,ψb.R.S, 
-                 ψk.R.J,    nk,     k)*
-           jnred(ψb.R.J,ψk.R.J)*jnred(nb,nk)*powneg1(nb+nb+ψk.R.S+ψk.R.J + k)
-   for i ∈ 1:length(nbind), j ∈ 1:length(nkind)
+   nb = ψb.N[a]
+   nk = ψk.N[b]
+   if abs(nb-nk) ≤ k
+   factr = wig6j(  nb,ψb.J,ψb.S, 
+                 ψk.J,  nk,   k)*
+           jnred(ψb.J,ψk.J)*jnred(nb,nk)*powneg1(nb+nb+ψk.S+ψk.J + k)
+   for j ∈ 1:length(nkind), i ∈ 1:length(nbind)
       kb = -nb + i - 1
-      kk = -nk + i - 1
-      if (kk+q-kb)==0
-         out[nbinds[i],nkinds[j]] = wig3j(nb,k,nk,-kb,q,kk)*factr
+      kk = -nk + j - 1
+      if iszero(kk+q-kb)
+         out[nbind[i],nkind[j]] = wig3j(nb,k,nk,-kb,q,kk)*factr
       end;end #k loop;if
    end;end#n loop;if
    dropzeros!(out)
    return out
 end#function
-function μzf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+function μzf(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return μ_gen(ψb,ψk,1,0)^k
 end
 function μxf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
@@ -241,16 +243,39 @@ end
 function μyf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{ComplexF64,Int}
    return dropzeros!(im*√0.5 .*(μ_gen(ψb,ψk,1,-1) + μ_gen(ψb,ψk,1,1)))^k
 end
-function cosα_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+
+function Et_int(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   return sparse(I,ψb.lng,ψk.lng)
+end
+
+function cosα_int(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    if ψb.T==ψk.T
       out = spdiagm(p=>fill(0.5,ψb.T.lng-p),-p=>fill(0.5,ψb.T.lng-p))
-   else
+   else #this won't work correctly. fingers crossed it doesn't come up for now
       out = dropzeros!(sparse(δi.(ψb.T.ms',ψk.T.ms+p) +δi.(ψb.T.ms',ψk.T.ms-p)))
    end
+   l = max(length(ψk.ms[1])*(length(ψk.σ) - 1),1)
+   return out = kron(sparse(I,l,l),out)
 end
 function cosβ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   if ψb.T==ψk.T
+      out = spdiagm(p=>fill(0.5,ψb.T.lng-p),-p=>fill(0.5,ψb.T.lng-p))
+   else #this won't work correctly. fingers crossed it doesn't come up for now
+      out = dropzeros!(sparse(δi.(ψb.T.ms',ψk.T.ms+p) +δi.(ψb.T.ms',ψk.T.ms-p)))
+   end
+   l = max(length(ψk.ms[1])*(length(ψk.σ) - 2), 1)
+   w = max(length(ψk.ms[1]), 1)
+   return out = kron(sparse(I,l,l),out,sparse(I,w,w))
 end
 function cosγ_int(ψb::Psi,ψk::Psi,p::Int)::SparseMatrixCSC{Float64,Int}
+   if ψb.T==ψk.T
+      out = spdiagm(p=>fill(0.5,ψb.T.lng-p),-p=>fill(0.5,ψb.T.lng-p))
+   else #this won't work correctly. fingers crossed it doesn't come up for now
+      out = dropzeros!(sparse(δi.(ψb.T.ms',ψk.T.ms+p) +δi.(ψb.T.ms',ψk.T.ms-p)))
+   end
+   l = max(length(ψk.ms[1])*(length(ψk.σ) - 3),1)
+   w = max(length(ψk.ms[1])*2,1)
+   return out = kron(sparse(I,l,l),out,sparse(I,w,w))
 end
 
 ################################################################################

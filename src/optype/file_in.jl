@@ -378,11 +378,11 @@ function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
 
    len = size(file,1)
 
-   if size(file,2)!=7
+   if size(file,2)≠7
    @warn "You are using a deprecated input format! Check the github for the new structure"
    end
 
-if len != 0 #if there are added parameters
+if len ≠ 0 #if there are added parameters
    nams = string.(strip.(file[:,1]))
    append!(vals,Float64.(file[:,2]))
    unts = string.(strip.(file[:,3]))
@@ -417,21 +417,38 @@ function stgextract(H,stg,n)
    return H, sub
 end
 
-#=
-ind = get(baseops,split[1],22)
+function μparse(val::Float64,op::String,dict)
+end
 
-
-   #println(len)
-   secns = secordinit_full()
-   file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
-   #println(file)
-   val = zeros(Float64,19)
-   err = zeros(Float64,19)
-   for i in 1:len
-      nam = strip(file[i,1])
-      #ind = secns[nam]
-      ind = get(secns, nam, 19)
-      val[ind] = file[i,2]
-      err[ind] = file[i,3]
+function intreader(molnam,ctrl)
+   blk = ctrl["inbk"] #blockfind(molnam, "%OPS")
+   blk[1] += 1
+   len = blk[2] - blk[1] + 1
+   ctrl["inbk"] = blk
+   lnf = length(ctrl["NFOLD"])
+   file = try
+      readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,
+         comment_char='#')
+   catch
+      zeros(0,0)
    end
-=#
+   len = size(file,1)
+   if size(file,2)≠7
+   @warn "You are using a deprecated input format! Check the github for the new structure"
+   end
+if len ≠ 0 #if there are added parameters
+   nams = string.(strip.(file[:,1]))
+   vals = Float64.(file[:,2])
+   #units is 3
+   #vibs is 4
+   ops = string.(strip.(file[:,5]))
+
+   ctrldict = Ctrldict()
+   μs = μparse(vals[1],ops[1])
+   for i ∈ 2:len
+      push!(μs, μparse(vals[i],ops[i],ctrldict) )
+   end
+else
+end#if
+   return μs
+end#function

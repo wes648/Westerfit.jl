@@ -35,6 +35,7 @@ function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
       lim = mcalc*nfold
       marray = (-lim+σ):nfold:(lim+σ)
    else #iseven(nfold)
+      lim = mcalc*nfold
       lim = floor(Int,lim/2)
       marray = -lim:floor(Int,nfold/2):lim
       marray = (-lim+σ):nfold:(lim+σ)

@@ -70,7 +70,6 @@ struct OpFunc{T <: Number}
       new{Float64}(f,p)
    end
 end
-
 #struct OpFunc
 #   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{RPsi,Int}}
 #   p::Int

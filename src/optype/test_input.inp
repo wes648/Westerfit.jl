@@ -2,7 +2,7 @@ test input
 %CNTRLS
 NFOLD = 3
 S = 0.0
-stages = 2
+stages = 1
 RUNmode = E
 TK = 8.0
 mcalc = 8

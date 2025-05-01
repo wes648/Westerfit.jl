@@ -1,32 +1,49 @@
 
 
-struct μFunc
-   μv::Float64
-   fr::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{RPsi,Int}}
-   ft::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{TPsi,Int}}
+struct μFuncR
+   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{RPsi,RPsi,Int,Int}}
    k::Int
    q::Int
-   function μFunc(μv::Float64,fr::Function,ft::Function,k::Int,q::Int)
-      new(μv,fr,ft,k,q)
+   function μFuncR(f::Function,k::Int,q::Int)
+      new(f,k,q)
+   end
+end
+struct μFuncT
+   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{TPsi,TPsi,Int}}
+   p::Int
+   function μFuncT(f::Function,p::Int)
+      new(f,p)
    end
 end
 
-function eval_μop_r(op::μFunc,ψb::RPsi,ψk::RPsi)::SparseMatrixCSC{Float64,Int} 
-   op.fr(ψb,ψk,op.k,op.q)
-end
-function eval_μop_t(op::μFunc,ψb::TPsi,ψk::TPsi)::SparseMatrixCSC{Float64,Int} 
-   op.ft(ψb,ψk,op.k,op.q)
-end
-
-function int_enact(μp,μf,ψb,ψk,bvec,kvec)::SparseMatrixCSC{Float64,Int}
-   out = kron(μp,eval_μop_t(μf,ψb.T,ψk.T),eval_μop_r(μf,ψb.R,ψk.R))
+struct μOb
+   v::Float64
+   fr::Vector{μFuncR}
+   ft::Vector{μFuncT}
+   function μOb(μv::Float64,fr::Function,ft::Function,k::Int,q::Int,p::Int)
+      new(μv,μFuncR(fr,k,q),μFuncT(ft,p))
+   end
 end
 
-function bld_μmat_1s(inthres,μp,μf,ψb,ψk,bvec,kvec)::SparseMatrixCSC{Float64,Int}
-   out = int_enact(μp[1],μf[1],ψb,ψk,bvec,kvec)
+function eval_μop_r(op::μFuncR,ψb::RPsi,ψk::RPsi)::SparseMatrixCSC{Float64,Int} 
+   op.f(ψb,ψk,op.k,op.q)
+end
+function eval_μop_t(op::μFuncT,ψb::TPsi,ψk::TPsi)::SparseMatrixCSC{Float64,Int} 
+   op.f(ψb,ψk,op.p)
+end
+
+
+
+function int_enact(μf,ψb,ψk)::SparseMatrixCSC{Float64,Int}
+   out = kron(μf.v,eval_μop_t(μf.ft,ψb.T,ψk.T),eval_μop_r(μf.fr,ψb.R,ψk.R))
+end
+
+function bld_μmat_1s(inthres,μf,ψb,ψk,bvec,kvec)::SparseMatrixCSC{Float64,Int}
+   out = int_enact(μf[1],ψb,ψk)
    for i ∈ 2:length(μf)
-      out += int_enact(μp[i],μf[i],ψb,ψk,bvec,kvec)
+      out += int_enact(μf[i],ψb,ψk)
    end
+   out = sparse(bvec' * out * kvec)
    droptol!(out,inthres)
    return out
 end
@@ -39,18 +56,28 @@ function jbjklister(jmin,jmax,mΔj)
    out = vcat(out,[collect(jmax:(mΔj+jmax-1)) fill(jmax,mΔj)])
    return out
 end
+function jvlinds(j,s,vtm)
+   snd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):(j-1)) .+1))+1
+   fnd = convert(Int, (vtm+1)*(2*s+1)*sum(2 .*collect((0.5*isodd(2*s)):j) .+1))
+   return collect(snd:fnd)
+end
 
-function intcalc()
+
+function intcalc(ctrl,vecs,μf,σ)
    s = ctrl["S"]
    vtm = ctrl["vtmax"]
+   mc = ctrl["mcalc"]
    nf = ctrl["NFOLD"]
+   jmax = ctrl["Jmax"]
    mΔj = 1
    jbjk = jbjklister(0.5*iseven(Int(2*s+1)),jmax,mΔj)
+   rmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
+   cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
+   ints = spzeros(size(vecs,2),size(vecs,2))
 
    for i in 1:size(jbjk,1)
       jb = jbjk[i,1]
       jk = jbjk[i,2]
-      #println("jb=$jb, jk=$jk")
       #needs to be corrected for the vt scheme
       kinds = jvlinds(jk,s,vtm)
       binds = jvlinds(jb,s,vtm)
@@ -58,10 +85,9 @@ function intcalc()
       kvecs = vecs[1:Int(2*jk+1)*cmsd,kinds]
       bvecs = vecs[1:Int(2*jb+1)*rmsd,binds]
       ψb = Psi( RPsi(jb,s), TPsi(nf,σ,mc) )
-      ψk = Psi( RPsi(jb,s), TPsi(nf,σ,mc) )
+      ψk = Psi( RPsi(jk,s), TPsi(nf,σ,mc) )
       #calculate intensities
-      μs = intmat(ctrl["INTthres"],μp,μf,ψb,ψk,bvecs,kvecs)
-
+      μs = bld_μmat_1s(ctrl["INTthres"],μf,ψb,ψk,bvecs,kvecs)
       if (jb==jk)#&&(σr==σc)
          μs = sparse(UpperTriangular(μs))
       end
@@ -76,18 +102,28 @@ function intcalc()
    return ints
 end
 
-function tracalc()
-   ints = intcalc()
-   rinds, cinds, = findnz(ints)
+function freq_gen(min,max,ints,vals,rinds,cinds)
+   frqs = spzeros(length(vals),length(vals))
    for i in 1:nnz(ints)
       r = rinds[i]
       c = cinds[i]
       ν = rvals[r] - cvals[c]
-      frqs[r,c] = ν*(ctrl["νmin"]≤abs(ν*0.001)≤ctrl["νmax"])
+      frqs[r,c] = ν*(min≤abs(ν*0.001)≤max)
    end
    droptol!(frqs,1e-3) #drops all frequencies below 1kHz
    #assign Elow & qns plus sign correction
    rinds, cinds, νs = findnz(frqs)
+   return rinds,cinds,νs
+end
+
+#intensity from B&J: 8π^3 N_A ν * e^(-E_l/kbT) * (1 - e^(-hcν/kbT)) |⟨μ⟩|^2 / 4πϵ0 3hc Q
+#Q = ∑_i g_i e^(-E_i / kbT)
+#g_i = (2S+1)(2J+1)(1 + σ>0)
+
+function tracalc(ctrl,vals,vecs,μf,σ,Qrt)
+   ints = intcalc(ctrl,vecs,μf,σ)
+   rinds, cinds, = findnz(ints)
+   rinds, cinds, νs = freq_gen(ctrl["νmin"],ctrl["νmax"],ints,vals,rinds,cinds)
    len = nnz(frqs) 
    outfrq = zeros(len,4)
    outqns = zeros(Int,len,12)
@@ -118,7 +154,6 @@ function tracalc()
    return outfrq, outqns
 end
 
-end
 
 ################################################################################
 ###     Parametric Typing Testing
