@@ -288,7 +288,10 @@ out = Dict{String,Function}("E"=>E,"Nz"=>nz, "N2"=>n2,"Np"=>np,"Nm"=>nm,"Npm"=>n
     #"cosγ"=>cosγ,"μz"=>μz,"μx"=>μx,"iμy"=>iμy)
 end
 
-
+function Intdict()::Dict{String,Function}
+out = Dict{String,Function}("E"=>Et_int,"μz"=>μzf,"μx"=>μxf,"iμy"=>iμyf,"cosα"=>cosα_int,
+    "cosβ"=>cosβ_int,"cosγ"=>cosγ_int)
+end
 
 
 #= Graveyard

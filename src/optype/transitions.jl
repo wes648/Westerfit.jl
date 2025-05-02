@@ -18,10 +18,13 @@ end
 
 struct μOb
    v::Float64
-   fr::Vector{μFuncR}
-   ft::Vector{μFuncT}
+   fr::μFuncR
+   ft::μFuncT
    function μOb(μv::Float64,fr::Function,ft::Function,k::Int,q::Int,p::Int)
       new(μv,μFuncR(fr,k,q),μFuncT(ft,p))
+   end
+   function μOb(μv::Float64,fr::μFuncR,ft::μFuncT)
+      new(μv,fr,ft)
    end
 end
 
@@ -31,8 +34,6 @@ end
 function eval_μop_t(op::μFuncT,ψb::TPsi,ψk::TPsi)::SparseMatrixCSC{Float64,Int} 
    op.f(ψb,ψk,op.p)
 end
-
-
 
 function int_enact(μf,ψb,ψk)::SparseMatrixCSC{Float64,Int}
    out = kron(μf.v,eval_μop_t(μf.ft,ψb.T,ψk.T),eval_μop_r(μf.fr,ψb.R,ψk.R))

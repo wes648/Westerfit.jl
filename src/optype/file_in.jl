@@ -418,6 +418,11 @@ function stgextract(H,stg,n)
 end
 
 function μparse(val::Float64,op::String,dict)
+   op = split.(split(op), "^")
+   out = μOb(val,
+      μFuncR(dict[op[1][1]],parse(Int,op[1][2]),0),
+      μFuncT(dict[op[2][1]],parse(Int,op[2][2]),0))
+   return out
 end
 
 function intreader(molnam,ctrl)
@@ -443,7 +448,7 @@ if len ≠ 0 #if there are added parameters
    #vibs is 4
    ops = string.(strip.(file[:,5]))
 
-   ctrldict = Ctrldict()
+   intdict = Intdict()
    μs = μparse(vals[1],ops[1])
    for i ∈ 2:len
       push!(μs, μparse(vals[i],ops[i],ctrldict) )
