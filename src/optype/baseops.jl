@@ -234,7 +234,7 @@ end#function
 function μzf(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return μ_gen(ψb,ψk,1,0)^k
 end
-function μxf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+function μxf(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return dropzeros!(√0.5 .*(μ_gen(ψb,ψk,1,-1) - μ_gen(ψb,ψk,1,1)))^k
 end
 function iμyf(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
@@ -248,12 +248,12 @@ function Et_int(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return sparse(I,ψb.lng,ψk.lng)
 end
 
-function cosα_int(ψb::Psi,ψk::Psi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
-   if ψb.T==ψk.T
-      out = spdiagm(p=>fill(0.5,ψb.T.lng-p),-p=>fill(0.5,ψb.T.lng-p))
-   else #this won't work correctly. fingers crossed it doesn't come up for now
-      out = dropzeros!(sparse(δi.(ψb.T.ms',ψk.T.ms+p) +δi.(ψb.T.ms',ψk.T.ms-p)))
-   end
+function cosα_int(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   #if ψb==ψk
+      out = spdiagm(k=>fill(0.5,ψb.lng-k),-k=>fill(0.5,ψb.lng-k))
+   #else #this won't work correctly. fingers crossed it doesn't come up for now
+   #   out = dropzeros!(sparse(δi.(ψb.ms',ψk.ms+k) +δi.(ψb.ms',ψk.ms-k)))
+   #end
    l = max(length(ψk.ms[1])*(length(ψk.σ) - 1),1)
    return out = kron(sparse(I,l,l),out)
 end

@@ -427,8 +427,9 @@ end
 
 function intreader(molnam,ctrl)
    blk = ctrl["inbk"] #blockfind(molnam, "%OPS")
+   @show blk
    blk[1] += 1
-   len = blk[2] - blk[1] + 1
+   len = blk[2] - blk[1] - 1
    ctrl["inbk"] = blk
    lnf = length(ctrl["NFOLD"])
    file = try
@@ -437,23 +438,29 @@ function intreader(molnam,ctrl)
    catch
       zeros(0,0)
    end
-   len = size(file,1)
-   if size(file,2)≠7
-   @warn "You are using a deprecated input format! Check the github for the new structure"
-   end
+   #len = size(file,1)
+   #if size(file,2)≠7
+   #@warn "You are using a deprecated input format! Check the github for the new structure"
+   #end
+   @show len
+   @show size(file)
+   file = file[1:len,:]
+   @show size(file)
 if len ≠ 0 #if there are added parameters
    nams = string.(strip.(file[:,1]))
+   @show file[:,2]
    vals = Float64.(file[:,2])
    #units is 3
    #vibs is 4
    ops = string.(strip.(file[:,5]))
-
+   μs = Vector{μOb}(undef,0)
    intdict = Intdict()
-   μs = μparse(vals[1],ops[1])
+   push!(μs, μparse(vals[1],ops[1], intdict) )
    for i ∈ 2:len
-      push!(μs, μparse(vals[i],ops[i],ctrldict) )
+      push!(μs, μparse(vals[i],ops[i], intdict) )
    end
 else
+   @warn "Yikes! Need some dipoles for a simulator"
 end#if
    return μs
 end#function

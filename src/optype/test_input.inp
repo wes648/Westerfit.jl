@@ -36,9 +36,9 @@ V3;            1.009028077688395;   1.0
 %INTS
 %Name;        Val; unit; v v; operator
 μz;           1.0;  arb; 0 0; μz^1 E^1
-μx;           1.0;  arb; 0 0; μx^1 E^1
-μz(3);        1.0;  arb; 0 0; μz^1 cosα^3
-μx(3);        1.0;  arb; 0 0; μx^1 cosα^3
+μx;           2.0;  arb; 0 0; μx^1 E^1
+μz(3);        0.3;  arb; 0 0; μz^1 cosα^1
+μx(3);        0.4;  arb; 0 0; μx^1 cosα^1
 
 %OPS Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ, α, β, γ
 %Name;        Val; unit; scl;stg; v v; operator
