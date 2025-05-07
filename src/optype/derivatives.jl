@@ -7,16 +7,16 @@ hessian - briss 1 stage
 hessian - briss 2 stage
 """
 
-function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
-   ind = rpid+1
+function sumder(out,j,s,nf,id,prm,stg,ops,ms,qns)
+   ind = id+1
    if ind ≤ length(stg)+11
       check = stg[ind-11]
       while check < zero(check)
          pm = prm[ind]
-         out .+= tsr_op(pm,j,s,qns,ms, ops[:, ind-11] )
+         out .+= enact(ℋ[ind-11],ψ,val,ur,ut)
          ind += 1
-         if ind-18 ≤ length(stg)
-            check = stg[ind-18]
+         if ind-11 ≤ length(stg)
+            check = stg[ind-11]
          else
             check = 0
          end
@@ -25,32 +25,32 @@ function sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
    return out
 end
 
-function derivmat(rpid,prm,scl,stg,ψ,ℋ)
-   if scl[rpid] ≤ 0 #should this be ≤ 0 ???
-   elseif rpid ≤ 4 #pure rot
+function derivmat(id,prm,scl,stg,ψ,ℋ)
+   if scl[id] ≤ 0 #should this be ≤ 0 ???
+   elseif id ≤ 4 #pure rot
       pr = zeros(4)
-      pr[rpid] = 1.0
+      pr[id] = 1.0
       out = hrot2(pr,qns)
       out = kron(I(length(ms)),out)
-   elseif 5 ≤ rpid ≤ 8 #spin-rot
+   elseif 5 ≤ id ≤ 8 #spin-rot
       pr = zeros(5)
-      pr[rpid-4] = 1.0
+      pr[id-4] = 1.0
       out = hsr(pr,j,s,qns)
       out = kron(I(length(ms)),out)
-   elseif 9 ≤ rpid ≤ 11 #qua
+   elseif 9 ≤ id ≤ 11 #qua
       pr = zeros(3)
-      pr[rpid-9] = 1.0
+      pr[id-9] = 1.0
       out = hqu(pr,j,s,qns)
       out = kron(I(length(ms)),out)
    else #user def
-      out = tsr_op(1.0,j,s,qns,ms,ops[:,rpid-18] )
-      out .= sumder(out,j,s,nf,rpid,prm,stg,ops,ms,qns)
+      out = enact(ℋ[id-11],ψ,val,ur,ut)
+      out .= sumder(out,j,s,nf,id,prm,stg,ops,ms,qns)
    end
    return out
 end
 
-function anaderiv(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec)
-   mat = derivmat(j,s,nf,rpid,prm,scl,stg,ops,ms,qns)
+function anaderiv(prm,scl,stg,id,ops,j,s,nf,ms,qns,vec)
+   mat = derivmat(j,s,nf,id,prm,scl,stg,ops,ms,qns)
    out = transpose(vec)*mat*vec
    return diag(out)
 end
