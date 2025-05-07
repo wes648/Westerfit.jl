@@ -9,8 +9,23 @@ function σcount(nfold::Real)::Int
    end
    return out
 end
-
+function σgen(nf1::Int,nf2::Int)::Array{Int,2}
+   σcnt1 = σcount(nf1)
+   σcnt2 = σcount(nf2)-1
+   out = zeros(Int,2,0)
+   for i in 1:σcnt1
+      σ1 = i-1
+      if σ1==0
+         σ2 = collect(0:σcnt2)'
+      else
+         σ2 = collect(σcnt2:-1:-σcnt2)'
+      end#if
+      out = hcat(out, [fill(σ1,length(σ2))'; σ2])
+   end#for
+   return out
+end#function
 function σgen_indef(nf::Array{Int})::Array{Int,2}
+   if length(nf) > 1
    old = σgen(nf[1],nf[2])
    for i in 3:length(nf)
       σlsti = nf[i] - iseven(nf[i])
@@ -22,6 +37,9 @@ function σgen_indef(nf::Array{Int})::Array{Int,2}
       end#for j
       old = new
    end#for i
+   else
+      old = σgen_indef(nf[1])
+   end
    return old
 end
 function σgen_indef(nf::Int)::Array{Int}

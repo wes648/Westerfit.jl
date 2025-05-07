@@ -97,41 +97,6 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
    return derivs
 end#function
 
-#function derivmat_2stg(j,s,nf,rpid,ms,qns,tvecs,mmax)
-#   if rpid ≤ 4 #pure rot
-#      pr = zeros(4)
-#      pr[rpid] = 1.0
-#      out = hrot2(pr,qns)
-#      out = kron(I(mmax+1),out)
-#   elseif 5 ≤ rpid ≤ 9 #spin-rot
-#      pr = zeros(5)
-#      pr[rpid-4] = 1.0
-#      out = hsr(pr,j,s,qns)
-#      out = kron(I(mmax+1),out)
-#   elseif 10 ≤ rpid ≤ 12 #qua
-#      pr = zeros(3)
-#      pr[rpid-9] = 1.0
-#      out = hqu(pr,j,s,qns)
-#      out = kron(I(mmax+1),out)
-#   elseif rpid==13 # F
-#      pr = [1.;0.;0.;0.]
-#      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
-#   elseif rpid==16 # Vnf
-#      pr = [0.;0.;0.;1.]
-#      out = kron(tvecs' * htor2(pr,ms) * tvecs,  I(size(qns,1)))
-#   elseif rpid==14 # ρzF
-#      out = kron(tvecs' * pa_op(ms,1) * tvecs, nz_op(qns,1))
-#   elseif rpid==15 # ρxF
-#      out = kron(tvecs' * pa_op(ms,1) * tvecs, npm_op(qns,1)) 
-#   elseif rpid==17 # ηz
-#      out = kron(tvecs' * pa_op(ms,1) * tvecs, sz_op(j,s,qns,1)) 
-#   elseif rpid==18 # ηx
-#      out = kron(tvecs' * pa_op(ms,1) * tvec, spm_op(j,s,qns,1))
-#   else
-#      out = Diagonal(I(size(qns,1)))
-#   end
-#   return out
-#end
 function anaderiv_2stg(rpid,j,s,nf,ms,qns,vec,tvec,mmax)
    mat = derivmat_2stg(j,s,nf,rpid,ms,qns,tvec,mmax)
    out = transpose(vec)*mat*vec

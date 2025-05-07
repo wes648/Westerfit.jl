@@ -130,7 +130,7 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       end
 #      Hrot = sparse(Symmetric(Hrot,:L)) #<--------- CHECK maybe cleaner way to do this
       for sc in 1:σcnt
-         ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"])) #<--------- CHECK
+         ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"])) #<--------- CHECK
          vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc]) #<--------- CHECK
       end#σs
    end#j
@@ -221,7 +221,7 @@ function tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
    for sc in 1:σcnt
       ϕ = TPsi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"])
 #      @show σs[sc]
-      torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,sc)
+      torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,σs[:,sc])
       #tvals,tvecs = eigen!(Matrix(torbuild(ℋ,ϕ,stg,tsize)))
    end
    msd = Int(2ctrl["S"]+1)*(ctrl["mmax"]+1)
@@ -240,7 +240,7 @@ for j in jlist
    end
    Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt
-      ϕ = Psi(ψ,TPsi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"]))
+      ϕ = Psi(ψ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
       vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals[:,sc],tvecs[:,:,sc],ℋ,ϕ,prm,stg)
    end#σs
 end#j
