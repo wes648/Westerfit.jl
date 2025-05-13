@@ -119,7 +119,7 @@ function uncrecov_full(unc,prd::Array{Float64})::Array{Float64}
    return sqrt.(out)
 end
 
-function fullrecov(prd,unc,irrep)
+function fullrecov(prd,unc,irrep) 
    oprd = paramrecov_full(prd)
    ounc = uncrecov_full(unc,oprd)
    oprd[1:3] = oprd[irrepswap(irrep)]
@@ -130,8 +130,8 @@ function fullrecov(prd,unc,irrep)
 end
 
 #####OUTPUTS
-function reslin(line,omc,cfrq)
-   part  = lpad(line[ 1],4)*";"
+function reslin(line,omc,cfrq)       #this function does the pretty formatting for the
+   part  = lpad(line[ 1],4)*";"      #reswriter function with a bunch of lpads
    part *= lpad(Int(line[ 2]),3)*";"
    part *= lpad(Int(line[ 3]),3)*";"
    part *= lpad(Int(line[ 4]),3)*";"
@@ -141,12 +141,12 @@ function reslin(line,omc,cfrq)
    part *= lpad(Int(line[ 8]),3)*";"
    part *= lpad(Int(line[ 9]),3)*";"
    part *= lpad(Int(line[10]),3)*";"
-   part *= " "*lpad(@sprintf("%0.5f", line[11]), 16)*";"
-   part *= " "*lpad(@sprintf("%0.6f", omc), 16)*";"
+   part *= " "*lpad(@sprintf("%0.5f", line[11]), 16)*";" #this part is where the number of sig figs gets fixed
+   part *= " "*lpad(@sprintf("%0.6f", omc), 16)*";"      #sometimes it breaks because of floating point errors
    part *= " "*lpad(@sprintf("%0.5f", cfrq), 16)
 end
 
-function reswritter(molnam,lines,omcs,cfrqs)
+function reswritter(molnam,lines,omcs,cfrqs)  #writes the .res file
    len = size(omcs,1)
    out = fill("0", len)
    @simd for i in 1:len
@@ -154,8 +154,8 @@ function reswritter(molnam,lines,omcs,cfrqs)
    end
    io = open("$molnam.res", "w") do io
       for i in out
-         println(io, i)
-      end
+         println(io, i)     #i'm not really sure why we're creating an array with the lines
+      end                   #and then printing the lines. maybe it's faster?
    end
 end
 
@@ -174,8 +174,8 @@ function englin(s,eng,qunl)
    part *= " "*lpad(@sprintf("%0.10f", eng), 16)
    return part
 end
-function englin(s,eng,qunl,pasz)
-   if s==zero(s)
+function englin(s,eng,qunl,pasz)  #this function and the one above it format lines
+   if s==zero(s)                  #to go in the eng file
       part = lpad(qunl[2],4)*","
    else
      # part = lpad(qunl[1],4)*"/2,"
@@ -186,7 +186,7 @@ function englin(s,eng,qunl,pasz)
    part *= lpad(qunl[4],4)*","
    part *= lpad(qunl[5],4)*","
    part *= lpad(qunl[6],4)*","
-   part *= " "*lpad(@sprintf("%0.10f", eng), 16)
+   part *= " "*lpad(@sprintf("%0.10f", eng), 16)   #again, sometimes this causes floating point issues
    part *= ", "*lpad(@sprintf("%0.10f", pasz), 16)
    return part
 end
@@ -195,22 +195,22 @@ function engwriter(molnam,ctrl,energies,qunus)
 Outputs energy levels with state assignments to a csv-like file
 """
    c = 29979.2458
-   eng = energies[:,1]
-   qns = qunus[:,:,1]
+   eng = energies[:,1]                #pulls the energies out of the energies block
+   qns = qunus[:,:,1]                 #pulls the quantum numbers out of the qunus block
    for sc in 2:σcount(ctrl["NFOLD"])
-      eng = vcat(eng,energies[:,sc])
-      qns = vcat(qns,qunus[:,:,sc])
+      eng = vcat(eng,energies[:,sc])  #now we add the necessary information
+      qns = vcat(qns,qunus[:,:,sc])   #i wonder if this could be done with a reshape command
    end
    len = size(eng,1)
    out = fill("0",len)
    for i in 1:len
       energy = eng[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
-      out[i] = englin(ctrl["S"],energy,qns[i,:])
+      out[i] = englin(ctrl["S"],energy,qns[i,:])   #writes the line for the energy file with the energy and the quantum numbers
    end
    io = open("$molnam.eng", "w") do io
       for i in out
-         println(io, i)
+         println(io, i)   #prints the line in the energy file
       end
    end
 end
@@ -225,7 +225,7 @@ Outputs energy levels with state assignments to a csv-like file
    for sc in 2:σcount(ctrl["NFOLD"])
       eng = vcat(eng,energies[:,sc])
       qns = vcat(qns,qunus[:,:,sc])
-      psz = vcat(psz,pasz[:,sc])
+      psz = vcat(psz,pasz[:,sc])    #this is the same as the above function but including pasz
    end
    len = size(eng,1)
    out = fill("0",len)
@@ -241,8 +241,8 @@ Outputs energy levels with state assignments to a csv-like file
    end
 end
 
-function linestrng(s,frql,qunl)
-   if s==zero(s)
+function linestrng(s,frql,qunl)   #this formats the lines for the transition writer
+   if s==zero(s)                  #frql and qunl are lines of freqs and qunus
       part  = lpad(qunl[2],3)*","  #N
       part *= lpad(qunl[3],3)*","  #Ka
       part *= lpad(qunl[4],3)*","  #Kc
@@ -353,17 +353,17 @@ end
 function TraWriter(molnam,s, freqs, qunus)
    p = sortperm(freqs[:,1])
    freqs = freqs[p,:]
-   qunus = qunus[p,:]
+   qunus = qunus[p,:]                     #sorting the quantum numbers
    out = fill("0",size(freqs,1))
-   for i in 1:size(freqs,1)
+   for i in 1:size(freqs,1)               #writing the lines
       out[i] = linestrng(s, freqs[i,:], qunus[i,:])
    end
-   io = open("$molnam.sim", "w") do io
+   io = open("$molnam.sim", "w") do io    #printing the lines
       for i in out
          println(io, i)
       end
    end
-   println("Transitions written to $molnam.cat!")
+   println("Transitions written to $molnam.cat!")  #notice in terminal
 end
 
 
@@ -410,19 +410,19 @@ end
 """START CODE FOR UNCERTAINTY PRINTER THINGY"""
 
 function num_to_string(x,fmt="%.1f")
-   Printf.format(Printf.Format(fmt), x)
+   Printf.format(Printf.Format(fmt), x)  #this is some fucking bullshit to make strings out of the numbers which was obnoxiously hard
 end
 
 function uncrformatter(values,unc)
-   uncertainty_digits = 3
-   uncr = round.(unc, sigdigits = uncertainty_digits)
+   uncertainty_digits = 3                              #the number of digits of uncertainty can be changed here
+   uncr = round.(unc, sigdigits = uncertainty_digits)  #round everything to that number of sig figs
    uncstr = zeros(Float64, length(uncr))
-   uncstr = string.(uncstr)
+   uncstr = string.(uncstr)                            #i suspect this could be replaced by a fill function
 
    for i in 1:length(uncr)
-      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1
-      words = string("%0.",number,"f")
-      uncstr[i] = num_to_string(uncr[i],words)
+      number = -1*floor(Int, log10(unc[i])) + uncertainty_digits - 1  #this finds the number of digits before the decimal?
+      words = string("%0.",number,"f")                                #so it can print things correctly later?
+      uncstr[i] = num_to_string(uncr[i],words)                        
    end
 
    valstr = zeros(Float64, length(values))
@@ -568,7 +568,7 @@ end
 
 """INSERT CODE FOR INPUT FILE WRITER"""
 
-function iterativecopier(molnam::String)
+function iterativecopier(molnam::String)   #this iterates the files up a value
    oldarray = ["8", "7", "6", "5", "4", "3", "2", "1", ""]
    newarray = ["9", "8", "7", "6", "5", "4", "3", "2", "1"]
    for i in 1:length(oldarray)
