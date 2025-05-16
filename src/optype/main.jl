@@ -3,7 +3,6 @@
 This file is the actual implementation of the information in types.Jl & baseops.Jl
 """
 
-
 using DelimitedFiles
 using FunctionWrappers
 import FunctionWrappers: FunctionWrapper
