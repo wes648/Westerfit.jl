@@ -124,9 +124,9 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       ϕ = RPsi(j,ctrl["S"]) #<--------- CHECK msgen
       Hrot = hrot2(prm[1:4],ϕ) #<--------- CHECK spdiagm
       if ctrl["S"]≥1.0
-         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ϕ) + Hqua(prm[9:11],ψ.J,ψ.S,ϕ)
+         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ) + hqu(prm[9:11],ψ.J,ψ.S,ϕ)
       elseif ctrl["S"]==0.5
-         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ϕ)
+         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ)
       end
 #      Hrot = sparse(Symmetric(Hrot,:L)) #<--------- CHECK maybe cleaner way to do this
       for sc in 1:σcnt
@@ -231,12 +231,12 @@ for j in jlist
    ψ = RPsi(j,ctrl["S"])
    Hrot = hrot2(prm[1:4],ψ)
    if ctrl["S"]≥1.0
-      Hrot += Hqua(prm[9:11],ψ.J,ψ.S,ψ)
+      Hrot += hqu(prm[9:11],ψ.J,ψ.S,ψ)
       if norm(prm[5:8]) > 0.0
-         Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
+         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
       end
    elseif ctrl["S"]==0.5
-      Hrot += Hsr(prm[5:8],ψ.J,ψ.S,ψ)
+      Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
    end
    Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt

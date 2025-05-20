@@ -9,6 +9,8 @@ hessian - jtwj - done!
 2nd deriv - 2 stage
 hessian - birss 1 stage
 hessian - birss 2 stage
+
+20 may 25: code should be roughly finished. will fix from opt testing
 """
 
 function sumder(out::SparseMatrixCSC{Float64,Int},
@@ -104,7 +106,7 @@ function sumder_2stg(out,j,s,nf,rpid,prm,stg,ops,ms,qns,tvecs)
       check = stg[ind-18]
       while check < zero(check)
          pm = prm[ind]
-         out .+= twostg_op(pm,j,s,qns,ms, ops[:, ind-18], tvecs )
+         out .+= enact_stg2(O,ψ,val,tvcs,mc,ur,ut)
          ind += 1
          if ind-18 ≤ length(stg)
             check = stg[ind-18]
@@ -133,7 +135,7 @@ function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
       out = hqu(pr,j,s,qns)
       out = kron(I(length(ms)),out)
    else #user def
-      out = enact(ℋ[id-11],ψ,prm[id],ur,ut)
+      out = enact_stg2(O,ψ,val,tvcs,mc,ur,ut)
       out .= sumder_2stg(out,id,prm,stg,ℋ,ψ)
    end
    return out
@@ -225,16 +227,53 @@ function jh_levels(vals::Array{Float64},vecs::Array{Float64},prm::Vector{Float64
    end#j
    return jac,hes
 end#function 
-function jh_build!(J,H)
-   jac,hes = jh_levels()
-   #j = zers(length(lins),length(perm))
-   #H = zeros(length(perm),length(perm))
+function jh_levels_2stg(vals::Array{Float64},vecs::Array{Float64,2},
+         tvecs::Array{Float64,2},prm::Vector{Float64},ℋ::Vector{Op})
+   lp = length(perm)
+   jac = zeros(length(vals,lp))
+   hes = zeros(length(vals), Int( 0.5*lp*(1+lp) ))
+   for j ∈ jσlist
+      n = #size of basis set
+      der_block = zeros(n,n,lp)
+      for sc ∈ σcnt
+         inds = dest = jvdest2(j,ctrl["S"],ctrl["vtmax"])
+         vpart = vecs[1:n,inds,sc]
+         Δi = invdiffmat(vals[inds,sc])
+         for i ∈ lp
+            der_block[:,:,i] = anaderiv_2stg()
+            jac[inds,:] = diag(der_block[:,:,i])
+         #end
+         for j ∈ 1:i#i:length(perm)
+            ind_der = (i-1)*lp + j
+   hes[inds,inds,ind_der] = sum(der_block[:,:,i] .* Δ .* der_block[:,:,j],dims=2) 
+         end#nested
+      end#σs
+   end#j
+   return jac,hes
+end#function 
+function jh_build!(J,H,W,omc,vals,vecs,prm,ℋ,ctrl)
+   jac,hes = jh_levels(vals,vecs,prm,ℋ)
+   H .= 0.0
    for i ∈ eachindex(lins)
       u = inds[i,2]#???
       l = inds[i,4]#???
       J[i,:] .= jac[u,:] - jac[l,:]
-      H .+= hess_reshape(hes)
+      omc[i] .= lins[i] - vals[u] + vals[i]
+      H .+= hess_reshape(hes[u,:] .- hes[l,:])*omc[i]*W[i]
    end
+   H .+= J' * W * J
+end
+function jh_build!(J,H,W,omc,vals,vecs,prm,ℋ,ctrl)
+   jac,hes = jh_levels_2stg(vals,vecs,tvecs,prm,ℋ)
+   H .= 0.0
+   for i ∈ eachindex(lins)
+      u = inds[i,2]#???
+      l = inds[i,4]#???
+      J[i,:] .= jac[u,:] - jac[l,:]
+      omc[i] .= lins[i] - vals[u] + vals[i]
+      H .+= hess_reshape(hes[u,:] .- hes[l,:])*omc[i]*W[i]
+   end
+   H .+= J' * W * J
 end
 
 #these were stolen from the deprecated TriangularReshapes.jl

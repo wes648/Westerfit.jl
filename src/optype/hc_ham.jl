@@ -48,7 +48,7 @@ function srelem(pr::Float64,nb::Int,nk::Int,
    return out
 end
 
-function hsr_new(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
+function hsr(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
@@ -85,7 +85,7 @@ function quelem(pr::Float64,nb::Int,nk::Int,
    out .*= pr
 end
 
-function hqu_new(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
+function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
