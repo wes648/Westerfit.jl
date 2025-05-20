@@ -2,7 +2,7 @@
 This is the file that contains the analytic derivative functions
 1st deriv - 1 stage - done!
 1st deriv - 2 stage
-jacobian - 1 stage
+jacobian - 1 stage - done!
 jacobian - 2 stage
 hessian - jtwj - done!
 2nd deriv - 1 stage - done!
@@ -30,7 +30,6 @@ function sumder(out::SparseMatrixCSC{Float64,Int},
    end
    return out
 end
-
 function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi)
    if scl[id] ≤ 0 #should this be ≤ 0 ???
@@ -55,14 +54,12 @@ function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
    end
    return out
 end
-
 function anaderiv(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi,vec::Vector{Float64})::Vector{Float64}
    mat = derivmat(id,prm,scl,stg,ℋ,ψ)
    out = transpose(vec)*mat*vec
    return out #diag(out)
 end
-
 function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)::Matrix{Float64}
    s = ctrl["S"]
    mcalc = ctrl["mcalc"]
@@ -89,6 +86,91 @@ function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)::Matrix{Float64}
    end#σ loop
    return derivs
 end#function
+function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
+#   jcbn = zeros(Float64,size(inds,1),length(perm))
+   deriv = derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
+   @threads for p in 1:length(perm)
+      @simd for a in 1:size(inds,1)
+         jcbn[a,p] .= deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
+      end
+   end
+   #@show jcbn
+   return jcbn
+end
+
+function sumder_2stg(out,j,s,nf,rpid,prm,stg,ops,ms,qns,tvecs)
+   ind = rpid+1
+   if ind ≤ length(stg)+18
+      check = stg[ind-18]
+      while check < zero(check)
+         pm = prm[ind]
+         out .+= twostg_op(pm,j,s,qns,ms, ops[:, ind-18], tvecs )
+         ind += 1
+         if ind-18 ≤ length(stg)
+            check = stg[ind-18]
+         else
+            check = 0
+         end
+      end
+   end
+   return out
+end
+function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
+   if scl[id] ≤ 0 #should this be ≤ 0 ???
+   elseif id ≤ 4 #pure rot
+      pr = zeros(4)
+      pr[id] = 1.0
+      out = hrot2(pr,qns)
+      out = kron(I(length(ms)),out)
+   elseif 5 ≤ id ≤ 8 #spin-rot
+      pr = zeros(5)
+      pr[id-4] = 1.0
+      out = hsr(pr,j,s,qns)
+      out = kron(I(length(ms)),out)
+   elseif 9 ≤ id ≤ 11 #qua
+      pr = zeros(3)
+      pr[id-9] = 1.0
+      out = hqu(pr,j,s,qns)
+      out = kron(I(length(ms)),out)
+   else #user def
+      out = enact(ℋ[id-11],ψ,prm[id],ur,ut)
+      out .= sumder_2stg(out,id,prm,stg,ℋ,ψ)
+   end
+   return out
+end
+function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec,mmax)
+   mat = derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvec,mmax)
+   out = transpose(vec)*mat*vec
+   return diag(out)
+end
+function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
+   s = ctrl["S"]
+   nf = ctrl["NFOLD"]
+   σcnt = σcount(nf)
+   derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
+   msd = Int((ctrl["mmax"]+1)*(2s+1))
+   for sc in 1:σcnt
+      σ = sc - 1
+      ms = msgen(nf,ctrl["mcalc"],σ)
+      tvcs = tvecs[:,:,sc]
+      jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
+      for j in jsublist
+         #println(j)
+         jd = Int(2.0*j) + 1
+         sind, find = jvdest(j,s,ctrl["vtmax"]) 
+         qns = qngen(j,s)
+         vec = vecs[1:jd*msd,sind:find,sc]
+         for i in 1:length(perm)
+            pid = perm[i]
+            ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
+            derivs[sind:find,sc,i] = ders#*scl[pid]
+         end#perm loop
+      end #j loop
+   end#σ loop
+   return derivs
+end#function
+
+
 
 function build_hess!(hssn,jtw,jcbn,weights)
    mul!(jtw,jcbn',weights)
@@ -117,7 +199,10 @@ function invdiffmat(vals::Vector{Float64})::SparseMatrixCSC{Float64,Int}
    return sparse(Δ)
 end
 
-function jh_levels(vals,vecs,prm,ℋ)
+"""
+jh_levels calculates the jacobian & hessian for the /energy levels/
+"""
+function jh_levels(vals::Array{Float64},vecs::Array{Float64},prm::Vector{Float64},ℋ::Vector{Op})
    lp = length(perm)
    jac = zeros(length(vals,lp))
    hes = zeros(length(vals), Int( 0.5*lp*(1+lp) ))
