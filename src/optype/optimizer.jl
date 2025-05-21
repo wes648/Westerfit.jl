@@ -46,15 +46,37 @@ function dogleg_corr!(βlm,Δ,jtw,omc)
 end
 
 
-function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
+function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    STAGE = ctrl["stages"]
-if STAGE==1
-   vals,vecs, = tsrcalc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-elseif STAGE==2
-   vals,vecs,tvcs, = twostg_calc2(params,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
-else
-   println("Someday....")
-end
+   σs = σgen_indef(ctrl["NFOLD"])
+   σcnt = maximum(size(σs))
+   mcd = Int(2*ctrl["mcalc"]+1)
+   @show inds
+   @show maximum(inds[:,1])
+
+#I need to make the sublist
+
+   if ctrl["stages"]==1
+      println("time for a one stage fit")
+      sd = Int(2*ctrl["S"]+1)
+      vtd = ctrl["vtmax"] + 1
+      jfd = sd*Int(sum(2.0 .* nlist .+ 1.0))
+      vals = zeros(Float64,jfd*vtd,σcnt)
+      vecs = zeros(Float64,Int(sd*(2*ctrl["Jmax"]+1)*mcd),jfd*vtd,σcnt)
+      @time vals,vecs = tsrcalc_1stg!(vals,vecs,nlist,σs,ctrl,params,stg,ℋ)
+   elseif ctrl["stages"]==2
+      sd = Int(2*ctrl["S"]+1)
+      vtd = ctrl["vtmax"] + 1
+      jfd = sd*Int(sum(2.0 .* nlist .+ 1.0))
+      vals = zeros(Float64,jfd*vtd,σcnt)
+      vl = sd*(2*ctrl["Jmax"]+1)*(ctrl["mmax"]+1)
+      vecs = zeros(Float64,Int(vl),jfd*vtd,σcnt)
+      #initialize tvecs
+      tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
+@time vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,nlist,σs,ctrl,params,stg,ℋ)
+   else
+      @warn "Invalid stages number"
+   end
    GEO = true
    BOLD = 1
    LIMIT = ctrl["maxiter"]

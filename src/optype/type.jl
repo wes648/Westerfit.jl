@@ -35,14 +35,17 @@ struct TPsi
    lng::Int
    function TPsi(nf,σ,mc=3)
       if length(nf) > 1
-         ms = msgen_indef(nf,mc,σ)
+         ms = msgen(nf,mc,σ)
       else
-         ms = [msgen(nf,mc,σ)]
-         σ = [σ]
+         ms = [msgen(nf,mc,σ[1])]
+      #   σ = [σ]
          nf = [nf]
       end
       lng = sum(length.(ms))
-      new(nf,ms,σ,lng)
+      new(nf,
+         ms,
+         σ,
+         lng)
    end
 end
 struct VPsi

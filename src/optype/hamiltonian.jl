@@ -1,5 +1,5 @@
 
-function enact_init(O::Op,ψ::RPsi,val)::SparseMatrixCSC{Float64,Int}#::Diagonal{Float64,Vector{Float64}}
+function enact_init(O::Op,ψ::RPsi,val)::SparseMatrixCSC{Float64,Int}
    #out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    out = O.a≠0 ? n2(0.5*val, ψ.N, O.a) : fill(0.5*val,ψ.lng)
    if O.b≠0; out .*= ns(ψ.J,ψ.S,ψ.N,O.b); end
@@ -118,21 +118,21 @@ end
 function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
    msd = (2*ctrl["mcalc"]+1)*length(ctrl["NFOLD"])
-   for j in jlist
-      jd = Int(2j+1)
-      dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) #<--------- CHECK
-      ϕ = RPsi(j,ctrl["S"]) #<--------- CHECK msgen
-      Hrot = hrot2(prm[1:4],ϕ) #<--------- CHECK spdiagm
+   for ind ∈ axes(jlist,1)
+      jd = Int(jlist[1,ind]+1)
+      sc = jlist[2,ind]
+      dest = jvdest2(0.5*jlist[1,ind],ctrl["S"],ctrl["vtmax"])
+      ϕ = RPsi(0.5*jlist[1,ind],ctrl["S"])
+      Hrot = hrot2(prm[1:4],ϕ)
       if ctrl["S"]≥1.0
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ) + hqu(prm[9:11],ψ.J,ψ.S,ϕ)
       elseif ctrl["S"]==0.5
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ)
       end
-#      Hrot = sparse(Symmetric(Hrot,:L)) #<--------- CHECK maybe cleaner way to do this
-      for sc in 1:σcnt
-         ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"])) #<--------- CHECK
-         vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc]) #<--------- CHECK
-      end#σs
+#      for sc in 1:σcnt
+         ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
+         vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
+#      end#σs
    end#j
    return vals, vecs
 end#f
@@ -183,7 +183,8 @@ function enact_stg2(O::Op,ψ::Psi,val,tvcs,mc,ur,ut)::SparseMatrixCSC{Float64,In
    #printstyled("stop\n",color=:red)
    return out #<- dispatch 
 end
-function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,vals,stgs,siz,tvcs,mc)::SparseMatrixCSC{Float64,Int}
+function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,vals,stgs,siz,tvcs,mc
+      )::SparseMatrixCSC{Float64,Int}
    Ur = ur(ψ.R.J,ψ.R.S)
    Ut = ur(mc)
    part = spzeros(size(Hmat))
@@ -199,11 +200,13 @@ function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,vals,stgs,siz,tvcs,mc)::SparseM
    return Hmat
 end
 
-function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},ψ::Psi,prm,stg)
+function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},
+                  ψ::Psi,prm,stg)
    #printstyled("ψ.J = $(ψ.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
    H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
    H[diagind(H)] .+= kron(tvals, ones(Int((2ψ.R.J+1)*(2ψ.R.S+1)) ))
-   h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),tvecs,ctrl["mcalc"])
+   h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),
+               tvecs,ctrl["mcalc"])
    #tplus!(H)
    #wangtrans2!(H,ctrl["mmax"],ψ)
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
@@ -241,7 +244,8 @@ for j in jlist
    Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt
       ϕ = Psi(ψ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
-      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals[:,sc],tvecs[:,:,sc],ℋ,ϕ,prm,stg)
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals[:,sc],tvecs[:,:,sc],
+                                                ℋ,ϕ,prm,stg)
    end#σs
 end#j
    return vals,vecs,tvals,tvecs

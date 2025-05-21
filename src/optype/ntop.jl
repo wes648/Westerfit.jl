@@ -61,7 +61,7 @@ function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
    return marray
 end
 
-function msgen_indef(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,Int}}
+function msgen(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,Int}}
    out = Vector{StepRange{Int,Int}}(undef,length(nf))
    for j in eachindex(nf)
       out[j] = msgen(nf[j],mcalc,σs[j])

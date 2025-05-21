@@ -464,3 +464,74 @@ else
 end#if
    return μs
 end#function
+
+
+function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
+   #converts the input file into a more code friendly format
+   #           1  2  3   4   5  6  7  8   9  10  11   12
+   #input  = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
+   #           1  2   3   4  5   6
+   #output = [ju σu indu jl σl indl]
+if length(lns[1,:]) != 12
+    println("Wrong number of columns in .lne file")
+end
+if nf≠zero(nf) && isodd(nf)
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] = Int.(mod.(qunus[:,5],nf))
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] = Int.(mod.(qunus[:,10],nf))
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+elseif nf≠zero(nf) && iseven(nf)
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] = (mod.(2 .*qunus[:,5],Int(0.5*nf)))
+   inds[:,3] = qn2ind.(Int(0.5*nf),vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] = Int.(mod.(qunus[:,10],Int(0.5*nf)))
+   inds[:,6] = qn2ind.(Int(0.5*nf),vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+else
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,2] .= 0
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   inds[:,5] .= 0
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+end
+   return inds, freqs, uncs
+end
+
+function qn2ind(nf,vtm,m,j,s,n,ka,kc)
+   if (nf≠zero(nf))
+   #ka = abs(ka)
+   ind = sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(vtm+1)
+   #ind += (vtm+floor(Int,m/nf))*(2*j+1) #<--- This function is wrong for vt≠0
+   ind *= Int(2s+1)
+   ind += (ceil(Int,0.5*vtm) + floor(Int,m/nf))*(2*j+1)
+   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + kakc2k(n,ka,kc) + 1
+   ind = convert(Int,ind)
+   return ind
+   else
+   return qn2ind(j,s,n,ka,kc)
+   end
+end
+function kakc2k(n,ka,kc)
+   ka = abs(ka)
+   if iseven(n+ka+kc)
+      return ka*powneg1(n+ka)
+   else isodd(n+ka+kc)
+      return -ka*powneg1(n+ka)
+   end
+#   return ka*powneg1(n+ka+kc)
+end

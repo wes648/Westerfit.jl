@@ -3,6 +3,7 @@
 This file is the actual implementation of the information in types.Jl & baseops.Jl
 """
 
+using Base.Threads
 using DelimitedFiles
 using FunctionWrappers
 import FunctionWrappers: FunctionWrapper
@@ -30,6 +31,8 @@ include("@__DIR__/../hamiltonian.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
 include("@__DIR__/../transitions.jl")
+include("@__DIR__/../opt-com.jl")
+include("@__DIR__/../optimizer.jl")
 
 const csl::Float64 = 29979.2458
 
@@ -43,7 +46,8 @@ function westereng(molnam::String,ctrl)
    σs = σgen_indef(ctrl["NFOLD"])
    σcnt = maximum(size(σs))
    sd = Int(2*ctrl["S"]+1)
-   jlist = collect(0.5*iseven(sd):ctrl["Jmax"])
+#   jlist = collect(0.5*iseven(sd):ctrl["Jmax"])
+   jlist = collect(iseven(sd):2:Int(2*ctrl["Jmax"]))
    mcd = Int(2*ctrl["mcalc"]+1)
 
    #initialize vals
@@ -56,9 +60,9 @@ function westereng(molnam::String,ctrl)
    elseif ctrl["stages"]==2
       vl = sd*(2*ctrl["Jmax"]+1)*(ctrl["mmax"]+1)
       vecs = zeros(Float64,Int(vl),jfd*vtd,σcnt)
+      #initialize tvecs
+      tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
    end
-   #initialize tvecs
-   tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
 #   #do the energy level calculation
    if ctrl["stages"]==1
       @time vals,vecs = tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stgs,ℋ)
@@ -136,12 +140,44 @@ function westermain(molnam::String)
    end
 end
 
+
+function westerfit(molnam::String,ctrl::Dict{String,Any})
+"""
+   The fitter!
+"""
+   println("westerfit!")
+   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
+   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
+   #if occursin("F",ctrl["RUNmode"]) #Normal Fit behavior, overpowers check
+      lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#',
+                     skipblanks=true)
+      linelength = (size(lines,1))
+#   else # Self-consistency check
+#      lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
+#      lines = pred2lne(lines,ctrl["S"])
+#   end
+
+   #determine the states
+   linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],ctrl["vtmax"])
+   #@show linds
+   jlist = jlister(linds)
+   @show jlist
+   #opt
+   #outputinit(molnam,prm,err,linelength,ctrl)
+   tsrp, pcov, omcs, cfrqs, vals = lbmq(ctrl,jlist,ofreqs,luncs,linds,
+                                             prm,err,ℋ,stgs,molnam)
+   reswritter(molnam,lines,omcs,cfrqs)
+   return tsrp, pcov
+end
+
+
 #Base.@ccallable function main()::Cint
 function main(molnam)
    #molanm = ARGS[1]
    ctrl = blockfind_all(molnam)
    ctrl = ctrlinp(molnam,ctrl)
-   vals,vecs,qns,tvecs = westereng(molnam,ctrl)
-   westersim(molnam,ctrl,vals,vecs,qns,tvecs)
+   #vals,vecs,qns,tvecs = westereng(molnam,ctrl)
+   #westersim(molnam,ctrl,vals,vecs,qns,tvecs)
+   westerfit(molnam,ctrl)
    return 0
 end
