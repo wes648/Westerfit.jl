@@ -119,20 +119,18 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
    msd = (2*ctrl["mcalc"]+1)*length(ctrl["NFOLD"])
    for ind ∈ axes(jlist,1)
-      jd = Int(jlist[1,ind]+1)
-      sc = jlist[2,ind]
-      dest = jvdest2(0.5*jlist[1,ind],ctrl["S"],ctrl["vtmax"])
-      ϕ = RPsi(0.5*jlist[1,ind],ctrl["S"])
+      jd = Int(jlist[ind,1]+1)
+      sc = jlist[ind,2]
+      dest = jvdest2(0.5*jlist[ind,1],ctrl["S"],ctrl["vtmax"])
+      ϕ = RPsi(0.5*jlist[ind,1],ctrl["S"])
       Hrot = hrot2(prm[1:4],ϕ)
       if ctrl["S"]≥1.0
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ) + hqu(prm[9:11],ψ.J,ψ.S,ϕ)
       elseif ctrl["S"]==0.5
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ)
       end
-#      for sc in 1:σcnt
-         ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
-         vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
-#      end#σs
+      ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
    end#j
    return vals, vecs
 end#f

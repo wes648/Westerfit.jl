@@ -24,6 +24,7 @@ end
 include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
+include("@__DIR__/../derivatives.jl")
 include("@__DIR__/../file_in.jl")
 include("@__DIR__/../file_out.jl")
 include("@__DIR__/../hc_ham.jl")
@@ -37,6 +38,7 @@ include("@__DIR__/../optimizer.jl")
 const csl::Float64 = 29979.2458
 
 BLAS.set_num_threads(Threads.nthreads())
+@show Threads.nthreads()
 
 function westereng(molnam::String,ctrl)
 # 14 april 25, half the time here is from set up. should look into that
@@ -161,11 +163,10 @@ function westerfit(molnam::String,ctrl::Dict{String,Any})
    linds, ofreqs, luncs = lineprep(lines,ctrl["NFOLD"],ctrl["S"],ctrl["vtmax"])
    #@show linds
    jlist = jlister(linds)
-   @show jlist
    #opt
-   #outputinit(molnam,prm,err,linelength,ctrl)
+   #outputinit(molnam,prm,errs,linelength,ctrl)
    tsrp, pcov, omcs, cfrqs, vals = lbmq(ctrl,jlist,ofreqs,luncs,linds,
-                                             prm,err,ℋ,stgs,molnam)
+                                             prm,errs,ℋ,stgs,molnam)
    reswritter(molnam,lines,omcs,cfrqs)
    return tsrp, pcov
 end

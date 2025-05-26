@@ -205,7 +205,7 @@ function secordinp(molnam::String,ctrl)
    #println(file)
    tpz = zeros(Int,2,length(ctrl["NFOLD"]))
    val = zeros(Float64,11)
-   err = zeros(Float64,11)
+   errs = zeros(Float64,11)
    nams = 
    for i in 1:len
       nam = string(strip(file[i,1]))
@@ -214,14 +214,14 @@ function secordinp(molnam::String,ctrl)
       if nam ∈ keys(secns)
          ind = secns[nam] #get(secns, nam, 19)
          val[ind] = nvl
-         err[ind] = file[i,3]
+         errs[ind] = file[i,3]
       elseif occursin("F",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl["NFOLD"]))
          tmp[1,n] = 2
          push!(val,csl*nvl)
          push!(ℋ, Op(nam,tp=tmp))
-         push!(err,file[i,3])
+         push!(errs,file[i,3])
          push!(stg,1)
       elseif occursin("V",nam) && !iszero(nvl)
          n = tornamind(nam)
@@ -229,7 +229,7 @@ function secordinp(molnam::String,ctrl)
          tmp[2,n] = 1+iseven(ctrl["NFOLD"][n])
          push!(ℋ, Op(nam,rf=[OpFunc(E,1)],tp=zero(tmp)), Op(nam,tp=tmp))
          push!(val, 0.5*csl*nvl, -1.0)
-         push!(err,file[i,3],0)
+         push!(errs,file[i,3],0)
          push!(stg,1,-1)
       elseif occursin("ρ",nam) && !iszero(nvl)
          #okay so users will be restriced to an F ρz ρx ordering
@@ -246,7 +246,7 @@ function secordinp(molnam::String,ctrl)
             val[1] += csl*file[i-1,2]*nvl^2 #A -> Aeff
             #@show file[i-1,2]*file[i,2]
          end
-         push!(err,file[i,3])
+         push!(errs,file[i,3])
          push!(stg,0)
       elseif occursin("η",nam) && !iszero(nvl)
          n = tornamind(nam)
@@ -258,7 +258,7 @@ function secordinp(molnam::String,ctrl)
             push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sz,1)] ))
          end
          push!(val,nvl)
-         push!(err,file[i,3])
+         push!(errs,file[i,3])
          push!(stg,0)
       elseif iszero(nvl)
       else
@@ -268,7 +268,7 @@ function secordinp(molnam::String,ctrl)
    val[1:11] = sod2prep_lim(val[1:11])
    #val, err = epszxcheck!(val,err)
    #@show val
-   return val, err, ℋ, stg
+   return val, errs, ℋ, stg
 end
 
 function unitdict()::Dict{String,Float64}
@@ -466,48 +466,56 @@ end#if
 end#function
 
 
-function lineprep(lns,nf,s,vtm)#THIS NEEDS TO BE REWORKED FOR VTM behavior
+function lineprep(lns,nf,s,vtm)
    #converts the input file into a more code friendly format
    #           1  2  3   4   5  6  7  8   9  10  11   12
-   #input  = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
-   #           1  2   3   4  5   6
-   #output = [ju σu indu jl σl indl]
-if length(lns[1,:]) != 12
+   #input1 = [ju nu kau kcu mu jl nl kal kcl ml freq unc]
+   #           1  2  3   4   5   6  7  8  9   10  11 12  13   14
+   #input2 = [ju nu kau kcu vtu σu jl nl kal kcl vtl σl freq unc]
+   #           1  2   3   4   5   6
+   #output = [ju scu indu jl scl indl]
+if length(lns[1,:]) == 12
+   nf = iseven(nf) ? Int(0.5*nf) : nf
+   qunus = lns[:,1:10]
+   freqs = lns[:,11]
+   uncs = lns[:,12]
+   inds = zeros(Int,size(lns,1),6)
+   #J_u
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   #ind_u
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   #J_l
+   inds[:,4] = Int.(2 .* qunus[:,6])
+   #ind_l
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
+   if !iszero(nf) #derive sc from m
+      #sc_u
+      inds[:,2] = Int.(mod.(qunus[:, 5],nf)) .+ 1
+      #sc_l
+      inds[:,5] = Int.(mod.(qunus[:,10],nf)) .+ 1
+   else
+      inds[:,2] .= 1
+      inds[:,5] .= 1
+   end
+elseif length(lns[1,:]) == 14 #still working on
+   nf = iseven(nf) ? Int(0.5*nf) : nf
+   qunus = lns[:,1:12]
+   freqs = lns[:,13]
+   uncs = lns[:,14]
+   qunus[:,  5] = @. ceil(Int,0.5*lns[:, 5])*powneg1(isodd(lns[:, 5]))*nf
+   qunus[:, 11] = @. ceil(Int,0.5*lns[:,11])*powneg1(isodd(lns[:,11]))*nf
+
+   inds = zeros(Int,size(lns,1),6)
+   inds[:,1] = Int.(2 .* qunus[:,1])
+   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
+   inds[:,4] = Int.(2 .* qunus[:,7])
+   inds[:,6] = qn2ind.(nf,vtm,qunus[:,11],qunus[:,7],s,qunus[:,8],qunus[:,9],qunus[:,10])
+
+   inds[:,2] = Int.(mod.(qunus[:, 6],nf)) .+ 1
+   inds[:,5] = Int.(mod.(qunus[:,11],nf)) .+ 1
+
+else #length(lns[1,:]) != 12
     println("Wrong number of columns in .lne file")
-end
-if nf≠zero(nf) && isodd(nf)
-   qunus = lns[:,1:10]
-   freqs = lns[:,11]
-   uncs = lns[:,12]
-   inds = zeros(Int,size(lns,1),6)
-   inds[:,1] = Int.(2 .* qunus[:,1])
-   inds[:,2] = Int.(mod.(qunus[:,5],nf))
-   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
-   inds[:,4] = Int.(2 .* qunus[:,6])
-   inds[:,5] = Int.(mod.(qunus[:,10],nf))
-   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
-elseif nf≠zero(nf) && iseven(nf)
-   qunus = lns[:,1:10]
-   freqs = lns[:,11]
-   uncs = lns[:,12]
-   inds = zeros(Int,size(lns,1),6)
-   inds[:,1] = Int.(2 .* qunus[:,1])
-   inds[:,2] = (mod.(2 .*qunus[:,5],Int(0.5*nf)))
-   inds[:,3] = qn2ind.(Int(0.5*nf),vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
-   inds[:,4] = Int.(2 .* qunus[:,6])
-   inds[:,5] = Int.(mod.(qunus[:,10],Int(0.5*nf)))
-   inds[:,6] = qn2ind.(Int(0.5*nf),vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
-else
-   qunus = lns[:,1:10]
-   freqs = lns[:,11]
-   uncs = lns[:,12]
-   inds = zeros(Int,size(lns,1),6)
-   inds[:,1] = Int.(2 .* qunus[:,1])
-   inds[:,2] .= 0
-   inds[:,3] = qn2ind.(nf,vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
-   inds[:,4] = Int.(2 .* qunus[:,6])
-   inds[:,5] .= 0
-   inds[:,6] = qn2ind.(nf,vtm,qunus[:,10],qunus[:,6],s,qunus[:,7],qunus[:,8],qunus[:,9])
 end
    return inds, freqs, uncs
 end

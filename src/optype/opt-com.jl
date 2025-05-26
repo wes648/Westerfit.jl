@@ -9,7 +9,7 @@ end
 function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
    out = 2β' * (λ*Diagonal(h)*β + jtw*omc)
    if out < 0
-      printstyled("fucking gain function",color=:light_cyan)
+      printstyled("fucking gain function\n",color=:light_cyan)
    end
 #   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
    out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
@@ -46,13 +46,8 @@ end
 
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
-   #@show size(inds)
-   #@show inds
-   #@show size(ofreqs)
-   #@show size(vals)
-   #@show inds[1:5,:]
    @threads for i in 1:size(cfreqs,1)
-      cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
+      cfreqs[i] = vals[inds[i,3],inds[i,2]] - vals[inds[i,6],inds[i,5]]
    end
    #println(cfreqs)
    omc = ofreqs - cfreqs
@@ -113,7 +108,7 @@ function covarr2(hess,omc)
 end
 
 function permdeterm(scls,stgs)
-   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]
+   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(11),stgs) .> 0)]
 end
 
 function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)

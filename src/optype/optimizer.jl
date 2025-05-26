@@ -51,8 +51,6 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    σs = σgen_indef(ctrl["NFOLD"])
    σcnt = maximum(size(σs))
    mcd = Int(2*ctrl["mcalc"]+1)
-   @show inds
-   @show maximum(inds[:,1])
 
 #I need to make the sublist
 
@@ -60,16 +58,16 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       println("time for a one stage fit")
       sd = Int(2*ctrl["S"]+1)
       vtd = ctrl["vtmax"] + 1
-      jfd = sd*Int(sum(2.0 .* nlist .+ 1.0))
+      jfd = sd*Int(sum(2.0 .* unique(nlist[:,1]) .+ 1.0))
       vals = zeros(Float64,jfd*vtd,σcnt)
-      vecs = zeros(Float64,Int(sd*(2*ctrl["Jmax"]+1)*mcd),jfd*vtd,σcnt)
+      vecs = zeros(Float64,Int(sd*(2*maximum(nlist[:,1])+1)*mcd),jfd*vtd,σcnt)
       @time vals,vecs = tsrcalc_1stg!(vals,vecs,nlist,σs,ctrl,params,stg,ℋ)
    elseif ctrl["stages"]==2
       sd = Int(2*ctrl["S"]+1)
       vtd = ctrl["vtmax"] + 1
-      jfd = sd*Int(sum(2.0 .* nlist .+ 1.0))
+      jfd = sd*Int(sum(2.0 .* unique(nlist[:,1]) .+ 1.0))
       vals = zeros(Float64,jfd*vtd,σcnt)
-      vl = sd*(2*ctrl["Jmax"]+1)*(ctrl["mmax"]+1)
+      vl = sd*(2*maximum(nlist[:,1])+1)*(ctrl["mmax"]+1)
       vecs = zeros(Float64,Int(vl),jfd*vtd,σcnt)
       #initialize tvecs
       tvecs = zeros(2*ctrl["mcalc"]+1,ctrl["mmax"]+1,σcnt)
@@ -113,12 +111,16 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    H = zeros(length(perm),length(perm))
    if STAGE==1
    println("welcome to 1 stage")
-   J = build_jcbn2!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
+   #J = build_jcbn!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg)
+   build_jcbn!(J,inds,nlist,ℋ,ctrl,perm,vecs,params,scales,stg)
    elseif STAGE==2
    build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,vecs,params,perm,scales,stg,tvcs)
    else
    println("Someday....")
    end
+   @show J ≈ zero(J)
+   @show typeof(J)
+   @show typeof(zero(J))
    #jtw = J' * W
    #J, w, omc = linereject(J,W,omc,uncs,ctrl["REJECT"])
    build_hess!(H,jtw,J,W)
@@ -162,7 +164,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
 
       nparams[perm] .+= β
       if STAGE==1
-      nvals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      #nvals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
+      @time nvals,nvecs = tsrcalc_1stg!(nvals,nvecs,nlist,σs,ctrl,params,stg,ℋ)
       elseif STAGE==2
       nvals,nvecs,tvcs, = twostg_calc2(nparams,stg,cdo,ctrl["NFOLD"],ctrl,nlist)
       else

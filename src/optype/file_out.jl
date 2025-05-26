@@ -809,6 +809,15 @@ function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
    close(io)
 end
 
+function outputstart(molnam,λ,rms)
+   io = open("$molnam.out", "a")
+   println(io,"Initial RMS = $rms MHz")
+   println(io,"Initial λ = $λ")
+   println(io,"")
+   println(io,"-------------------------------------")
+   println(io,"")
+   close(io)
+end
 function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
 
    strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)

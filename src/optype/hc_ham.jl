@@ -92,17 +92,17 @@ function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    nds = nindsgen(ψ.N)
    out = spzeros(ψ.lng,ψ.lng)
    sfact = 0.25*inv(wig3j(S,2,S, -S,0,S))*powneg1(J+S+1)
-   for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
-      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+   for i ∈ 1:length(ψ.N), j ∈ i:min(i+2,length(ψ.N))
+      nk = ψ.N[j]; nb = ψ.N[i]; ks = ψ.K[i]; Δ = nb - nk
       blck = view(out,nds[j],nds[i])
-      fac = qured(J,S,nb,nk)*powneg1(nb+nk)*sfact
-      #starts at 0 for Δ=0 rather than 2 to skip portion of upper triangle
-      for p ∈ (-2-Δ):δi(Δ,1) 
-         q = Δ+p
+      fac = qured(J,S,nb,nk)*powneg1(nb+nk+1)*sfact
+      #rng = 
+   @threads for q ∈ -2: 2*(1-δi(Δ,0))
+         p = Δ+q
          dest = diagind(blck,p)
          kl = ks[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         blck[dest] = srelem(pr[1+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,q)
+         blck[dest] .= quelem(pr[1+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,q)
       end
    end
    dropzeros!(out)

@@ -15,7 +15,7 @@ hessian - birss 2 stage
 
 function sumder(out::SparseMatrixCSC{Float64,Int},
                 id::Int,prm::Vector{Float64},stg::Vector{Int},
-                ℋ::Vector{Op},ψ::Psi)
+                ℋ::Vector{Op},ψ::Psi,ur,ut)
    ind = id+1
    if ind ≤ length(stg)+11
       check = stg[ind-11]
@@ -38,33 +38,36 @@ function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
    elseif id ≤ 4 #pure rot
       pr = zeros(4)
       pr[id] = 1.0
-      out = hrot2(pr,qns)
-      out = kron(I(length(ms)),out)
+      out = hrot2(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
    elseif 5 ≤ id ≤ 8 #spin-rot
       pr = zeros(5)
       pr[id-4] = 1.0
-      out = hsr(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
+      out = hsr(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
    elseif 9 ≤ id ≤ 11 #qua
       pr = zeros(3)
       pr[id-9] = 1.0
-      out = hqu(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
+      out = hqu(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
    else #user def
-      out = enact(ℋ[id-11],ψ,prm[id],ur,ut)
-      out .= sumder(out,id,prm,stg,ℋ,ψ)
+      UR = ur(ψ.R.J,ψ.R.S)
+      UT = ur(Int( 0.5*(length(ψ.T.ms[1])-1) ))
+      out = enact(ℋ[id-11],ψ,prm[id],UR,UT)
+      out .= sumder(out,id,prm,stg,ℋ,ψ,UR,UT)
    end
    return out
 end
 function anaderiv(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
-                  ℋ::Vector{Op},ψ::Psi,vec::Vector{Float64})::Vector{Float64}
+                  ℋ::Vector{Op},ψ::Psi,vec)
    mat = derivmat(id,prm,scl,stg,ℋ,ψ)
    out = transpose(vec)*mat*vec
    return out #diag(out)
 end
-function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)::Matrix{Float64}
+function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)#::Matrix{Float64}
    s = ctrl["S"]
    mcalc = ctrl["mcalc"]
+   msd = (2*mcalc+1)*length(ctrl["NFOLD"])
    σs = σgen_indef(ctrl["NFOLD"])
    σcnt = maximum(size(σs))
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
@@ -75,14 +78,14 @@ function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)::Matrix{Float64}
       for j in jsublist
          ψ = Psi(RPsi(j,s),ϕ)
          jd = Int(2.0*j) + 1
-         sind, find = jvdest(j,s,ctrl["vtmax"]) 
-         qns = qngen(j,s)
-         vec = vecs[1:jd*msd,sind:find,sc]
+         dest = jvdest2(j,s,ctrl["vtmax"]) 
+         #qns = qngen(j,s)
+         vec = vecs[1:jd*msd,dest,sc]
          for i in 1:length(perm)
             #pid = perm[i]
             #ders = anaderive(pid,prm,scl,stg,ℋ,ψ,vec)
             #derivs[sind:find,sc,i] = ders#*scl[pid]
-      derivs[sind:find,sc,i] = diag(anaderiv(perm[i],prm,scl,stg,ℋ,ψ,vec))
+      derivs[dest,sc,i] = diag(anaderiv(perm[i],prm,scl,stg,ℋ,ψ,vec))
          end#perm loop
       end #j loop
    end#σ loop
@@ -91,12 +94,13 @@ end#function
 function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
 #   jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
-   @threads for p in 1:length(perm)
-      @simd for a in 1:size(inds,1)
-         jcbn[a,p] .= deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
+   for p in 1:length(perm)
+      for a in 1:size(inds,1)
+         v = deriv[inds[a,3],inds[a,2],p] - deriv[inds[a,6],inds[a,5],p]
+         jcbn[a,p] = v
       end
    end
-   #@show jcbn
+   @show jcbn ≈ zero(jcbn)
    return jcbn
 end
 
@@ -222,7 +226,7 @@ function jh_levels(vals::Array{Float64},vecs::Array{Float64},prm::Vector{Float64
          for j ∈ 1:i#i:length(perm)
             ind_der = (i-1)*lp + j
    hes[inds,inds,ind_der] = sum(der_block[:,:,i] .* Δ .* der_block[:,:,j],dims=2) 
-         end#nested
+         end;end#nested
       end#σs
    end#j
    return jac,hes
@@ -246,7 +250,7 @@ function jh_levels_2stg(vals::Array{Float64},vecs::Array{Float64,2},
          for j ∈ 1:i#i:length(perm)
             ind_der = (i-1)*lp + j
    hes[inds,inds,ind_der] = sum(der_block[:,:,i] .* Δ .* der_block[:,:,j],dims=2) 
-         end#nested
+         end;end#nested
       end#σs
    end#j
    return jac,hes
