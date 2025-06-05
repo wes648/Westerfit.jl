@@ -65,20 +65,20 @@ function anaderiv(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
    return out #diag(out)
 end
 function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)#::Matrix{Float64}
-   s = ctrl["S"]
-   mcalc = ctrl["mcalc"]
-   msd = (2*mcalc+1)*length(ctrl["NFOLD"])
-   σs = σgen_indef(ctrl["NFOLD"])
+   s = ctrl.S
+   mcalc = ctrl.mcalc
+   msd = (2*mcalc+1)*length(ctrl.NFOLD)
+   σs = σgen_indef(ctrl.NFOLD)
    σcnt = maximum(size(σs))
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
    for sc in 1:σcnt
       σ = σs[:,sc]
-      ϕ = TPsi(ctrl["NFOLD"],σ,mcalc)
-      jsublist = jlist[isequal.(jlist[:,2],sc-1), 1] .* 0.5 #<-----NEED NEW JLIST FUNCTION
+      ϕ = TPsi(ctrl.NFOLD,σ,mcalc)
+      jsublist = jlist[isequal.(jlist[:,2],sc), 1] .* 0.5 #<-----NEED NEW JLIST FUNCTION
       for j in jsublist
          ψ = Psi(RPsi(j,s),ϕ)
          jd = Int(2.0*j) + 1
-         dest = jvdest2(j,s,ctrl["vtmax"]) 
+         dest = jvdest2(j,s,ctrl.vtmax) 
          #qns = qngen(j,s)
          vec = vecs[1:jd*msd,dest,sc]
          for i in 1:length(perm)
@@ -97,10 +97,9 @@ function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
    for p in 1:length(perm)
       for a in 1:size(inds,1)
          v = deriv[inds[a,3],inds[a,2],p] - deriv[inds[a,6],inds[a,5],p]
-         jcbn[a,p] = v
+         jcbn[a,p] = -v
       end
    end
-   @show jcbn ≈ zero(jcbn)
    return jcbn
 end
 
@@ -150,25 +149,25 @@ function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec,mmax)
    return diag(out)
 end
 function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
-   s = ctrl["S"]
-   nf = ctrl["NFOLD"]
+   s = ctrl.S
+   nf = ctrl.NFOLD
    σcnt = σcount(nf)
    derivs = zeros(Float64,size(vecs,2),σcnt,length(perm))
-   msd = Int((ctrl["mmax"]+1)*(2s+1))
+   msd = Int((ctrl.mmax+1)*(2s+1))
    for sc in 1:σcnt
       σ = sc - 1
-      ms = msgen(nf,ctrl["mcalc"],σ)
+      ms = msgen(nf,ctrl.mcalc,σ)
       tvcs = tvecs[:,:,sc]
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
       for j in jsublist
          #println(j)
          jd = Int(2.0*j) + 1
-         sind, find = jvdest(j,s,ctrl["vtmax"]) 
+         sind, find = jvdest(j,s,ctrl.vtmax) 
          qns = qngen(j,s)
          vec = vecs[1:jd*msd,sind:find,sc]
          for i in 1:length(perm)
             pid = perm[i]
-            ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
+            ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl.mmax)
             derivs[sind:find,sc,i] = ders#*scl[pid]
          end#perm loop
       end #j loop
@@ -216,7 +215,7 @@ function jh_levels(vals::Array{Float64},vecs::Array{Float64},prm::Vector{Float64
       n = #size of basis set
       der_block = zeros(n,n,lp)
       for sc ∈ σcnt
-         inds = dest = jvdest2(j,ctrl["S"],ctrl["vtmax"])
+         inds = dest = jvdest2(j,ctrl.S,ctrl.vtmax)
          vpart = vecs[1:n,inds,sc]
          Δi = invdiffmat(vals[inds,sc])
          for i ∈ lp
@@ -240,7 +239,7 @@ function jh_levels_2stg(vals::Array{Float64},vecs::Array{Float64,2},
       n = #size of basis set
       der_block = zeros(n,n,lp)
       for sc ∈ σcnt
-         inds = dest = jvdest2(j,ctrl["S"],ctrl["vtmax"])
+         inds = dest = jvdest2(j,ctrl.S,ctrl.vtmax)
          vpart = vecs[1:n,inds,sc]
          Δi = invdiffmat(vals[inds,sc])
          for i ∈ lp

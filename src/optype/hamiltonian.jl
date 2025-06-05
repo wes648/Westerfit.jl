@@ -83,13 +83,13 @@ function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
    U = kron(u,ur(ψ.J,ψ.S))
    H = droptol!(U*H*U,2*eps())
    vals,vecs = eigen!(Symmetric(Matrix(H)))
-   if (ctrl["assign"]=="ram36")||(ctrl["assign"]=="RAM36")
+   if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
       perm = ramassign(vecs,j,s,mcalc,vtm)
       vals = vals[perm]
       vecs = vecs[:,perm]
-   elseif ctrl["assign"]=="expectk"
+   elseif ctrl.assign =="expectk"
       vals, vecs = expectkassign!(vals,vecs,j,s,nf,mcalc,σ)      
-   elseif ctrl["assign"]=="eeo"
+   elseif ctrl.assign =="eeo"
       vals, vecs = eeoassign!(vals,vecs,j,s,nf,mcalc,σ)
    else
       vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
@@ -99,16 +99,16 @@ end
 function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
                   ℋ::Vector{Op},ψ::Psi,σs)
    H = kron(I(ψ.T.lng),Hr) #<--------- CHECK
-   H += enact(ℋ,ψ,vals[12:end],stgs,ur(ψ.R.J,ψ.R.S),ur(ctrl["mcalc"])) #<--------- CHECK
+   H += enact(ℋ,ψ,vals[12:end],stgs,ur(ψ.R.J,ψ.R.S),ur(ctrl.mcalc )) #<--------- CHECK
    #tplus!(H)
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
-   if (ctrl["assign"]=="ram36")||(ctrl["assign"]=="RAM36")
-      perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl["mcalc"],ctrl["vtmax"]) #<--------- CHECK
+   if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
+      perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl.mcalc ,ctrl.vtmax ) #<--------- CHECK
       vals = vals[perm]
       vecs = vecs[:,perm]
-   elseif ctrl["assign"]=="expectk"
-      vals, vecs = expectkassign!(vals,vecs,ψ.J,ψ.S,nf,ctrl["mcalc"],σ)      
-   elseif ctrl["assign"]=="eeo"
+   elseif ctrl.assign =="expectk"
+      vals, vecs = expectkassign!(vals,vecs,ψ.J,ψ.S,nf,ctrl.mcalc ,σ)      
+   elseif ctrl.assign =="eeo"
       vals, vecs = eeoassign!(vals,vecs,ψ.J,s,nf,mcalc,σ)
    else
       vals, vecs = expectassign!(vals,vecs,ψ.J,s,nf,mcalc,σ)
@@ -117,28 +117,28 @@ function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,s
 end
 function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)
-   msd = (2*ctrl["mcalc"]+1)*length(ctrl["NFOLD"])
+   msd = (2*ctrl.mcalc +1)*length(ctrl.NFOLD )
    for ind ∈ axes(jlist,1)
       jd = Int(jlist[ind,1]+1)
       sc = jlist[ind,2]
-      dest = jvdest2(0.5*jlist[ind,1],ctrl["S"],ctrl["vtmax"])
-      ϕ = RPsi(0.5*jlist[ind,1],ctrl["S"])
+      dest = jvdest2(0.5*jlist[ind,1],ctrl.S ,ctrl.vtmax )
+      ϕ = RPsi(0.5*jlist[ind,1],ctrl.S )
       Hrot = hrot2(prm[1:4],ϕ)
-      if ctrl["S"]≥1.0
+      if ctrl.S ≥1.0
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ) + hqu(prm[9:11],ψ.J,ψ.S,ϕ)
-      elseif ctrl["S"]==0.5
+      elseif ctrl.S ==0.5
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ)
       end
-      ψ = Psi(ϕ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
+      ψ = Psi(ϕ,TPsi(ctrl.NFOLD ,σs[:,sc],ctrl.mcalc ))
       vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
    end#j
    return vals, vecs
 end#f
 
 function torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,sc)
-   tsize = (2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"])
-   dest = 1:ctrl["mmax"]+1
-   H = torbuild(prm[12:end],ℋ,ϕ,stg,tsize,ctrl["mcalc"])
+   tsize = (2*ctrl.mcalc +1)^length(ctrl.NFOLD )
+   dest = 1:ctrl.mmax +1
+   H = torbuild(prm[12:end],ℋ,ϕ,stg,tsize,ctrl.mcalc )
    H = Matrix(H)
    H = eigen!(H)
    tvals[:,sc] = H.values[dest]
@@ -201,15 +201,15 @@ end
 function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},
                   ψ::Psi,prm,stg)
    #printstyled("ψ.J = $(ψ.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
-   H = kron(I(ctrl["mmax"]+1)^length(ctrl["NFOLD"]),Hr) 
+   H = kron(I(ctrl.mmax +1)^length(ctrl.NFOLD ),Hr) 
    H[diagind(H)] .+= kron(tvals, ones(Int((2ψ.R.J+1)*(2ψ.R.S+1)) ))
-   h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"]),
-               tvecs,ctrl["mcalc"])
+   h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl.mcalc +1)^length(ctrl.NFOLD ),
+               tvecs,ctrl.mcalc )
    #tplus!(H)
-   #wangtrans2!(H,ctrl["mmax"],ψ)
+   #wangtrans2!(H,ctrl.mmax ,ψ)
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    #@show vecs
-   perm = twostg_assign(vecs,ψ.R.J,ψ.R.S,ctrl["mmax"],ctrl["vtmax"])
+   perm = twostg_assign(vecs,ψ.R.J,ψ.R.S,ctrl.mmax ,ctrl.vtmax )
    vals = vals[perm]
    vecs = vecs[:,perm]
    #@show nnz(dropzeros(sparse(vals)))
@@ -218,30 +218,30 @@ end
 
 function tsrcalc_2stg!(vals,vecs,tvals,tvecs,jlist,σs,ctrl,prm,stg,ℋ)
    σcnt = size(σs,2)#this doesn't work for 1 top
-   tsize = (2*ctrl["mcalc"]+1)^length(ctrl["NFOLD"])
+   tsize = (2*ctrl.mcalc +1)^length(ctrl.NFOLD )
    for sc in 1:σcnt
-      ϕ = TPsi(ctrl["NFOLD"],σs[sc],ctrl["mcalc"])
+      ϕ = TPsi(ctrl.NFOLD ,σs[sc],ctrl.mcalc )
 #      @show σs[sc]
       torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,σs[:,sc])
       #tvals,tvecs = eigen!(Matrix(torbuild(ℋ,ϕ,stg,tsize)))
    end
-   msd = Int(2ctrl["S"]+1)*(ctrl["mmax"]+1)
+   msd = Int(2ctrl.S +1)*(ctrl.mmax +1)
 for j in jlist
    jd = Int(2j+1)
-   dest = jvdest2(j,ctrl["S"],ctrl["vtmax"]) 
-   ψ = RPsi(j,ctrl["S"])
+   dest = jvdest2(j,ctrl.S ,ctrl.vtmax ) 
+   ψ = RPsi(j,ctrl.S )
    Hrot = hrot2(prm[1:4],ψ)
-   if ctrl["S"]≥1.0
+   if ctrl.S ≥1.0
       Hrot += hqu(prm[9:11],ψ.J,ψ.S,ψ)
       if norm(prm[5:8]) > 0.0
          Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
       end
-   elseif ctrl["S"]==0.5
+   elseif ctrl.S ==0.5
       Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
    end
    Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt
-      ϕ = Psi(ψ,TPsi(ctrl["NFOLD"],σs[:,sc],ctrl["mcalc"]))
+      ϕ = Psi(ψ,TPsi(ctrl.NFOLD ,σs[:,sc],ctrl.mcalc ))
       vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_2(Hrot,ctrl,tvals[:,sc],tvecs[:,:,sc],
                                                 ℋ,ϕ,prm,stg)
    end#σs

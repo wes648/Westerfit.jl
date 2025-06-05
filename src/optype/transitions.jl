@@ -83,16 +83,16 @@ function jvlinds(j,s,vtm)
 end
 
 function intcalc(ctrl,vecs,tvecs,μf,σ)
-   s = ctrl["S"]
-   vtm = ctrl["vtmax"]
-   mc = ctrl["mcalc"]
-   nf = ctrl["NFOLD"]
-   jmax = ctrl["Jmax"]
-   stages = ctrl["stages"]
+   s = ctrl.S 
+   vtm = ctrl.vtmax 
+   mc = ctrl.mcalc 
+   nf = ctrl.NFOLD 
+   jmax = ctrl.Jmax 
+   stages = ctrl.stages 
    mΔj = 1
    jbjk = jbjklister(0.5*iseven(Int(2*s+1)),jmax,mΔj)
-   rmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
-   cmsd = Int((2*s+1)*(2*ctrl["mcalc"]+1))
+   rmsd = Int((2*s+1)*(2*ctrl.mcalc +1))
+   cmsd = Int((2*s+1)*(2*ctrl.mcalc +1))
    ints = spzeros(size(vecs,2),size(vecs,2))
 
    for i in 1:size(jbjk,1)
@@ -108,9 +108,9 @@ function intcalc(ctrl,vecs,tvecs,μf,σ)
       ψk = Psi( RPsi(jk,s), TPsi(nf,σ,mc) )
       #calculate intensities
       if stages==1
-         μs = bld_μmat_1s(ctrl["INTthres"],μf,ψb,ψk,bvecs,kvecs)
+         μs = bld_μmat_1s(ctrl.INTthres ,μf,ψb,ψk,bvecs,kvecs)
       elseif stages==2
-         μs = bld_μmat_ws(ctrl["INTthres"],μf,ψb,ψk,bvecs,kvecs,tvecs)
+         μs = bld_μmat_ws(ctrl.INTthres ,μf,ψb,ψk,bvecs,kvecs,tvecs)
       else
          @warn "this stage count $(stages) not implemented"
       end
@@ -165,13 +165,13 @@ end
 function tracalc(ctrl,vals,vecs,tvecs,qns,μf,σ,Qrt)
    ints = intcalc(ctrl,vecs,tvecs,μf,σ)
    rinds, cinds, = findnz(ints)
-   rinds, cinds, νs = freq_gen(ctrl["νmin"],ctrl["νmax"],ints,vals,rinds,cinds)
+   rinds, cinds, νs = freq_gen(ctrl.νmin ,ctrl.νmax ,ints,vals,rinds,cinds)
    @show size(νs)
    len = length(νs)
-   kbT = ctrl["TK"]*20836.61912 #MHz/K
+   kbT = ctrl.TK *20836.61912 #MHz/K
    outfrq = zeros(len,4)
    outqns = zeros(Int,len,12)
-   degen = (2*ctrl["S"]+1)*σdegen(σ)
+   degen = (2*ctrl.S +1)*σdegen(σ)
    for i in 1:len
       ν = νs[i]
       r = rinds[i]
@@ -194,7 +194,7 @@ function tracalc(ctrl,vals,vecs,tvecs,qns,μf,σ,Qrt)
          outqns[i,7:12] = qns[r,:]
       end
    end
-   check = outfrq[:,2] .> ctrl["INTthres"]
+   check = outfrq[:,2] .> ctrl.INTthres 
    outfrq = outfrq[check,:]
    outqns = outqns[check,:]
    #println(outfrq)

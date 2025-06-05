@@ -12,17 +12,19 @@ function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
       printstyled("fucking gain function\n",color=:light_cyan)
    end
 #   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
-   out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
+   out = -2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
    return out
 end
 function lbmq_gain2(β,J,omc,nomc)::Float64
-   pred = sum(abs2, (J * β) .+ omc)
+   pred = sum(abs2, J*β + omc)
    actu = sum(abs2,nomc)
    curr = sum(abs2,omc)
-   #@show -pred - curr
-   #@show actu < curr
-   out = (actu - curr) / (-pred - curr)
-   #out = (curr - actu) / ( curr - pred)
+   #@show curr - pred > 0.0 
+   if curr - pred < 0.0
+      @warn "fucking gain function"
+   end
+#   @show curr - actu > 0.0 
+   out = (curr - actu) / (curr - pred)
    return out
 end
 
@@ -108,7 +110,7 @@ function covarr2(hess,omc)
 end
 
 function permdeterm(scls,stgs)
-   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(11),stgs) .> 0)]
+   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(11),stgs) .≥ 0)]
 end
 
 function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)

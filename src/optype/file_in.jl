@@ -1,4 +1,32 @@
 
+@kwdef struct Controls
+   NFOLD::Vector{Int} = [0]
+   S::Float64 = 0.0
+   TK::Float64 = 8.0
+   mcalc::Int = 8
+   vtmax::Int = 0
+   Jmax::Float64 = 0.
+   apology::Bool = true
+   νmin::Float64 = 0.0
+   νmax::Float64 = 40.0
+   INTthres::Float64 = 0.0001
+   λlm0::Float64 = 0.001
+   RUNmode::String = "ESF"
+   turducken::Int = 1
+   maxiter::Int = 60
+   overwrite::Bool = true 
+   assign::String = "ram36"
+   REJECT::Float64 = 10.0
+   Irrep::String = "Ir"
+   goal::Float64 = 1.0
+   mmax::Int = 6
+   stages::Int = 1 
+   ctbk::Vector{Int} = zeros(Int,2)
+   sobk::Vector{Int} = zeros(Int,2)
+   inbk::Vector{Int} = zeros(Int,2)
+   opbk::Vector{Int} = zeros(Int,2)
+end
+
 function ctrlinit()
    ctrl = Dict("NFOLD" => 0, "S" => 0., "TK" => 8.0, "mcalc" => 8, "vtmax" => 0,
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
@@ -54,44 +82,51 @@ function blockfind_all(molnam::String)#,ctrl)
       end
    end
    close(io)
-   #@show ctrl["ctbk"]
-   #@show ctrl["sobk"]
-   #@show ctrl["inbk"]
-   #@show ctrl["opbk"]
+   #@show ctrl.ctbk 
+   #@show ctrl.sobk 
+   #@show ctrl.inbk 
+   #@show ctrl.opbk 
    return ctrl
 end
 
-function ctrlinp(molnam::String,ctrl)
+function ctrlinp(molnam::String,dctrl)
 #   ctrl = ctrlinit()
-   blk = ctrl["ctbk"] #blockfind(molnam, "%CNTRLS")
+   blk = dctrl["ctbk"]  #blockfind(molnam, "%CNTRLS")
    len = blk[2] - blk[1] - 1
-#   ctrl["ctbk"] = blk
+#   ctrl.ctbk  = blk
    file = readdlm(pwd()*"/"*molnam*".inp",'=', skipstart=blk[1],comments=true,comment_char='#')
    for i in 1:len
       nam = strip(file[i,1])
       val = file[i,2]
-      ctrl[nam] = val
+      if (nam == "NFOLD")&&typeof(val)==Int
+         val = [val]
+      end
+      if typeof(val)==String
+         val = String(strip(val))
+      end
+      dctrl[nam] = val
    end
-   #trl["S"] = Float64(ctrl["S"])
-   if ctrl["apology"] == true
+   ctrl = Controls(; (Symbol.(keys(dctrl)) .=> values(dctrl))... )
+   #trlS  = Float64(ctrl.S )
+   if ctrl.apology  == true
       println("Sorry about the name...")
    end
-   if iseven(2*ctrl["Jmax"])&&isodd(2*ctrl["S"])
-      ctrl["Jmax"] += 0.5
+   if iseven(2*ctrl.Jmax )&&isodd(2*ctrl.S )
+      ctrl.Jmax  += 0.5
       println("Jmax must be half integer for half interger S. Adding 1/2")
-   elseif isodd(2*ctrl["Jmax"])&&iseven(2*ctrl["S"])
-      ctrl["Jmax"] += 0.5
+   elseif isodd(2*ctrl.Jmax )&&iseven(2*ctrl.S )
+      ctrl.Jmax  += 0.5
       println("Jmax must be integer for interger S. Adding 1/2")
    end
-   if ctrl["NFOLD"]==0
-      ctrl["mcalc"] = 0
-      ctrl["vtmax"] = 0
-   elseif length(ctrl["NFOLD"]) > 1
+   if ctrl.NFOLD ==0
+      ctrl.mcalc  = 0
+      ctrl.vtmax  = 0
+   elseif length(ctrl.NFOLD ) > 1
       println("\nYou are running westerfit in ntop mode")
       println("By using this mode, you agree to not complain about the runtime of the program\n")
    end
-   ctrl["assign"] = strip(ctrl["assign"])
-   ctrl["Irrep"] = String(strip(ctrl["Irrep"]))
+   #ctrl.assign  = strip(ctrl.assign )
+   #ctrl.Irrep  = String(strip(ctrl.Irrep ))
    #println(ctrl)
    return ctrl
 end
@@ -148,36 +183,36 @@ function epszxcheck!(prd::Array{Float64},scl::Array{Float64})
 end
 function irrepswap(irrep::String,sdict)
    if irrep=="Il"
-      sdict["A"] = 1
-      sdict["B"] = 3
-      sdict["C"] = 2
+      sdictA  = 1
+      sdictB  = 3
+      sdictC  = 2
    elseif irrep=="IIr"
-      sdict["A"] = 2
-      sdict["B"] = 3
-      sdict["C"] = 1
+      sdictA  = 2
+      sdictB  = 3
+      sdictC  = 1
    elseif irrep=="IIl"
-      sdict["A"] = 2
-      sdict["B"] = 1
-      sdict["C"] = 3
+      sdictA  = 2
+      sdictB  = 1
+      sdictC  = 3
    elseif irrep=="IIIr"
-      sdict["A"] = 3
-      sdict["B"] = 1
-      sdict["C"] = 2
+      sdictA  = 3
+      sdictB  = 1
+      sdictC  = 2
    elseif irrep=="IIIl"
-      sdict["A"] = 3
-      sdict["B"] = 2
-      sdict["C"] = 1
+      sdictA  = 3
+      sdictB  = 2
+      sdictC  = 1
    else #Ir is default
-      sdict["A"] = 1
-      sdict["B"] = 2
-      sdict["C"] = 3
+      sdictA  = 1
+      sdictB  = 2
+      sdictC  = 3
    end
    return sdict
 end
 
 tornamind(str::String)::Int = occursin("_",str) ? parse(Int,split(str,"_")[2]) : 1
 function torstgsetter(stg::Vector{Int},ctrl)::Vector{Int}
-   if ctrl["stages"] > 1
+   if ctrl.stages  > 1
       for i in eachindex(stg)
          stg[i] = stg[i]>0 ? 2 : stg[i]
       end#for
@@ -191,19 +226,19 @@ function secordinp(molnam::String,ctrl)
 #initialize a f v3 rhoz rhox array for each rotor and fill in with read params
 #then adjustvalues of rhos by corresponding Fs
 #then convert to Op structure and start ℋ
-   blk = ctrl["sobk"] #blockfind(molnam, "%2NDORDER")
+   blk = ctrl.sobk  #blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
    #println(len)
-#      ℋ = Op(1.0,tp=[2;0;;]) + Op(0.5) - Op(1.0,tp=[1+iseven(ctrl["NFOLD"][1]);0;;])
+#      ℋ = Op(1.0,tp=[2;0;;]) + Op(0.5) - Op(1.0,tp=[1+iseven(ctrl.NFOLD [1]);0;;])
 #      stgs = [1;1;-1]
    ℋ = Vector{Op}(undef,0)
    nams = secnam_init()
    stg = zeros(Int,0)
    secns = secordinit_lim()
-   secns = irrepswap(ctrl["Irrep"],secns)
+   secns = irrepswap(ctrl.Irrep ,secns)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
    #println(file)
-   tpz = zeros(Int,2,length(ctrl["NFOLD"]))
+   tpz = zeros(Int,2,length(ctrl.NFOLD ))
    val = zeros(Float64,11)
    errs = zeros(Float64,11)
    nams = 
@@ -217,7 +252,7 @@ function secordinp(molnam::String,ctrl)
          errs[ind] = file[i,3]
       elseif occursin("F",nam) && !iszero(nvl)
          n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl["NFOLD"]))
+         tmp = zeros(Int,2,length(ctrl.NFOLD ))
          tmp[1,n] = 2
          push!(val,csl*nvl)
          push!(ℋ, Op(nam,tp=tmp))
@@ -225,8 +260,8 @@ function secordinp(molnam::String,ctrl)
          push!(stg,1)
       elseif occursin("V",nam) && !iszero(nvl)
          n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl["NFOLD"]))
-         tmp[2,n] = 1+iseven(ctrl["NFOLD"][n])
+         tmp = zeros(Int,2,length(ctrl.NFOLD ))
+         tmp[2,n] = 1+iseven(ctrl.NFOLD[n])
          push!(ℋ, Op(nam,rf=[OpFunc(E,1)],tp=zero(tmp)), Op(nam,tp=tmp))
          push!(val, 0.5*csl*nvl, -1.0)
          push!(errs,file[i,3],0)
@@ -234,7 +269,7 @@ function secordinp(molnam::String,ctrl)
       elseif occursin("ρ",nam) && !iszero(nvl)
          #okay so users will be restriced to an F ρz ρx ordering
          n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl["NFOLD"]))
+         tmp = zeros(Int,2,length(ctrl.NFOLD ))
          tmp[1,n] = 1
          if occursin("x",nam)
             push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(nx,1)] ))
@@ -250,7 +285,7 @@ function secordinp(molnam::String,ctrl)
          push!(stg,0)
       elseif occursin("η",nam) && !iszero(nvl)
          n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl["NFOLD"]))
+         tmp = zeros(Int,2,length(ctrl.NFOLD ))
          tmp[1,n] = 1
          if occursin("x",nam)
             push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sx,1)] ))
@@ -296,8 +331,8 @@ end
 function opstrproc!(T::Type,abcd::Vector{Int},tops::Array{Int,2},fvec::Vector{OpFunc},
                     str::String,pow::Int,dict::Dict{String,Function}
                     )::Tuple{Vector{Int},Array{Int,2},Vector{OpFunc}}
-   rcheck = findall(isequal(str),["N2";"NS";"S2";"Nz"])
-   tcheck = findall(isequal(str),["Pα" "Pβ" "Pγ"; "cosα" "cosβ" "cosγ"])
+   rcheck = findall(isequal(str),["N2";"NS";"S2";"Nz"] )
+   tcheck = findall(isequal(str),["Pα" "Pβ" "Pγ"; "cosα" "cosβ" "cosγ"] )
    if isempty(rcheck) && isempty(tcheck)
       push!( fvec, OpFunc(T,dict[str],pow) )
    elseif !isempty(rcheck) && isempty(tcheck)
@@ -364,11 +399,11 @@ end
 
 function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
    #molnam = "test_input"
-   blk = ctrl["opbk"] #blockfind(molnam, "%OPS")
+   blk = ctrl.opbk  #blockfind(molnam, "%OPS")
    blk[1] += 1
    len = blk[2] - blk[1] + 1
-   ctrl["opbk"] = blk
-   lnf = length(ctrl["NFOLD"])
+   #ctrl.opbk  = blk
+   lnf = length(ctrl.NFOLD )
    file = try
       readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,
          comment_char='#')
@@ -426,12 +461,12 @@ function μparse(val::Float64,op::String,dict)
 end
 
 function intreader(molnam,ctrl)
-   blk = ctrl["inbk"] #blockfind(molnam, "%OPS")
+   blk = ctrl.inbk  #blockfind(molnam, "%OPS")
    @show blk
    blk[1] += 1
    len = blk[2] - blk[1] - 1
-   ctrl["inbk"] = blk
-   lnf = length(ctrl["NFOLD"])
+   ctrl.inbk  = blk
+   lnf = length(ctrl.NFOLD )
    file = try
       readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1],comments=true,
          comment_char='#')
@@ -533,6 +568,14 @@ function qn2ind(nf,vtm,m,j,s,n,ka,kc)
    else
    return qn2ind(j,s,n,ka,kc)
    end
+end
+function qn2ind(j,s,n,ka,kc)
+   jp = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)
+   np = sum(2 .* collect((j-s):(n-1)) .+ 1)
+   kp = n + kakc2k(n,ka,kc) + 1
+   ind = jp + np + kp
+   ind = convert(Int,ind)
+   return ind
 end
 function kakc2k(n,ka,kc)
    ka = abs(ka)

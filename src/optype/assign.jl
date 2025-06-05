@@ -188,34 +188,37 @@ function nfinderv3(svcs,mind,md,mc,vtmax,jd,sd,ns,ni)
 end
 
 function ramassign(vecs,j::Float64,s::Float64,mcalc::Int,vtmax)
+#   println()
+#   @show j
    jd = Int(2.0*j) + 1
    sd = Int(2.0*s) + 1
    ns, nd, ni, jsd = srprep(j,s)
-   #println(ns)
-   #println(ni)
    md = 2*mcalc + 1 
    count = min(vtmax+4,md)
    svcs = abs.(vecs[:,1:jsd*count]).^2
 
    mind = mfinder(svcs,jsd,md,mcalc,vtmax)
-   #@show mind
+#   @show mind
    nind = nfinderv3(svcs,mind,md,mcalc,vtmax,jd,sd,ns,ni) 
-   #nfinder(svcs,vtmax,md,jd,sd,ns,ni)
-   #println(mind)
+#   @show nind
    col = collect(1:size(vecs,1))
    perm = zeros(Int,size(vecs,1)) #initalize big because easier
    for ng in 1:length(ns)
       nfilter = (nind .== ng)
       for v in 0:vtmax
          mg = v+1#mcalc + vt2m(v) + 1
-         frst = jsd*(v+1) + ni[ng,1]
-         last = jsd*(v+1) + ni[ng,2]
+#         @show mg
+         dest = (jsd*(v) + ni[ng,1]):(jsd*(v) + ni[ng,2])
+ #        @show dest
          part = col[nfilter .* (mind .== mg)]
+ #        @show part
          part = part[keperm(ns[ng])]
-         perm[frst:last] = part#col[filter][keperm(ns[ng])]
+ #        @show part
+         perm[dest] = part#col[filter][keperm(ns[ng])]
       end
    end
    perm = perm[perm .!= 0]
+#   println()
    return perm
 end
 

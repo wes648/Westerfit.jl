@@ -118,10 +118,10 @@ end
 function bigqngen(l,jlist,s,vtm,σs)
    σcnt = maximum(size(σs))
    out = zeros(Int,l,6,σcnt)
-   for j ∈ jlist
-      dest = jvdest2(j,s,vtm)
+   for j ∈ jlist[:,1]
+      dest = jvdest2(0.5*j,s,vtm)
       for σ in 1:σcnt
-      out[dest,:,σ] = qnlab(j,s,vtm,σ-1)
+      out[dest,:,σ] = qnlab(0.5*j,s,vtm,σ-1)
    end;end
    return out
 end

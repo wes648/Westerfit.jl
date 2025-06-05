@@ -197,7 +197,7 @@ Outputs energy levels with state assignments to a csv-like file
    c = 29979.2458
    eng = energies[:,1]
    qns = qunus[:,:,1]
-   for sc in 2:σcount(ctrl["NFOLD"])
+   for sc in 2:σcount(ctrl.NFOLD)
       eng = vcat(eng,energies[:,sc])
       qns = vcat(qns,qunus[:,:,sc])
    end
@@ -206,7 +206,7 @@ Outputs energy levels with state assignments to a csv-like file
    for i in 1:len
       energy = eng[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
-      out[i] = englin(ctrl["S"],energy,qns[i,:])
+      out[i] = englin(ctrl.S,energy,qns[i,:])
    end
    io = open("$molnam.eng", "w") do io
       for i in out
@@ -222,7 +222,7 @@ Outputs energy levels with state assignments to a csv-like file
    eng = energies[:,1]
    qns = qunus[:,:,1]
    psz = pasz[:,1]
-   for sc in 2:σcount(ctrl["NFOLD"])
+   for sc in 2:σcount(ctrl.NFOLD)
       eng = vcat(eng,energies[:,sc])
       qns = vcat(qns,qunus[:,:,sc])
       psz = vcat(psz,pasz[:,sc])
@@ -232,7 +232,7 @@ Outputs energy levels with state assignments to a csv-like file
    for i in 1:len
       energy = eng[i]/c
       #0.10f is what BELGI uses, 0.6f is for spcat
-      out[i] = englin(ctrl["S"],energy,qns[i,:],pasz[i])
+      out[i] = englin(ctrl.S,energy,qns[i,:],pasz[i])
    end
    io = open("$molnam.eng", "w") do io
       for i in out
@@ -693,7 +693,7 @@ function outputinit(molnam,params,scls,linelength,ctrl)
    highstg= file[strlnhigh:end,end]
 
 
-   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+   secnam =  ["BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
              " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
              " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
@@ -755,7 +755,7 @@ function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
    
    highervalues = prd[19:end]
    
-   secnam = [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+   secnam =  ["BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
              " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
              " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
    highnamall = file[strlnhigh:end,1]
@@ -826,7 +826,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
    scounter = lpad(counter,3)
 
    secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
-             "χxx-χyy","F","ρz", "ρx", "V$(ctrl["NFOLD"])","ηz","ηx"]
+             "χxx-χyy","F","ρz", "ρx", "V$(ctrl.NFOLD)","ηz","ηx"]
    highnamall = file[strlnhigh:end,1]
    highstg= file[strlnhigh:end,end]
    highnam = highnamall[highstg .!= 0.0]
@@ -900,7 +900,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       end
 
    println(io,"\n")
-   if ctrl["apology"]==true
+   if ctrl.apology==true
       println(io," Again, sorry about the name...")
    end
    println(io,"\n")
