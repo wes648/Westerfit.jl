@@ -25,6 +25,8 @@ function lbmq_gain2(β,J,omc,nomc)::Float64
    end
 #   @show curr - actu > 0.0 
    out = (curr - actu) / (curr - pred)
+   @show curr - actu
+   @show curr - pred
    return out
 end
 
@@ -48,7 +50,7 @@ end
 
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
-   @threads for i in 1:size(cfreqs,1)
+   Threads.@threads for i in 1:size(cfreqs,1)
       cfreqs[i] = vals[inds[i,3],inds[i,2]] - vals[inds[i,6],inds[i,5]]
    end
    #println(cfreqs)

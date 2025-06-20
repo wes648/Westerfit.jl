@@ -15,13 +15,13 @@ hessian - birss 2 stage
 
 function sumder(out::SparseMatrixCSC{Float64,Int},
                 id::Int,prm::Vector{Float64},stg::Vector{Int},
-                ℋ::Vector{Op},ψ::Psi,ur,ut)
+                ℋ::Vector{Op},ψ::Psi)
    ind = id+1
    if ind ≤ length(stg)+11
       check = stg[ind-11]
       while check < zero(check)
          pm = prm[ind]
-         out .+= enact(ℋ[ind-11],ψ,pm,ur,ut)
+         out .+= enact(ℋ[ind-11],ψ,pm)#,ur,ut)
          ind += 1
          if ind-11 ≤ length(stg)
             check = stg[ind-11]
@@ -51,18 +51,29 @@ function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
       out = hqu(pr,ψ.R)
       out = kron(I(ψ.T.lng),out)
    else #user def
-      UR = ur(ψ.R.J,ψ.R.S)
-      UT = ur(Int( 0.5*(length(ψ.T.ms[1])-1) ))
-      out = enact(ℋ[id-11],ψ,prm[id],UR,UT)
-      out .= sumder(out,id,prm,stg,ℋ,ψ,UR,UT)
+      #UR = ur(ψ.R.J,ψ.R.S)
+      #UT = ur(Int( 0.5*(length(ψ.T.ms[1])-1) ))
+      out = enact(ℋ[id-11],ψ,prm[id])
+      out .= sumder(out,id,prm,stg,ℋ,ψ)#,UR,UT)
    end
    return out
 end
-function anaderiv(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
+function anaderiv(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi,vec)
+
    mat = derivmat(id,prm,scl,stg,ℋ,ψ)
-   out = transpose(vec)*mat*vec
-   return out #diag(out)
+   U = sparse(ones(1))
+   for i in 1:length(ψ.T.nf)
+#having U at the end of kron maintians the tight block structure of the lower index tops
+      if ψ.T.σ[i] == 0
+         U = kron(ur(mc),U)
+      else
+         U = kron(sparse(1.0I,2mc+1,2mc+1),U)
+   end;end
+   U = kron(U,ur(ψ.R.J,ψ.R.S))
+   mat = droptol!(U*mat*U,2*eps())
+   mat = transpose(vec)*mat*vec
+   return mat #diag(out)
 end
 function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)#::Matrix{Float64}
    s = ctrl.S
@@ -85,7 +96,7 @@ function derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)#::Matrix{Float64}
             #pid = perm[i]
             #ders = anaderive(pid,prm,scl,stg,ℋ,ψ,vec)
             #derivs[sind:find,sc,i] = ders#*scl[pid]
-      derivs[dest,sc,i] = diag(anaderiv(perm[i],prm,scl,stg,ℋ,ψ,vec))
+      derivs[dest,sc,i] = diag(anaderiv(perm[i],mcalc,prm,scl,stg,ℋ,ψ,vec))
          end#perm loop
       end #j loop
    end#σ loop
@@ -96,8 +107,8 @@ function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
    deriv = derivcalc(jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
    for p in 1:length(perm)
       for a in 1:size(inds,1)
-         v = deriv[inds[a,3],inds[a,2],p] - deriv[inds[a,6],inds[a,5],p]
-         jcbn[a,p] = -v
+         #dν/dX = d/dX (ν_o - E_u + E_l) = -dE_u/dX + dE_l/dX 
+         jcbn[a,p] = -deriv[inds[a,3],inds[a,2],p] + deriv[inds[a,6],inds[a,5],p]
       end
    end
    return jcbn

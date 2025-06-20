@@ -82,6 +82,7 @@ function blockfind_all(molnam::String)#,ctrl)
       end
    end
    close(io)
+   ctrl["opbk"][1] +=1
    #@show ctrl.ctbk 
    #@show ctrl.sobk 
    #@show ctrl.inbk 
@@ -101,7 +102,7 @@ function ctrlinp(molnam::String,dctrl)
       if (nam == "NFOLD")&&typeof(val)==Int
          val = [val]
       end
-      if typeof(val)==String
+      if typeof(val)==String||typeof(val)==SubString{String}
          val = String(strip(val))
       end
       dctrl[nam] = val
@@ -126,6 +127,7 @@ function ctrlinp(molnam::String,dctrl)
       println("By using this mode, you agree to not complain about the runtime of the program\n")
    end
    #ctrl.assign  = strip(ctrl.assign )
+   @show ctrl.assign
    #ctrl.Irrep  = String(strip(ctrl.Irrep ))
    #println(ctrl)
    return ctrl
@@ -400,7 +402,7 @@ end
 function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
    #molnam = "test_input"
    blk = ctrl.opbk  #blockfind(molnam, "%OPS")
-   blk[1] += 1
+   #blk[1] += 1
    len = blk[2] - blk[1] + 1
    #ctrl.opbk  = blk
    lnf = length(ctrl.NFOLD )

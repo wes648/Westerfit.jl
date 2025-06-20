@@ -39,7 +39,7 @@ struct TPsi
       else
          ms = [msgen(nf,mc,σ[1])]
       #   σ = [σ]
-         nf = [nf]
+         nf = nf
       end
       lng = sum(length.(ms))
       new(nf,

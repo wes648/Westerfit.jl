@@ -195,9 +195,10 @@ function engwriter(molnam,ctrl,energies,qunus)
 Outputs energy levels with state assignments to a csv-like file
 """
    c = 29979.2458
+#   @show size(energies)
    eng = energies[:,1]
    qns = qunus[:,:,1]
-   for sc in 2:σcount(ctrl.NFOLD)
+   for sc in 2:σcount(ctrl.NFOLD[1])
       eng = vcat(eng,energies[:,sc])
       qns = vcat(qns,qunus[:,:,sc])
    end

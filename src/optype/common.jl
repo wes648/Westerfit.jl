@@ -61,6 +61,9 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int}
    out += rotl90(Diagonal(append!(fill(√.5,n), 0.0, fill(√.5,n))))
    return sparse(out)
 end
+#function ur(n::Int)::SparseMatrixCSC{Float64, Int}
+#   return sparse(I,2n+1,2n+1)
+#end
 function ur2(n::Int)::SparseMatrixCSC{Float64, Int}
 #this version is radically faster above N = 20 but much slower
    out = spdiagm(append!(fill(-√.5,n), 0.0, fill(√.5,n)))

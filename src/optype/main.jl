@@ -3,12 +3,11 @@
 This file is the actual implementation of the information in types.Jl & baseops.Jl
 """
 
-using Base.Threads
 using DelimitedFiles
 using FunctionWrappers
 import FunctionWrappers: FunctionWrapper
 using LinearAlgebra
-using Printf
+import Printf: @sprintf
 using SparseArrays
 @static if Sys.iswindows()
    using WignerSymbols
@@ -40,13 +39,15 @@ const csl::Float64 = 29979.2458
 BLAS.set_num_threads(Threads.nthreads())
 @show Threads.nthreads()
 
-function westereng(molnam::String,ctrl)
+function westereng(molnam::String,ctrl::Controls)
 # 14 april 25, half the time here is from set up. should look into that
    prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
    ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
 
    σs = σgen_indef(ctrl.NFOLD)
+#   @show σs
    σcnt = maximum(size(σs))
+#   @show σcnt
    sd = Int(2*ctrl.S+1)
 #   jlist = collect(0.5*iseven(sd):ctrl.Jmax)
    jlist = collect(iseven(sd):2:Int(2*ctrl.Jmax))
@@ -55,9 +56,10 @@ function westereng(molnam::String,ctrl)
 
    #initialize vals
    vtd = ctrl.vtmax + 1
-   @show sd
+#   @show sd
+#   @show jlist
    jfd = sd*Int(sum(jlist[:,1] .+ 1.0))
-   @show jfd
+#   @show jfd
    vals = zeros(Float64,jfd*vtd,σcnt)
    #initialize vecs
    if ctrl.stages==1
@@ -80,7 +82,7 @@ function westereng(molnam::String,ctrl)
    end
    qns = bigqngen(size(vals,1),jlist,ctrl.S,ctrl.vtmax,σs)
    #outputs!
-   @show size(vals)
+#   @show size(vals)
    if occursin("E",ctrl.RUNmode)
       engwriter(molnam,ctrl,vals,qns)
    end
@@ -165,7 +167,7 @@ function westerfit(molnam::String,ctrl::Controls)
 #   end
 
    #determine the states
-   linds, ofreqs, luncs = lineprep(lines,ctrl.NFOLD,ctrl.S,ctrl.vtmax)
+   linds, ofreqs, luncs = lineprep(lines,ctrl.NFOLD[1],ctrl.S,ctrl.vtmax)
    #@show linds
    jlist = jlister(linds)
    #opt
@@ -182,7 +184,7 @@ function main(molnam)
    #molanm = ARGS[1]
    ctrl = blockfind_all(molnam)
    ctrl = ctrlinp(molnam,ctrl)
-   #vals,vecs,qns,tvecs = westereng(molnam,ctrl)
+   vals,vecs,qns,tvecs = westereng(molnam,ctrl)
    #westersim(molnam,ctrl,vals,vecs,qns,tvecs)
    westerfit(molnam,ctrl)
    return 0

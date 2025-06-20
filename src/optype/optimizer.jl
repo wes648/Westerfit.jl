@@ -91,7 +91,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    lrms = rms
    perm = permdeterm(scales,stg)
    W = Diagonal(1.0 ./ uncs)^2
-   W ./= maximum(W)
+   #W ./= maximum(W)
    wrms = √(omc' *W*omc ./ length(omc))
    goal = BLAS.nrm2(uncs)/√length(uncs)*ctrl.goal
    println("Initial  RMS = $rms")
@@ -101,7 +101,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    ϵ2 = 0.1E-3 #gradient threshold
    μlm = ctrl.λlm0#(rms + rms^2)#*0.0
    λlm = λgen(μlm, rms) 
-   Δlm = 1.0
+   Δlm = 0.5
    println("Initial λ = $λlm")
    counter = 0
    θ = 0.0
@@ -129,6 +129,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
+   @show H
    #uncs = paramunc(uncs,H,perm,omc)
    endpoint = "not yet"
    converged=false
@@ -136,25 +137,24 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    while converged==false
       λlm = λgen(μlm, rms)
       βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
-#      if GEO  && wrms < 2e2 #only uses accelerator when wrms isn't outragous
-#         dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
-#         #dderiv = diag(J*βf*βf'*jtw)
-#         βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
-#         βf[:,2] .*= -0.5
-#         if abs(norm(βf[:,2])/norm(βf[:,1])) > 0.5 #This is half the threshold factor
-#            #they suggest 0.75 (so 0.375 here)
-#            βf[:,2] .*= 0.25*abs(norm(βf[:,1])/norm(βf[:,2]))
-#         end#if
-#      end#GEO
-#      βf .*= scales[perm]
-      β = sum(βf,dims=2)[:]
+      if GEO  && wrms < 2e2 #only uses accelerator when wrms isn't outragous
+         dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
+         #dderiv = diag(J*βf*βf'*jtw)
+         βf[:,2],λlm = lbmq_2stp!(H,jtw,dderiv,λlm,βf[:,2],params[perm])
+         βf[:,2] .*= -0.5
+         if abs(norm(βf[:,2])/norm(βf[:,1])) > 0.5 #This is half the threshold factor
+            #they suggest 0.75 (so 0.375 here)
+            βf[:,2] .*= 0.25*abs(norm(βf[:,1])/norm(βf[:,2]))
+         end#if
+      end#GEO
+      βf .*= scales[perm]
+      β = 10 .*sum(βf,dims=2)[:]
       β .*= scales[perm]
-#      @show β
       #if norm(H^(-.5)*β) > Δlm
       if norm(β ./params[perm]) > Δlm
-      #   @show H^(-.5)*β
-      #   β = dogleg_corr!(β,Δlm,jtw,omc)
-         β *= 0.5*Δlm/norm(β ./ params[perm])
+      ##   @show H^(-.5)*β
+      ##   β = dogleg_corr!(β,Δlm,jtw,omc)
+         β .*= 0.5*Δlm/norm(β ./ params[perm])
       end
 
       if counter > 0
@@ -163,7 +163,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
 #         @show θ
       end
 
-      nparams[perm] .= params[perm] .+ β
+      nparams[perm] .= nparams[perm] .+ β
+
       if STAGE==1
       #nvals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl.NFOLD,ctrl,nlist)
          @time nvals,nvecs = tsrcalc_1stg!(nvals,nvecs,nlist,σs,ctrl,nparams,stg,ℋ)
@@ -178,6 +179,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       ρlm = lbmq_gain2(β, J,omc,nomc)
       check = (nrms-rms)/rms
 #      @show check
+      @show norm(β)
       println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms = $(round(nwrms; digits=4)), θ = $θ")
 #      println("Δlm = $(round(Δlm; digits=4)), wrms = $(round(nwrms; digits=4))")
 #      println("λlm = $(round(λlm; digits=4)), norm(β) = $(round(norm(β);digits=4))")
@@ -204,7 +206,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
          omc = nomc
          tΔ = round.((nvals .- vals)./sum(βf), sigdigits=5)
          vals .= nvals
-         params .= nparams
+         params[perm] .+= β
          vecs .= nvecs
          wrms = √(omc' *W*omc ./ length(omc))
          #println(params)

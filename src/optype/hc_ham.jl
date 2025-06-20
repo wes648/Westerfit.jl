@@ -97,7 +97,7 @@ function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
       blck = view(out,nds[j],nds[i])
       fac = qured(J,S,nb,nk)*powneg1(nb+nk+1)*sfact
       #rng = 
-   @threads for q ∈ -2: 2*(1-δi(Δ,0))
+   Threads.@threads for q ∈ -2: 2*(1-δi(Δ,0))
          p = Δ+q
          dest = diagind(blck,p)
          kl = ks[(1:length(dest)).+δi(1,p)]

@@ -60,6 +60,7 @@ function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
    end
    return marray
 end
+msgen(nfold::Vector{Int},mcalc::Int,σ::Int)::StepRange{Int,Int} = msgen(nfold[1],mcalc,σ)
 
 function msgen(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,Int}}
    out = Vector{StepRange{Int,Int}}(undef,length(nf))

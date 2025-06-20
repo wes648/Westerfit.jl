@@ -88,7 +88,7 @@ function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
 end
 nm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = permutedims(np(ψ,p))
 npm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(np(ψ,p))
-nx(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,p))
+nx(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,1))^p
 function iny(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
    if p≠0
       out = np_op(ψ,1)

@@ -2,8 +2,8 @@
 function enact_init(O::Op,ψ::RPsi,val)::SparseMatrixCSC{Float64,Int}
    #out = O.a≠0 ? O.v .* eh.(ψ.N).^O.a : fill(O.v,ψ.lng)
    out = O.a≠0 ? n2(0.5*val, ψ.N, O.a) : fill(0.5*val,ψ.lng)
-   if O.b≠0; out .*= ns(ψ.J,ψ.S,ψ.N,O.b); end
-   if O.c≠0; out .*= eh(ψ.S)^O.c ; end
+   if O.b≠0; out .*= ns(ψ.R.J,ψ.R.S,ψ.N,O.b); end
+   if O.c≠0; out .*= eh(ψ.R.S)^O.c ; end
    if O.d≠0; out .*= nz(ψ.K, O.d) ; end
    return spdiagm(out)
 end
@@ -23,49 +23,44 @@ function torop(a::Int,b::Int,nf::Int,ms::StepRange{Int,Int})::SparseMatrixCSC{Fl
    #@show out
    return out
 end
-function enact_tor(tp::Array{Int,2},ψ::TPsi,
-                   ut::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
+function enact_tor(tp::Array{Int,2},ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    out = torop(tp[1,1],tp[2,1],ψ.nf[1],ψ.ms[1])
-   if iszero(ψ.σ[1])
-      out = dropzeros!(ut*out*ut)
-   end
    @inbounds for i in 2:size(tp,2)
       part = torop(tp[1,i],tp[2,i],ψ.nf[i],ψ.ms[i])
-      if iszero(ψ.σ[i])
-         part = dropzeros!(ut*out*ut)
-      end
       out = kron(part,out)
    end
    return out
 end
 
-function enact(O::Op,ψ::Psi,val::Float64,ur::SparseMatrixCSC{Float64,Int},
-               ut::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
+function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{Float64,Int}
    out = enact_init(O,ψ.R,val)
    @inbounds for i in 1:length(O.rf)
       out *= eval_rop(O.rf[i],ψ.R)
    end
-   out = dropzeros!(ur*out*ur)
    if !iszero(O.tp) 
-      part = enact_tor(O.tp,ψ.T,ut)
+      part = enact_tor(O.tp,ψ.T)
       out = kron(part,out)
    else
       out = kron(I(ψ.T.lng),out)
    end
+#   if (strip(O.nam) == "δN")&&ψ.R.J==2.0
+#      @show O.nam
+#      @show ψ.R
+#      @show out
+#   end
+   tplus!(out)
    return out
 end
 #This allows the basis set to be distributed among a list of added Operators
-function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int},
-         ur::SparseMatrixCSC{Float64,Int},ut::SparseMatrixCSC{Float64,Int}
-         )::SparseMatrixCSC{Float64,Int}
-   out = enact(O[1],ψ,val[1],ur,ut)
+function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})::SparseMatrixCSC{Float64,Int}
+   out = enact(O[1],ψ,val[1])
    @inbounds for i in 2:length(O)
       if stgs[i] ≥ 0
-         out += enact(O[i],ψ,val[i],ur,ut)
+         out += enact(O[i],ψ,val[i])
       else
-         out += enact(O[i],ψ,val[i],ur,ut)*val[i+stgs[i]]
+         out += enact(O[i],ψ,val[i])*val[i+stgs[i]]
    end;end
-   tplus!(out)
+#   tplus!(out)
    return out
 end
 
@@ -75,12 +70,12 @@ function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
    U = sparse(ones(1))
    for i in 1:length(ψ.nf)
 #having U at the end of kron maintians the tight block structure of the lower index tops
-   if ψ.σ[i] == 0
-      U = kron(ur(mcalc),U)
-   else
-      U = kron(sparse(1.0I,2mcalc+1,2mcalc+1),U)
+      if ψ.σ[i] == 0
+         U = kron(ur(mcalc),U)
+      else
+         U = kron(sparse(1.0I,2mcalc+1,2mcalc+1),U)
    end;end
-   U = kron(u,ur(ψ.J,ψ.S))
+   U = kron(u,ur(ψ.R.J,ψ.R.S))
    H = droptol!(U*H*U,2*eps())
    vals,vecs = eigen!(Symmetric(Matrix(H)))
    if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
@@ -99,19 +94,30 @@ end
 function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
                   ℋ::Vector{Op},ψ::Psi,σs)
    H = kron(I(ψ.T.lng),Hr) #<--------- CHECK
-   H += enact(ℋ,ψ,vals[12:end],stgs,ur(ψ.R.J,ψ.R.S),ur(ctrl.mcalc )) #<--------- CHECK
+   H += enact(ℋ,ψ,vals[12:end],stgs) #<--------- CHECK
    #tplus!(H)
+   H = Symmetric(H,:L)
+   U = sparse(ones(1))
+   for i in 1:length(ψ.T.nf)
+#having U at the end of kron maintians the tight block structure of the lower index tops
+      if ψ.T.σ[i] == 0
+         U = kron(ur(ctrl.mcalc),U)
+      else
+         U = kron(sparse(1.0I,2ctrl.mcalc+1,2ctrl.mcalc+1),U)
+   end;end
+   U = kron(U,ur(ψ.R.J,ψ.R.S))
+   H = droptol!(U*H*U,2*eps())
    vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
       perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl.mcalc ,ctrl.vtmax ) #<--------- CHECK
       vals = vals[perm]
       vecs = vecs[:,perm]
    elseif ctrl.assign =="expectk"
-      vals, vecs = expectkassign!(vals,vecs,ψ.J,ψ.S,nf,ctrl.mcalc ,σ)      
+      vals, vecs = expectkassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,ctrl.mcalc ,σ)      
    elseif ctrl.assign =="eeo"
-      vals, vecs = eeoassign!(vals,vecs,ψ.J,s,nf,mcalc,σ)
+      vals, vecs = eeoassign!(vals,vecs,ψ.R.J,ψ.R.S,ctrl.NFOLD[1],ctrl.mcalc,0)
    else
-      vals, vecs = expectassign!(vals,vecs,ψ.J,s,nf,mcalc,σ)
+      vals, vecs = expectassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,mcalc,σ)
    end
    return vals, vecs
 end
@@ -125,9 +131,9 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       ϕ = RPsi(0.5*jlist[ind,1],ctrl.S )
       Hrot = hrot2(prm[1:4],ϕ)
       if ctrl.S ≥1.0
-         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ) + hqu(prm[9:11],ψ.J,ψ.S,ϕ)
+         Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ϕ) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ϕ)
       elseif ctrl.S ==0.5
-         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ϕ)
+         Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ϕ)
       end
       ψ = Psi(ϕ,TPsi(ctrl.NFOLD ,σs[:,sc],ctrl.mcalc ))
       vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
@@ -200,7 +206,7 @@ end
 
 function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},
                   ψ::Psi,prm,stg)
-   #printstyled("ψ.J = $(ψ.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
+   #printstyled("ψ.R.J = $(ψ.R.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
    H = kron(I(ctrl.mmax +1)^length(ctrl.NFOLD ),Hr) 
    H[diagind(H)] .+= kron(tvals, ones(Int((2ψ.R.J+1)*(2ψ.R.S+1)) ))
    h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl.mcalc +1)^length(ctrl.NFOLD ),
@@ -232,12 +238,12 @@ for j in jlist
    ψ = RPsi(j,ctrl.S )
    Hrot = hrot2(prm[1:4],ψ)
    if ctrl.S ≥1.0
-      Hrot += hqu(prm[9:11],ψ.J,ψ.S,ψ)
+      Hrot += hqu(prm[9:11],ψ.R.J,ψ.R.S,ψ)
       if norm(prm[5:8]) > 0.0
-         Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
+         Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ)
       end
    elseif ctrl.S ==0.5
-      Hrot += hsr(prm[5:8],ψ.J,ψ.S,ψ)
+      Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ)
    end
    Hrot = sparse(Symmetric(Hrot,:L))
    for sc in 1:σcnt
