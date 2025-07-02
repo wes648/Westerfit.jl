@@ -122,8 +122,9 @@ end
 function fullrecov(prd,unc,irrep)
    oprd = paramrecov_full(prd)
    ounc = uncrecov_full(unc,oprd)
-   oprd[1:3] = oprd[irrepswap(irrep)]
-   ounc[1:3] = ounc[irrepswap(irrep)]
+   #oprd[1:3] = oprd[irrepswap(irrep)]
+   #ounc[1:3] = ounc[irrepswap(irrep)]
+   printstyled("wes removed irrepswap here\n",color=:light_cyan)
    oprd[[13,16]] ./= csl
    ounc[[13,16]] ./= csl
    return oprd, ounc

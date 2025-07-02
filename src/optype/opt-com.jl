@@ -7,12 +7,12 @@ function λgen(μ::Float64,er::Float64)::Float64
    return λ
 end
 function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
-   out = 2β' * (λ*Diagonal(h)*β + jtw*omc)
+   out = 2β' * (λ*Diagonal(h)*β - jtw*omc)
    if out < 0
       printstyled("fucking gain function\n",color=:light_cyan)
    end
 #   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
-   out = -2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
+   out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
    return out
 end
 function lbmq_gain2(β,J,omc,nomc)::Float64
@@ -25,8 +25,6 @@ function lbmq_gain2(β,J,omc,nomc)::Float64
    end
 #   @show curr - actu > 0.0 
    out = (curr - actu) / (curr - pred)
-   @show curr - actu
-   @show curr - pred
    return out
 end
 

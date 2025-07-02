@@ -53,7 +53,7 @@ function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
    else #user def
       #UR = ur(ψ.R.J,ψ.R.S)
       #UT = ur(Int( 0.5*(length(ψ.T.ms[1])-1) ))
-      out = enact(ℋ[id-11],ψ,prm[id])
+      out = enact(ℋ[id-11],ψ,1.0)
       out .= sumder(out,id,prm,stg,ℋ,ψ)#,UR,UT)
    end
    return out

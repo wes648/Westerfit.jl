@@ -8,7 +8,7 @@ functions needed:
 3. new lbmq implementation to support new data structures
 """
 
-function lbmq_2stp!(H,jtw,omc,λ,β,prms)
+function lbmq_2stp!(H,jtw,omc,λ,β)
    #@show H
    A = Hermitian(H + λ*Diagonal(H))
    while isposdef(A)==false #this could be tidier
@@ -129,14 +129,14 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    if true ∈ isnan.(H)
       println("FUCKING FUCKING FUCK. NaN in Hessian")
    end
-   @show H
+   #@show H
    #uncs = paramunc(uncs,H,perm,omc)
    endpoint = "not yet"
    converged=false
 
    while converged==false
       λlm = λgen(μlm, rms)
-      βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1],params[perm])
+      βf[:,1],λlm = lbmq_2stp!(H,jtw,omc,λlm,βf[:,1])
       if GEO  && wrms < 2e2 #only uses accelerator when wrms isn't outragous
          dderiv = sum(J*βf*βf'*jtw,dims=2)[:]
          #dderiv = diag(J*βf*βf'*jtw)
@@ -147,8 +147,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
             βf[:,2] .*= 0.25*abs(norm(βf[:,1])/norm(βf[:,2]))
          end#if
       end#GEO
-      βf .*= scales[perm]
-      β = 10 .*sum(βf,dims=2)[:]
+      #βf .*= scales[perm]
+      β = sum(βf,dims=2)[:]
       β .*= scales[perm]
       #if norm(H^(-.5)*β) > Δlm
       if norm(β ./params[perm]) > Δlm
@@ -163,8 +163,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
 #         @show θ
       end
 
-      nparams[perm] .= nparams[perm] .+ β
-
+      nparams[perm] .+= β
+   
       if STAGE==1
       #nvals,nvecs, = tsrcalc2(nparams,stg,cdo,ctrl.NFOLD,ctrl,nlist)
          @time nvals,nvecs = tsrcalc_1stg!(nvals,nvecs,nlist,σs,ctrl,nparams,stg,ℋ)
@@ -175,12 +175,12 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       end
       nrms, nomc, = rmscalc(nvals,inds,ofreqs)
       nwrms = √(nomc' *W*nomc ./ length(nomc))
-      #ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
-      ρlm = lbmq_gain2(β, J,omc,nomc)
+      ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
+      #ρlm = lbmq_gain2(β, J,omc,nomc)
       check = (nrms-rms)/rms
 #      @show check
       @show norm(β)
-      println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms = $(round(nwrms; digits=4)), θ = $θ")
+println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms = $(round(nwrms; digits=4)), θ = $θ")
 #      println("Δlm = $(round(Δlm; digits=4)), wrms = $(round(nwrms; digits=4))")
 #      println("λlm = $(round(λlm; digits=4)), norm(β) = $(round(norm(β);digits=4))")
 #      println()
@@ -189,9 +189,9 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       #if (nrms<rms)&&(ρlm>1e-3)
       #stepcheck = (ρlm>1e-5)
       if (BOLD == 0)||wrms > 1e5
-         stepcheck = ((nrms<rms)&&(ρlm>1e-4))
+         stepcheck = ((nrms<rms)&&(ρlm>1e-6))
       else
-      stepcheck = ((nrms<rms)&&(ρlm>1e-2)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)
+      stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)
       end
       #stepcheck = check > 1e-8
       @show stepcheck
@@ -206,7 +206,9 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
          omc = nomc
          tΔ = round.((nvals .- vals)./sum(βf), sigdigits=5)
          vals .= nvals
-         params[perm] .+= β
+         #params[perm] .+= β
+         params .= nparams
+
          vecs .= nvecs
          wrms = √(omc' *W*omc ./ length(omc))
          #println(params)
@@ -251,10 +253,11 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    puncs = zeros(size(params))
    puncs[perm] = paramunc(H,W,perm,omc)
    covarmat = covarr2(H,omc)#covarr(correl(H),puncs)
+   tempvec = puncs[perm] ./ params[perm] .* 100
+   @show tempvec
+   @show params[perm]
    #@show H
    #@show correl(H)
-   #params[1:15] .= paramrecov(params[1:15])
-   #uncs[1:15] .= uncrecov(uncs[1:15],params[1:15])
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl.Irrep)
    slλ = (@sprintf("%0.4f", log10(λlm)))
    outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
@@ -263,7 +266,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       out_jcbn_2stg(molnam,ops,nlist,inds,ctrl,vecs,params,scales,stg,tvcs)
    end
    if ctrl.overwrite==true
-      println("Writing new input file at $molnam.inp. Previous file has moved to $molnam","1.inp")
+      println("Writing new input file at $molnam.inp. 
+         Previous file has moved to $molnam","1.inp")
       inpwriter(molnam, params, scales)
    end
    return params, covarmat, fomc, fcfrqs, vals

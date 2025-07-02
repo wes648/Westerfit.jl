@@ -158,10 +158,10 @@ function westersim(molnam::String,prm,ctrl,fvls,fvcs,fqns,μs,prms,scls,stg,ops,
       #   @show (uncs)
       #end
       if ctrl["stages"]==1
-#      fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
-#                           vals,vecs,quns,σ,uncs)
-      fr,qn = tracalc_twostg(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
-                           vals,vecs,quns,σ,uncs,zeros(5))
+      fr,qn = tracalc_nocat(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
+                           vals,vecs,quns,σ,uncs)
+#      fr,qn = tracalc_twostg(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
+#                           vals,vecs,quns,σ,uncs,zeros(5))
       elseif ctrl["stages"]==2
       fr,qn = tracalc_twostg(μs,kbT,Qrt,ctrl,jmax,vals,vecs,quns,σ,
                            vals,vecs,quns,σ,uncs,tvcs)

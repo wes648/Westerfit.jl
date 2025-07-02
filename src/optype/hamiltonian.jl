@@ -48,7 +48,7 @@ function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{Float64,Int}
 #      @show ψ.R
 #      @show out
 #   end
-   tplus!(out)
+   0.5*tplus!(out)
    return out
 end
 #This allows the basis set to be distributed among a list of added Operators
@@ -93,10 +93,10 @@ function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
 end
 function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
                   ℋ::Vector{Op},ψ::Psi,σs)
-   H = kron(I(ψ.T.lng),Hr) #<--------- CHECK
+   H = kron(I(ψ.T.lng),Symmetric(Hr,:L)) #<--------- CHECK
    H += enact(ℋ,ψ,vals[12:end],stgs) #<--------- CHECK
    #tplus!(H)
-   H = Symmetric(H,:L)
+   #H = Symmetric(H,:L)
    U = sparse(ones(1))
    for i in 1:length(ψ.T.nf)
 #having U at the end of kron maintians the tight block structure of the lower index tops
