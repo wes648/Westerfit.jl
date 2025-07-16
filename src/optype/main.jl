@@ -156,7 +156,7 @@ function westerfit(molnam::String,ctrl::Controls)
 """
    println("westerfit!")
    prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
-   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
+   ℋ, stgs, errs, unts = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
    #if occursin("F",ctrl.RUNmode) #Normal Fit behavior, overpowers check
       lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#',
                      skipblanks=true)
@@ -182,9 +182,9 @@ end
 #Base.@ccallable function main()::Cint
 function main(molnam)
    #molanm = ARGS[1]
-   ctrl = blockfind_all(molnam)
-   ctrl = ctrlinp(molnam,ctrl)
-   vals,vecs,qns,tvecs = westereng(molnam,ctrl)
+   @time ctrl = blockfind_all(molnam)
+   @time ctrl = ctrlinp(molnam,ctrl)
+   #vals,vecs,qns,tvecs = westereng(molnam,ctrl)
    #westersim(molnam,ctrl,vals,vecs,qns,tvecs)
    westerfit(molnam,ctrl)
    return 0

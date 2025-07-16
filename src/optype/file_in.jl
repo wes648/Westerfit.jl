@@ -243,7 +243,7 @@ function secordinp(molnam::String,ctrl)
    tpz = zeros(Int,2,length(ctrl.NFOLD ))
    val = zeros(Float64,11)
    errs = zeros(Float64,11)
-   nams = 
+   unts = fill("MHz",11)
    for i in 1:len
       nam = string(strip(file[i,1]))
       nvl = file[i,2]
@@ -260,6 +260,7 @@ function secordinp(molnam::String,ctrl)
          push!(ℋ, Op(nam,tp=tmp))
          push!(errs,file[i,3])
          push!(stg,1)
+         push!(unts,"MHz")
       elseif occursin("V",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl.NFOLD ))
@@ -268,6 +269,7 @@ function secordinp(molnam::String,ctrl)
          push!(val, 0.5*csl*nvl, -1.0)
          push!(errs,file[i,3],0)
          push!(stg,1,-1)
+         push!(unts,"cm-1","cm-1")
       elseif occursin("ρ",nam) && !iszero(nvl)
          #okay so users will be restriced to an F ρz ρx ordering
          n = tornamind(nam)
@@ -285,6 +287,7 @@ function secordinp(molnam::String,ctrl)
          end
          push!(errs,file[i,3])
          push!(stg,0)
+         push!(unts,"unitless")
       elseif occursin("η",nam) && !iszero(nvl)
          n = tornamind(nam)
          tmp = zeros(Int,2,length(ctrl.NFOLD ))
@@ -297,6 +300,7 @@ function secordinp(molnam::String,ctrl)
          push!(val,nvl)
          push!(errs,file[i,3])
          push!(stg,0)
+         push!(unts,"MHz")
       elseif iszero(nvl)
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
@@ -305,7 +309,7 @@ function secordinp(molnam::String,ctrl)
    val[1:11] = sod2prep_lim(val[1:11])
    #val, err = epszxcheck!(val,err)
    #@show val
-   return val, errs, ℋ, stg
+   return val, errs, ℋ, stg, unts
 end
 
 function unitdict()::Dict{String,Float64}
@@ -441,7 +445,7 @@ if len ≠ 0 #if there are added parameters
 end#if
    append!(stgs,nstgs)
    #ℋ, μs = stgextract(ℋ,stg,0)
-   return ℋ,stgs,errs
+   return ℋ,stgs,errs,unts
 end#function 
 
 function stgextract(H,stg,n)

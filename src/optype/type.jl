@@ -33,7 +33,7 @@ struct TPsi
    ms::Vector{StepRange{Int,Int}}
    σ::Vector{Int}
    lng::Int
-   function TPsi(nf,σ,mc=3)
+   function TPsi(nf::Vector{Int},σ::Vector{Int},mc=3)
       if length(nf) > 1
          ms = msgen(nf,mc,σ)
       else
@@ -46,6 +46,9 @@ struct TPsi
          ms,
          σ,
          lng)
+   end
+   function TPsi(nf::Int,σ::Int,mc=3)
+      new([nf],[σ],mc,2mc+1)
    end
 end
 struct VPsi
@@ -62,9 +65,8 @@ end
 convert(T::Type{Psi},ϕ::RPsi) = Psi(ϕ,TPsi(0,0,0))
 convert(T::Type{Psi},ϕ::TPsi) = Psi(RPsi(0),ϕ)
 
-
 struct OpFunc{T <: Number}
-   f::FunctionWrapper{SparseMatrixCSC{Float64,Int}, Tuple{RPsi,Int}}
+   f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{RPsi,Int}}
    p::Int
    function OpFunc(T::Type,f::Function,p::Int)
       new{T}(f,p)

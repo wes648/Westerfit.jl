@@ -2,7 +2,43 @@
 This handles the output files for the westerfit package. Sophie made most of this!
 """
 
-function paramrecov(prd::Array{Float64})::Array{Float64}
+function paramrecov(prd::Array{Float64},ℋ::Vector{Op})::Array{Float64}
+   out = zeros(18)
+   if prd[13] != 0.0
+      out[14] = prd[14]/(-2.0*prd[13])                #ρ
+      out[15] = prd[15]/(-1*prd[13])                  #ρx
+   else
+      out[14] = 0.0
+      out[15] = 0.0
+   end
+   out[ 1] = prd[1] + prd[2] - prd[13]*out[14]^2        #A
+   out[ 2] = prd[2] + 2.0*prd[3] - prd[13]*out[15]^2    #B
+   out[ 3] = prd[2] - 2.0*prd[3]                        #C
+   out[ 4] = prd[4] #- 2*out[14]*out[15]*csl             #Dab
+   out[ 5] = (-prd[5] + √2*prd[7])/√3                   #ϵzz
+   out[ 6] = -(prd[5]/√3 + prd[7]/√6) + prd[9]          #ϵxx
+   out[ 7] = -(prd[5]/√3 + prd[7]/√6) - prd[9]          #ϵyy
+   out[ 8] = -prd[8]                                    #ezx
+   out[ 9] = prd[9]                                   #χzz
+   out[10] = -√(1.5)*prd[12]                           #χxz
+   out[11] = √6*prd[11]                                #χxx-χyy
+
+   #for i ∈ 12:length(prd)
+   #   if occursin("F",ℋ[i-11].nam)
+   #      prd[i] /= csl
+   #   elseif
+   #   else
+   #      break
+   #   end 
+   #end
+   out[12] = prd[12]#/csl                        #F (MHz)
+   out[14] = 2.0*prd[14] #/ csl                  #V3
+   out[15] = prd[15]                             #η
+   return out
+end
+
+
+function paramrecov_old(prd::Array{Float64})::Array{Float64}
    out = zeros(15)
    if prd[12] != 0.0
       out[13] = prd[13]/(-2.0*prd[12])       #ρ

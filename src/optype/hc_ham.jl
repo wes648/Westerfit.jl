@@ -1,3 +1,6 @@
+relem(j,k) = (0.5^k)*√( prod( 2j-k+1 : 2j+k+1 ) * factorial(k) / df(2k-1) )
+
+#fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 
 hr2on(ns,ks,bk::Float64,bn::Float64) = @. bn*eh(ns) + bk*ks^2 
 hr2of1(ns,ks,dab::Float64) = @. dab*(ks-0.5)*fh(ns,ks-1)
@@ -108,6 +111,37 @@ function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    dropzeros!(out)
    return out
 end
+
+function htor()
+end
+
+
+function rhorho(rz,rx,ns,ks)::SparseMatrixCSC{Float64,Int}
+   #shift is 4*topid
+   out = spdiagm(-2.0*pr[9+shift]*pr[10+shift] .* ks)
+   out[diagind(out,-1)] .= -pr[9+shift]*pr[11+shift] .* fh.(ns,ks[1:end-1])#<ψ|Nxψ> has an intrinsict factor of 1/2, cancels with -2Fρx
+end
+
+function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::SparseMatrixCSC{Float64,Int}
+   ns = nsgen(ψ.N)
+   ks = ksgen(ψ.K)
+   out = rhorho(pr[13]*pr[14],pr[13]*pr[15],ns,ks)
+   stgchk = ctrl.stages > 2
+   for i ∈ 2:length(ψ.T.nf)
+      tpart = pa_op(ψ.T,2)
+      if stgchk
+         tpart = sand(tpart,sparse(otvcs[:,:,i])) #' * tpart * otvcs[:,:,i]
+      end
+      part = kron(tpart, rhorho(pr[9+4i]*pr[10+4i],[9+shift]*pr[11+shift],ns,ks))
+      out = kron(sparse(I,size(part,1),size(part,1)), out) + kron(part, sparse(I,size(out,1),size(out,1)))
+   end
+   if ctrl.stages > 1
+      out = sand(out,tvecs)
+   end
+   return out#sparse(out)
+end
+
+
 
 #= This is the graveyard
 

@@ -1,20 +1,36 @@
+
+using LinearAlgebra, SparseArrays, BenchmarkTools
 function ur(n::Int)::SparseMatrixCSC{Float64, Int}
    out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
    out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
    return sparse(out)
 end
-
 sgn(k::Real)::Int = iszero(k) ? 1 : sign(k)
 powneg1(k::Real)::Int = isodd(k) ? -1 : 1
 δi(x::Real,y::Real)::Int = x==y
 
 function pa_old(mc,a)
    ms = collect(-mc:mc)
-   out = Diagonal(ms .^a)
+   out = spdiagm(ms .^a)
    u = ur(mc)
    out = dropzeros!(u*out*u)
    return out
 end
+function pa_no(mc,a)
+   ms = collect(-mc:mc)
+   out = spdiagm(ms .^a)
+   return out
+end
+function pa_new(mc,a)::SparseMatrixCSC{Float64, Int}
+   out = map(x -> abs(x)^a, -mc:mc)
+   if iseven(a)
+      out = sparse(1:2mc+1, 1:2mc+1, out)
+   else isodd(a)
+      out = sparse(1:2mc+1, 2mc+1:-1:1, out)
+   end
+   return out#dropzeros!(out)
+end
+
 function cos_old(mc,a)
    l = 2mc+1
    out = spdiagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))
@@ -22,89 +38,123 @@ function cos_old(mc,a)
    out = dropzeros!(u*out*u)
    return out
 end
-
-function pafull(mk,a)
-   mb = mk'
-   out = spzeros(length(mk),length(mk))
-   out += @. mk^a *δi(mb,mk)
-   out -= @. sgn(mk)*(-mk)^a *δi(mb,-mk)
-   out -= @. sgn(mb)*mk^a *δi(-mb,mk)
-   out += @. sgn(mk)*sgn(mb)*(-mk)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
-end
-
-function pa_test(mk,a)
-   mb = mk'
-   ms = mk#abs.(mk)
-   out = spzeros(length(mk),length(mk))
-   out += @. ms^a *δi(mb,mk)
-   out += @. sgn(mk)* (-ms)^a *δi(-mb,mk)
-   out += @. sgn(mb)* ( ms)^a *δi(mb,-mk)
-   out += @. sgn(mk)*sgn(mb)*(-ms)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
-end
-function pa_test14(mk,a)
-   mb = mk'
-   ms = abs.(mk)
-   out = spzeros(length(mk),length(mk))
-   out += @. ms^a *δi(mb,mk)
-   #out += @. sgn(mk)* (-ms)^a *δi(mb,-mk)
-   #out += @. sgn(mb)* ms^a *δi(-mb,mk)
-   out += @. sgn(mk)*sgn(mb)*(-ms)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
-end
-function pa_test23(mk,a)
-   mb = mk'
-   ms = abs.(mk)
-   out = spzeros(length(mk),length(mk))
-   #out += @. ms^a *δi(mb,mk)
-   out += @. sgn(mk)* (-ms)^a *δi(mb,-mk)
-   out += @. sgn(mb)* ms^a *δi(-mb,mk)
-   #out += @. sgn(mk)*sgn(mb)*(-ms)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
-end
-function pa_test2(mk,a)
-   mb = mk'
-   ms = abs.(mk)
-   out = spzeros(length(mk),length(mk))
-   #out += @. ms^a *δi(mb,mk)
-   out += @. sgn(mk)* (-ms)^a *δi(mb,-mk)
-   #out += @. sgn(mb)* ms^a *δi(-mb,mk)
-   #out += @. sgn(mk)*sgn(mb)*(-ms)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
-end
-function pa_test3(mk,a)
-   mb = mk'
-   ms = abs.(mk)
-   out = spzeros(length(mk),length(mk))
-   #out += @. ms^a *δi(mb,mk)
-   #out += @. sgn(mk)* (-ms)^a *δi(mb,-mk)
-   out += @. sgn(mb)* ms^a *δi(-mb,mk)
-   #out += @. sgn(mk)*sgn(mb)*(-ms)^a *δi(-mb,-mk)
-   out = 0.5 .* sparse(out)
-   return out
+function cos_dense(mc,a)
+   l = 2mc+1
+   out = diagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))
+   u = ud(mc)
+   out = u*out*u
+   return sparse!(out)
 end
 
 
-function pa_old(mc,a)
-   ms = collect(-mc:mc)
-   out = Diagonal(ms .^a)
+function cos_new(mc,a)
+   l = 2mc+1
+   c = spdiagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))
    u = ur(mc)
-   out = dropzeros!(u*out*u)
+   out = spzeros(l,l)
+   out[1:mc,1:mc] = u[1:mc,:]*c*u[:,1:mc]
+   out[mc+1:end,mc+1:end] = u[mc+1:end,:]*c*u[:,mc+1:end]
+   return out
+end
+function cos_no(mc,a)
+   l = 2mc+1
+   out = spdiagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))
    return out
 end
 
-function pa_new(mc,a)::SparseMatrixCSC{Float64, Int}
-   ms = collect(-mc:mc)
-   if iseven(a)
-      out = spdiagm(ms .^ a)
-   else
-      out = rotl90(spdiagm(abs.(ms).^a))
-   end
+function cos_b(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   out = spzeros(l,l)
+   #term 1
+   out .+= δi.((ms.+a)',ms)
+   out .+= δi.((ms.-a)',ms)
+   #term 2
+   out .+= δi.((ms.+a)',-ms) .* sgn.(-mc:mc)
+   out .+= δi.((ms.-a)',-ms) .* sgn.(-mc:mc)
+   #term 3
+   out .+= δi.((-ms.+a)',ms) .* sgn.(-mc:mc)'
+   out .+= δi.((-ms.-a)',ms) .* sgn.(-mc:mc)'
+   #term 4
+   out .+= δi.((-ms.+a)',-ms) .* (sgn.(-mc:mc)' .*sgn.(-mc:mc))
+   out .+= δi.((-ms.-a)',-ms) .* (sgn.(-mc:mc)' .*sgn.(-mc:mc))
+   #clean up
+   out .*= 0.25
+   out[mc+1:end,mc+1] .*= √0.5
+   out[mc+1,mc+1:end] .*= √0.5
+   return dropzeros!(out)
+end
+
+function cos_b1(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   out = spzeros(l,l)
+   #term 1
+   out .+= δi.((ms.+a)',ms)
+   out .+= δi.((ms.-a)',ms)
+   #clean up
+   out .*= 0.25
+   out[mc+1:end,mc+1] .*= √0.5
+   out[mc+1,mc+1:end] .*= √0.5
+   return dropzeros!(out)
+end
+function cos_b2(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   out = spzeros(l,l)
+   #term 2
+   out .+= δi.((ms.+a)',-ms) .* sgn.(-mc:mc)
+   out .+= δi.((ms.-a)',-ms) .* sgn.(-mc:mc)
+   #clean up
+   out .*= 0.25
+   out[mc+1:end,mc+1] .*= √0.5
+   out[mc+1,mc+1:end] .*= √0.5
+   return dropzeros!(out)
+end
+function cos_b3(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   out = spzeros(l,l)
+   #term 3
+   out .+= δi.((-ms.+a)',ms) .* sgn.(-mc:mc)'
+   out .+= δi.((-ms.-a)',ms) .* sgn.(-mc:mc)'
+   #clean up
+   out .*= 0.25
+   out[mc+1:end,mc+1] .*= √0.5
+   out[mc+1,mc+1:end] .*= √0.5
+   return dropzeros!(out)
+end
+function cos_b4(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   out = spzeros(l,l)
+   #term 4
+   out .+= δi.((-ms.+a)',-ms) .* (sgn.(-mc:mc)' .*sgn.(-mc:mc))
+   out .+= δi.((-ms.-a)',-ms) .* (sgn.(-mc:mc)' .*sgn.(-mc:mc))
+   #clean up
+   out .*= 0.25
+   out[mc+1:end,mc+1] .*= √0.5
+   out[mc+1,mc+1:end] .*= √0.5
+   return dropzeros!(out)
+end
+
+
+function cos_w(mc,a)
+   l = 2mc+1
+   ms = abs.(-mc:mc)
+   nm = collect(-mc:-1)
+   pm = collect(0:mc)
+   out = spzeros(l,l)
+   #term 4
+   out[1:mc,1:mc] .+= δi.((nm.+a)',nm) .* (sgn.(nm)' .*sgn.(nm))
+   out[1:mc,1:mc] .+= δi.((nm.-a)',nm) .* (sgn.(nm)' .*sgn.(nm))
+
+   out[mc+1:end,mc+1:end] .+= δi.((pm.+a)',pm) .* (sgn.(pm)' .*sgn.(pm))
+   out[mc+1:end,mc+1:end] .+= δi.((pm.-a)',pm) .* (sgn.(pm)' .*sgn.(pm))
+
+   #clean up
+   out .*= 0.5
+   out[mc+1+a,mc+1] .= √0.5
+   out[mc+1,mc+1+a] .= √0.5
    return dropzeros!(out)
 end

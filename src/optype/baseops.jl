@@ -26,6 +26,8 @@ Each entry should just be "Nam"=>Nam
 ################################################################################
 #####                         Section 1: Functions                         #####
 ################################################################################
+sand(a::AbstractArray,x::AbstractArray) = x' * a * x
+
 eh(x::Real)::Float64 = x*(x+1)
 □rt(x::Real)::Float64 =√(x*(x>zero(x)))
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
@@ -206,6 +208,21 @@ function isy(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
 end
 
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
+
+function pα(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   if iszero(ψ.σ[tid])
+      out = map(x -> abs(x)^p, ms[tid])
+      if iseven(p)
+         out = sparse(1:ψ.lng, 1:ψ.lng, out)
+      else isodd(p)
+         out = sparse(1:ψ.lng, ψ.lng:-1:1, out)
+      end
+   else
+      out = sparse(1:2mc+1, 1:2mc+1, ms[tid] .^p)
+   end
+   return out
+end
+
 
 function μ_gen(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
 #This matrix is transposed FUCK FUCK FUCK apr 29

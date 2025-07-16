@@ -91,23 +91,7 @@ function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
    end
    return vals, vecs
 end
-function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
-                  ℋ::Vector{Op},ψ::Psi,σs)
-   H = kron(I(ψ.T.lng),Symmetric(Hr,:L)) #<--------- CHECK
-   H += enact(ℋ,ψ,vals[12:end],stgs) #<--------- CHECK
-   #tplus!(H)
-   #H = Symmetric(H,:L)
-   U = sparse(ones(1))
-   for i in 1:length(ψ.T.nf)
-#having U at the end of kron maintians the tight block structure of the lower index tops
-      if ψ.T.σ[i] == 0
-         U = kron(ur(ctrl.mcalc),U)
-      else
-         U = kron(sparse(1.0I,2ctrl.mcalc+1,2ctrl.mcalc+1),U)
-   end;end
-   U = kron(U,ur(ψ.R.J,ψ.R.S))
-   H = droptol!(U*H*U,2*eps())
-   vals,vecs = eigen!(Symmetric(Matrix(H),:L))
+function assign_1stg!(ctrl,vals,vecs,ψ)
    if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
       perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl.mcalc ,ctrl.vtmax ) #<--------- CHECK
       vals = vals[perm]
@@ -119,6 +103,30 @@ function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,s
    else
       vals, vecs = expectassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,mcalc,σ)
    end
+   return vals,vecs
+end
+
+function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
+                  ℋ::Vector{Op},ψ::Psi,σs)
+   H = kron(I(ψ.T.lng),Symmetric(Hr,:L)) #<--------- CHECK
+   H += rhomat(ctrl,vals,ψ)
+   H += enact(ℋ,ψ,vals[12:end],stgs) #<--------- CHECK
+
+#   U = sparse(ones(1))
+#   for i in 1:length(ψ.T.nf)
+##having U at the end of kron maintians the tight block structure of the lower index tops
+#      if ψ.T.σ[i] == 0
+#         U = kron(ur(ctrl.mcalc),U)
+#      else
+#         U = kron(sparse(1.0I,2ctrl.mcalc+1,2ctrl.mcalc+1),U)
+#   end;end
+#   U = kron(U,ur(ψ.R.J,ψ.R.S))
+
+   U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
+   H = droptol!(sand(H,U),2*eps())
+   vals,vecs = eigen!(Symmetric(Matrix(H),:L))
+
+   vals,vecs = assign_1stg!(ctrl,vals,vecs,ψ)
    return vals, vecs
 end
 function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
