@@ -31,6 +31,41 @@ function pa_new(mc,a)::SparseMatrixCSC{Float64, Int}
    return out#dropzeros!(out)
 end
 
+sand(a::AbstractArray,x::AbstractArray) = x' * a * x
+
+function htorhc(mc,f,v)
+   out = map(x -> f*x^2 + v, -mc:mc)
+   out = sparse(reduce(vcat, [1:2mc+1; 1:2mc]),
+                reduce(vcat, [1:2mc+1; 2:2mc+1]),
+                vcat(out,fill(-0.5*v,2mc)))
+   return out
+end
+function htorhc(nf,ms,f,v)
+   out = map(x -> x^2 + v, -mc:mc)
+   out = sparse(1:2mc+1, 1:2mc+1, out)
+   out += coshc
+   return out
+end
+function coshc(l,v,oddnf::Bool)
+   if check
+      out = spdiagm(1=>fill(0.5,l-1),-1=>fill(0.5,l-1))
+   else
+      out = spdiagm(2=>fill(0.5,l-2),-2=>fill(0.5,l-2))
+   end
+   u = ur(mc)
+   out = sand(out,u)
+   return out
+end
+function coshc(mc,v,a::Int)
+   l = 2mc+1
+   out = spdiagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))
+   u = ur(mc)
+   out = dropzeros!(u*out*u)
+   return out
+end
+
+
+
 function cos_old(mc,a)
    l = 2mc+1
    out = spdiagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))

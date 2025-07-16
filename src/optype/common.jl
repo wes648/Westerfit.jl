@@ -9,6 +9,9 @@ powneg1(k::Real)::Int = isodd(k) ? -1 : 1
 """
 δi(x::Real,y::Real)::Int = x==y
 
+Δlist2(J::Real,S::Real)::UnitRange{Int} = Int(abs(J-S)):Int(J+S)
+
+
 function srprep(J,S)
    ns = Δlist2(J,S)
    nd = 2 .* Int.(ns) .+ 1
@@ -21,9 +24,8 @@ function srprep(J,S)
    jd = Int((2.0*S+1.0)*(2.0*J+1.0))
    return ns, nd, ni, jd
 end
-function srprep2(J::Number,S::Number)
+function srprep2(J::Real,S::Real)
    ns = Δlist2(J,S)
-   #nd = 2 .* Int.(ns) .+ 1
    ni = nindsgen(ns)
    jd = Int((2.0*S+1.0)*(2.0*J+1.0))
    return ns, ni, jd
@@ -38,7 +40,6 @@ function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    return ni
 end
 
-
 function adiagin(a::AbstractMatrix)::StepRange{Int,Int}
    @assert size(a,1)==size(a,2)
    l = size(a,1)
@@ -48,28 +49,33 @@ end
 """
 This builds the rotational Wang Transformation matrix for every n in Δlist(j,s).
 """
-function ur(j::Float64,s::Float64)::SparseMatrixCSC{Float64, Int64}
-   ns, ni, jsd = srprep2(j,s)
-   out = spzeros(jsd,jsd)
-   for i in 1:length(ns)
-      out[ni[i], ni[i]] = ur(ns[i])
+function ur(j::Real,s::Real)::SparseMatrixCSC{Float64, Int64}
+   if !iszero(s)
+      ns, ni, jsd = srprep2(j,s)
+      out = spzeros(jsd,jsd)
+      for i in 1:length(ns)
+         out[ni[i], ni[i]] = ur(ns[i])
+      end
+      return out
+   else
+      return ur(Int(j))
    end
-   return out
 end
-function ur(n::Int)::SparseMatrixCSC{Float64, Int}
-   out = Diagonal(append!(fill(-√.5,n), 1.0, fill(√.5,n)))
-   out += rotl90(Diagonal(append!(fill(√.5,n), 0.0, fill(√.5,n))))
-   return sparse(out)
-end
+#function ur(n::Int)::SparseMatrixCSC{Float64, Int}
+#   out = Diagonal(append!(fill(-√.5,n), 1.0, fill(√.5,n)))
+#   out += rotl90(Diagonal(append!(fill(√.5,n), 0.0, fill(√.5,n))))
+#   return sparse(out)
+#end
 #function ur(n::Int)::SparseMatrixCSC{Float64, Int}
 #   return sparse(I,2n+1,2n+1)
 #end
-function ur2(n::Int)::SparseMatrixCSC{Float64, Int}
-#this version is radically faster above N = 20 but much slower
-   out = spdiagm(append!(fill(-√.5,n), 0.0, fill(√.5,n)))
-   out[adiagin(out)] .= append!(fill(√.5,n), 1.0, fill(√.5,n))
+function ur(n::Int)::SparseMatrixCSC{Float64, Int}
+   out = sparse(1:2n+1,1:2n+1,append!(fill(-√.5,n), fill(√.5,n+1)))
+   out[adiagin(out)] .= fill(√.5,2n+1)
+   out[n+1,n+1] = 1.0
    return sparse(out)
 end
+
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = n ≤ 20 ? ur1(n) : ur2(n)
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = ur(n)
 
@@ -129,7 +135,6 @@ function bigqngen(l,jlist,s,vtm,σs)
    return out
 end
 
-Δlist2(J::Real,S::Real)::UnitRange{Int} = Int(abs(J-S)):Int(J+S)
 kgen(ns::UnitRange{Int})::Vector{UnitRange{Int}} = [-n:n for n ∈ ns]
 
 #tplus!(a::Diagonal)::SparseMatrixCSC{Float64, Int} = sparse(a)

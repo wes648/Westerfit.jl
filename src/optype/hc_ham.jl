@@ -112,7 +112,10 @@ function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-function htor()
+function htor(pr::Array{Float64},ψ)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(ψ.T.lng,ψ.T.lng)
+   out[diagind(out)] .= kron(ones(X), pr[13].* ψ.T.ms[1] .^2 .+ pr[16])
+   out[diagin(out,-1)] .= fill()
 end
 
 
