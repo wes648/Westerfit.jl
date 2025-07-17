@@ -33,6 +33,8 @@ end
 
 sand(a::AbstractArray,x::AbstractArray) = x' * a * x
 
+
+
 function htorhc(mc,f,v)
    out = map(x -> f*x^2 + v, -mc:mc)
    out = sparse(reduce(vcat, [1:2mc+1; 1:2mc]),
