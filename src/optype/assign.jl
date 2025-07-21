@@ -339,3 +339,19 @@ end
 #This takes the eigenvectors & builds the permutation
 assignperm(vec) = sortperm([iamax(vec[:,i]) for i in 1:size(vec,2)])
 
+
+function assign_1stg!(ctrl,vals,vecs,ψ)
+   if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
+      perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl.mcalc ,ctrl.vtmax ) #<--------- CHECK
+      vals = vals[perm]
+      vecs = vecs[:,perm]
+   elseif ctrl.assign =="expectk"
+      vals, vecs = expectkassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,ctrl.mcalc ,σ)      
+   elseif ctrl.assign =="eeo"
+      vals, vecs = eeoassign!(vals,vecs,ψ.R.J,ψ.R.S,ctrl.NFOLD[1],ctrl.mcalc,0)
+   else
+      vals, vecs = expectassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,mcalc,σ)
+   end
+   return vals,vecs
+end
+

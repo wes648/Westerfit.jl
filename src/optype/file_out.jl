@@ -1,9 +1,14 @@
+#reduced barrier height is s = 4 V / F nf^2 (follows from the first term of the 0.5cosnx taylor series)
+
 """
 This handles the output files for the westerfit package. Sophie made most of this!
 """
 
 function paramrecov(prd::Array{Float64},ℋ::Vector{Op})::Array{Float64}
    out = zeros(18)
+
+   #first loop over nfs to correct A, B, ρs, F, Vn_1s
+
    if prd[13] != 0.0
       out[14] = prd[14]/(-2.0*prd[13])                #ρ
       out[15] = prd[15]/(-1*prd[13])                  #ρx
@@ -618,6 +623,24 @@ function iterativecopier(molnam::String)
    end
 end
 
+function inpwriter2(molnam::String,ctrl,values)
+   iterativecopier(molnam)
+
+   #read 2ndorder block as ;-dlm file of strings
+   #replace block[:,2] with strings.(values[2ndorder])
+   block = readdlm("$molnam.inp",';',String,
+                   skipstart=ctrl.sobk[1])[1:14+4*length(ctrl.NFOLD),1:3]
+   block[:,2] .= lpad(string.(values[1:14+4*length(ctrl.NFOLD)]), 30)
+   writedlm("$molnam.inp",block,';',skipstart=ctrl.sobk[1])
+
+   #read params block as ;-dlm file of strings
+   #replace block[:,2] with strings.(values[higherorder])
+   block = readdlm("$molnam.inp",';',String, skipstart=ctrl.opbk[1])
+   block[:,2] .= lpad(string.(values[14+4*length(ctrl.NFOLD):end]), 30)
+   writedlm("$molnam.inp",block,';',skipstart=ctrl.opbk[1])
+
+end
+
 
 function inpwriter(molnam::String, values, scales)
 
@@ -714,6 +737,49 @@ function findstrinput_new(molnam)
    return strlnctrl,strln2nd,strlnhigh,file
 end
 
+function secnam_gen(nfold::Int)::Vector{String}
+   l = length(nfold)
+   out =  [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+          " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)"]
+   if isone(l)
+      out = vcat(out,[" F", " -2ρzF", " -ρxF", " V$(nfold[1])/2", " ηz", " ηx"])
+   elseif l>1
+      for i ∈ 1:l
+         out = vcat(out,[" F_$i", " -2ρzF_$i", " -ρxF$i", " V$(nfold[i])_$i/2", " ηz_$i", " ηx_$i"])
+      end
+   else
+      #out is out
+   end
+   return out
+end
+
+function outputinit2(molnam,params,scls,linecount,ctrl,ℋ)
+   secnam = secnam_gen(ctrl.NFOLD)
+   io = open("$molnam.out","w")
+      println(io,molnam,"   @   ",time)
+      println(io,"")
+      println(io,"Control Parameters")
+      for fname in fieldnames(typeof(ctrl))
+         println(io, "$fname = $(getfield(ctrl,fname))")
+      end
+      println(io,"")
+      println(io,"Initial Parameters")
+      l = length(secnam)
+      for i in 1:l
+         println(io, secnam[i], ";", lpad(param[i],30),";", lpad(scls[i],8))
+      end
+      println(io,"")
+      for i in 1:length(ℋ)
+         if scls[i] > 0.0
+            println(io," ",ℋ[i].nam,";", lpad(param[i+l],30),";", lpad(scls[i+l],8))
+         end
+      end
+      println(io,"")
+      println(io,"Number of lines = $linecount")
+      println(io,"")
+   close(io)
+
+end
 
 function outputinit(molnam,params,scls,linelength,ctrl)
 

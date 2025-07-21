@@ -32,7 +32,7 @@ function enact_tor(tp::Array{Int,2},ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{Float64,Int}
+function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{T,Int} where T <: Number
    out = enact_init(O,ψ.R,val)
    @inbounds for i in 1:length(O.rf)
       out *= eval_rop(O.rf[i],ψ.R)
@@ -52,7 +52,7 @@ function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{Float64,Int}
    return out
 end
 #This allows the basis set to be distributed among a list of added Operators
-function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})::SparseMatrixCSC{Float64,Int}
+function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})::SparseMatrixCSC{T,Int} where T <: Number
    out = enact(O[1],ψ,val[1])
    @inbounds for i in 2:length(O)
       if stgs[i] ≥ 0
@@ -64,67 +64,18 @@ function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})::Sp
    return out
 end
 
-#tsr_diag variants: 0 generic universal, 1 preloads Hrs, 2 two-stage preloads Hrs
-function tsrdiag_0(ℋ::Vector{Op},ψ::Psi)
-   H = enact(ℋ,ψ)
-   U = sparse(ones(1))
-   for i in 1:length(ψ.nf)
-#having U at the end of kron maintians the tight block structure of the lower index tops
-      if ψ.σ[i] == 0
-         U = kron(ur(mcalc),U)
-      else
-         U = kron(sparse(1.0I,2mcalc+1,2mcalc+1),U)
-   end;end
-   U = kron(u,ur(ψ.R.J,ψ.R.S))
-   H = droptol!(U*H*U,2*eps())
-   vals,vecs = eigen!(Symmetric(Matrix(H)))
-   if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
-      perm = ramassign(vecs,j,s,mcalc,vtm)
-      vals = vals[perm]
-      vecs = vecs[:,perm]
-   elseif ctrl.assign =="expectk"
-      vals, vecs = expectkassign!(vals,vecs,j,s,nf,mcalc,σ)      
-   elseif ctrl.assign =="eeo"
-      vals, vecs = eeoassign!(vals,vecs,j,s,nf,mcalc,σ)
-   else
-      vals, vecs = expectassign!(vals,vecs,j,s,nf,mcalc,σ)
-   end
-   return vals, vecs
-end
-function assign_1stg!(ctrl,vals,vecs,ψ)
-   if (ctrl.assign =="ram36")||(ctrl.assign =="RAM36")
-      perm = ramassign(vecs,ψ.R.J,ψ.R.S,ctrl.mcalc ,ctrl.vtmax ) #<--------- CHECK
-      vals = vals[perm]
-      vecs = vecs[:,perm]
-   elseif ctrl.assign =="expectk"
-      vals, vecs = expectkassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,ctrl.mcalc ,σ)      
-   elseif ctrl.assign =="eeo"
-      vals, vecs = eeoassign!(vals,vecs,ψ.R.J,ψ.R.S,ctrl.NFOLD[1],ctrl.mcalc,0)
-   else
-      vals, vecs = expectassign!(vals,vecs,ψ.R.J,ψ.R.S,nf,mcalc,σ)
-   end
-   return vals,vecs
-end
-
-function tsrdiag_1(Hr::SparseMatrixCSC{Float64,Int},vals::Vector{Float64},ctrl,stgs,
+function tsrdiag_1(prm::Vector{Float64},ctrl,stgs,
                   ℋ::Vector{Op},ψ::Psi,σs)
-   H = kron(I(ψ.T.lng),Symmetric(Hr,:L)) #<--------- CHECK
-   H += rhomat(ctrl,vals,ψ)
-   H += enact(ℋ,ψ,vals[12:end],stgs) #<--------- CHECK
-
-#   U = sparse(ones(1))
-#   for i in 1:length(ψ.T.nf)
-##having U at the end of kron maintians the tight block structure of the lower index tops
-#      if ψ.T.σ[i] == 0
-#         U = kron(ur(ctrl.mcalc),U)
-#      else
-#         U = kron(sparse(1.0I,2ctrl.mcalc+1,2ctrl.mcalc+1),U)
-#   end;end
-#   U = kron(U,ur(ψ.R.J,ψ.R.S))
+   H = htsr2_1stg(ctrl,prm,ψ)
+   H += enact(ℋ,ψ,prm[12+4*length(ψ.T.nf):end],stgs)
 
    U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
    H = droptol!(sand(H,U),2*eps())
-   vals,vecs = eigen!(Symmetric(Matrix(H),:L))
+   if isreal(eltype(H))
+      vals,vecs = eigen!(Symmetric(Matrix(H),:L))
+   else
+      vals,vecs = eigen!(Hermitian(Matrix(H),:L))
+   end
 
    vals,vecs = assign_1stg!(ctrl,vals,vecs,ψ)
    return vals, vecs
@@ -136,15 +87,10 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
       jd = Int(jlist[ind,1]+1)
       sc = jlist[ind,2]
       dest = jvdest2(0.5*jlist[ind,1],ctrl.S ,ctrl.vtmax )
-      ϕ = RPsi(0.5*jlist[ind,1],ctrl.S )
-      Hrot = hrot2(prm[1:4],ϕ)
-      if ctrl.S ≥1.0
-         Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ϕ) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ϕ)
-      elseif ctrl.S ==0.5
-         Hrot += hsr(prm[5:8],ψ.R.J,ψ.R.S,ϕ)
-      end
-      ψ = Psi(ϕ,TPsi(ctrl.NFOLD ,σs[:,sc],ctrl.mcalc ))
-      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(Hrot,prm,ctrl,stg,ℋ,ψ,σs[:,sc])
+
+      ψ = Psi( RPsi(0.5*jlist[ind,1],ctrl.S ), TPsi(ctrl.NFOLD ,σs[:,sc],ctrl.mcalc ))
+
+      vals[dest,sc],vecs[1:jd*msd,dest,sc] = tsrdiag_1(prm,ctrl,stg,ℋ,ψ,σs[:,sc])
    end#j
    return vals, vecs
 end#f
@@ -152,14 +98,14 @@ end#f
 function torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,sc)
    tsize = (2*ctrl.mcalc +1)^length(ctrl.NFOLD )
    dest = 1:ctrl.mmax +1
-   H = torbuild(prm[12:end],ℋ,ϕ,stg,tsize,ctrl.mcalc )
+   H = torbuild(ℋ,ϕ,stg,tsize,ctrl.mcalc )
    H = Matrix(H)
    H = eigen!(H)
    tvals[:,sc] = H.values[dest]
    tvecs[:,:,sc] = H.vectors[:,dest]
 end
 function torbuild(vals,O::Vector{Op},ψ::TPsi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
-   out = spzeros(msz,msz)
+   out = htor(vals, mc,ψ)
    U = ur(mc)
    @inbounds for i in 1:length(O)
       if isone(stgs[i])
@@ -217,7 +163,7 @@ function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector
    #printstyled("ψ.R.J = $(ψ.R.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
    H = kron(I(ctrl.mmax +1)^length(ctrl.NFOLD ),Hr) 
    H[diagind(H)] .+= kron(tvals, ones(Int((2ψ.R.J+1)*(2ψ.R.S+1)) ))
-   h_stg2build!(H,ℋ,ψ,prm[12:end],stg,(2*ctrl.mcalc +1)^length(ctrl.NFOLD ),
+   h_stg2build!(H,ℋ,ψ,prm[12+4*length(ψ.T.nf):end],stg,(2*ctrl.mcalc +1)^length(ctrl.NFOLD ),
                tvecs,ctrl.mcalc )
    #tplus!(H)
    #wangtrans2!(H,ctrl.mmax ,ψ)

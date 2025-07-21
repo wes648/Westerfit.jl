@@ -1,8 +1,14 @@
 
 using LinearAlgebra, SparseArrays, BenchmarkTools
+function adiagin(a::AbstractMatrix)::StepRange{Int,Int}
+   @assert size(a,1)==size(a,2)
+   l = size(a,1)
+   return l:(l-1):(l*(l-1)+1)
+end
 function ur(n::Int)::SparseMatrixCSC{Float64, Int}
-   out = Diagonal(vcat(fill(-√.5,n), 1.0, fill(√.5,n)))
-   out += rotl90(Diagonal(vcat(fill(√.5,n), 0.0, fill(√.5,n))))
+   out = sparse(1:2n+1,1:2n+1,append!(fill(-√.5,n), fill(√.5,n+1)))
+   out[adiagin(out)] .= fill(√.5,2n+1)
+   out[n+1,n+1] = 1.0
    return sparse(out)
 end
 sgn(k::Real)::Int = iszero(k) ? 1 : sign(k)
@@ -35,21 +41,42 @@ sand(a::AbstractArray,x::AbstractArray) = x' * a * x
 
 
 
-function htorhc(mc,f,v)
-   out = map(x -> f*x^2 + v, -mc:mc)
-   out = sparse(reduce(vcat, [1:2mc+1; 1:2mc]),
-                reduce(vcat, [1:2mc+1; 2:2mc+1]),
-                vcat(out,fill(-0.5*v,2mc)))
+#function htorhc(mc,f,v)
+#   out = map(x -> f*x^2 + v, -mc:mc)
+#   out = sparse(reduce(vcat, [1:2mc+1; 1:2mc]),
+#                reduce(vcat, [1:2mc+1; 2:2mc+1]),
+#                vcat(out,fill(-0.5*v,2mc)))
+#   return out
+#end
+function htorhc(nf,σ,mc,f,v)
+   l = 2mc+1
+   out = sparse(1:l, 1:l, map(x -> f*x^2 + v, -mc*nf:nf:mc*nf))
+   if isodd(nf)&&iszero(σ)
+      out[diagind(out,-1)[1:mc-1]] .= -0.5v
+      out[diagind(out,-1)[mc]] = -√0.5 * v
+      out[diagind(out,-1)[mc+1:end]] .= -0.5v   
+   elseif iseven(nf)&&iszero(σ)
+      out[mc,mc] += 0.5v
+      out[mc+2,mc+2] -= 0.5v
+      out[diagind(out,-2)[1:mc-2]] .= -0.5v
+      out[diagind(out,-2)[mc]] = -√0.5 * v
+      out[diagind(out,-2)[mc+2:end]] .= -0.5v   
+   else
+      out[diagind(out, 1+iseven(nf))] .= -0.5*v
+      out[diagind(out,-1-iseven(nf))] .= -0.5*v      
+   end
    return out
 end
-function htorhc(nf,ms,f,v)
-   out = map(x -> x^2 + v, -mc:mc)
-   out = sparse(1:2mc+1, 1:2mc+1, out)
-   out += coshc
+function htorhc(nf,mc,f,v)
+   l = 2mc+1
+   out = sparse(1:l, 1:l, map(x -> f*x^2 + v, -mc*nf:nf:mc*nf))
+   #out = sand(out,ur(mc))
    return out
 end
-function coshc(l,v,oddnf::Bool)
-   if check
+
+
+function coshc(l,mc,v,oddnf::Bool)
+   if oddnf
       out = spdiagm(1=>fill(0.5,l-1),-1=>fill(0.5,l-1))
    else
       out = spdiagm(2=>fill(0.5,l-2),-2=>fill(0.5,l-2))

@@ -61,17 +61,19 @@ function ur(j::Real,s::Real)::SparseMatrixCSC{Float64, Int64}
       return ur(Int(j))
    end
 end
-#function ur(n::Int)::SparseMatrixCSC{Float64, Int}
-#   out = Diagonal(append!(fill(-√.5,n), 1.0, fill(√.5,n)))
-#   out += rotl90(Diagonal(append!(fill(√.5,n), 0.0, fill(√.5,n))))
-#   return sparse(out)
-#end
+function ur_old(n::Int)::SparseMatrixCSC{Float64, Int}
+   out = Diagonal(append!(fill(-√.5,n), 1.0, fill(√.5,n)))
+   out += rotl90(Diagonal(append!(fill(√.5,n), 0.0, fill(√.5,n))))
+   return sparse(out)
+end
 #function ur(n::Int)::SparseMatrixCSC{Float64, Int}
 #   return sparse(I,2n+1,2n+1)
 #end
 function ur(n::Int)::SparseMatrixCSC{Float64, Int}
-   out = sparse(1:2n+1,1:2n+1,append!(fill(-√.5,n), fill(√.5,n+1)))
-   out[adiagin(out)] .= fill(√.5,2n+1)
+   out = spzeros(1:2n+1,1:2n+1)
+   out[diagind(out)[1:n]] .= -√.5
+   out[diagind(out)[n+2:end]] .= √.5
+   out[adiagin(out)] .= √.5
    out[n+1,n+1] = 1.0
    return sparse(out)
 end

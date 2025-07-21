@@ -59,7 +59,7 @@ function hsr(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    out = spzeros(ψ.lng,ψ.lng)
    sfact = √3*nred(S)*powneg1(J+S)
    for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
-      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nk - nb
+      nb = ψ.N[j]; nk = ψ.N[i]; ks = ψ.K[i]; Δ = nb - nk
       blck = view(out,nds[j],nds[i])
       frac = jsred(J,S,nb,nk)*nsred2(nb,nk)*sfact
       for p ∈ (-2-Δ):Δ
@@ -67,13 +67,12 @@ function hsr(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
          dest = diagind(blck,p)
          kl = ks[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-#         @. blck[dest] = pr[2+abs(q)]*wig3j(nb,2,nk,-kl,q,kl-q)*powneg1(-kl)
          blck[dest] = srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
       end#p loop
    end
    dropzeros!(out)
    #out .*= nred(S)*powneg1(J+S)
-   out[diagind(out)] .+= -√(1/3)*pr[1] .* ns_el2(J,S,ψ.N,1)
+   out[diagind(out)] .+= -√(1/3)*pr[1] .* ns_el3(J,S,ψ.N)
    return out
 end
 
@@ -112,17 +111,40 @@ function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-function htor(pr::Array{Float64},ψ)::SparseMatrixCSC{Float64,Int}
-   out = spzeros(ψ.T.lng,ψ.T.lng)
-   out[diagind(out)] .= kron(ones(X), pr[13].* ψ.T.ms[1] .^2 .+ pr[16])
-   out[diagin(out,-1)] .= fill()
+function htor(pr::Array{Float64},mc::Int,ψ::TPsi)::SparseMatrixCSC{Float64,Int}
+   out = spzeros(ψ.lng,ψ.lng)
+   for i ∈ 1:length(ψ.nf)
+      r = length(ψ.nf) - i
+      out += kron(I((2mc+1)^r), 
+                 htorhc(pr[9+4i],pr[12+4i], mc, ψ.ms[i], ψ,σ[i]), 
+                 I((2mc+1)^(i-1)) )
+   end
+   return out
 end
 
+function htorhc(f,v,mc,ms,σ)
+   out = sparse(1:2mc+1, 1:2mc+1, map(x -> f*x^2 + v, ms))
+   if isodd(nf)&&iszero(σ)
+      out[diagind(out,-1)[1:mc-1]] .= -0.5v
+      out[diagind(out,-1)[mc]] = -√0.5 * v
+      out[diagind(out,-1)[mc+1:end]] .= -0.5v   
+   elseif iseven(nf)&&iszero(σ)
+      out[mc,mc] += 0.5v
+      out[mc+2,mc+2] -= 0.5v
+      out[diagind(out,-2)[1:mc-2]] .= -0.5v
+      out[diagind(out,-2)[mc]] = -√0.5 * v
+      out[diagind(out,-2)[mc+2:end]] .= -0.5v   
+   else
+      out[diagind(out, 1+iseven(nf))] .= -0.5*v
+      out[diagind(out,-1-iseven(nf))] .= -0.5*v      
+   end
+   return out
+end
 
 function rhorho(rz,rx,ns,ks)::SparseMatrixCSC{Float64,Int}
    #shift is 4*topid
-   out = spdiagm(-2.0*pr[9+shift]*pr[10+shift] .* ks)
-   out[diagind(out,-1)] .= -pr[9+shift]*pr[11+shift] .* fh.(ns,ks[1:end-1])#<ψ|Nxψ> has an intrinsict factor of 1/2, cancels with -2Fρx
+   out = spdiagm(rz .* ks)
+   out[diagind(out,-1)] .= rx .* fh.(ns,ks[1:end-1])#<ψ|Nxψ> has an intrinsict factor of 1/2, cancels with -2Fρx
 end
 
 function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::SparseMatrixCSC{Float64,Int}
@@ -135,7 +157,7 @@ function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::Sparse
       if stgchk
          tpart = sand(tpart,sparse(otvcs[:,:,i])) #' * tpart * otvcs[:,:,i]
       end
-      part = kron(tpart, rhorho(pr[9+4i]*pr[10+4i],[9+shift]*pr[11+shift],ns,ks))
+      part = kron(tpart, rhorho(pr[10+4i],pr[11+4i],ns,ks))
       out = kron(sparse(I,size(part,1),size(part,1)), out) + kron(part, sparse(I,size(out,1),size(out,1)))
    end
    if ctrl.stages > 1
@@ -144,6 +166,30 @@ function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::Sparse
    return out#sparse(out)
 end
 
+function htsr2_1stg(ctrl::Controls,pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   H = hrot2(prm[1:4],ψ)
+   if ctrl.S ≥1.0
+      H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ψ.R)
+   elseif ctrl.S ==0.5
+      H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R)
+   end
+   H = kron(I(ψ.T.lng),H)
+   H += kron( htor(pr, ctrl.mc, ψ.T), I(ψ.R.lng) )
+   H += rhomat(ctrl,vals,ψ)
+   return Symmetric(H,:L)
+end
+function htsr2_2stg(ctrl::Controls,pr::Array{Float64},ψ::Psi,tvals::Array{Float64},tvecs::Array{Float64,2})::SparseMatrixCSC{Float64,Int}
+   H = hrot2(prm[1:4],ψ)
+   if ctrl.S ≥1.0
+      H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ψ.R)
+   elseif ctrl.S ==0.5
+      H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R)
+   end
+   H = kron(I(ψ.T.lng),H)
+   H += kron( Diagonal(tvals), sparse(I,ψ.R.lng,ψ.R.lng) )
+   H += rhomat(ctrl,vals,ψ,tvecs=tvecs)
+   return Symmetric(H,:L)
+end
 
 
 #= This is the graveyard

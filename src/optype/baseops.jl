@@ -28,6 +28,9 @@ Each entry should just be "Nam"=>Nam
 ################################################################################
 sand(a::AbstractArray,x::AbstractArray) = x' * a * x
 
+df(n) = prod(n:-2:1)
+relem(j,k) = (0.5^k)*√( prod( 2j-k+1 : 2j+k+1 ) * factorial(k) / df(2k-1) )
+
 eh(x::Real)::Float64 = x*(x+1)
 □rt(x::Real)::Float64 =√(x*(x>zero(x)))
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))

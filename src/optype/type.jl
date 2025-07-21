@@ -42,10 +42,7 @@ struct TPsi
          nf = nf
       end
       lng = sum(length.(ms))
-      new(nf,
-         ms,
-         σ,
-         lng)
+      new(nf, ms, σ, lng)
    end
    function TPsi(nf::Int,σ::Int,mc=3)
       new([nf],[σ],mc,2mc+1)

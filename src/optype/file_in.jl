@@ -147,7 +147,7 @@ end
 function secnam_init()::Vector{String}
    return ["AZ"; "BX"; "CY"; "Dab"; "ϵzz"; "ϵxx"; "ϵyy"; "ϵzx"; "χzz"; "χxx-χyy"; "χxz"]
 end
-function sod2prep_lim(prd::Array{Float64})::Array{Float64}
+function sod2prep_lim(prd::Array{Float64},nf)::Array{Float64}
    out = zeros(11)
    ##tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρz²
    ##tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρx²
@@ -166,10 +166,12 @@ function sod2prep_lim(prd::Array{Float64})::Array{Float64}
    out[10] = -√(2.0/3.0)*prd[10]                  #T²₁(χ)
    out[11] = prd[11] / √(6.0)                     #T²₂(χ)
    #the factor of 0.5 on the x terms is from 2lₓ = l_+ + l_-
-   #out[13] = prd[13]*csl                          #F
-   #out[14] = -2.0*prd[13]*prd[14]*csl             #ρzF
-   #out[15] = -prd[13]*prd[15]*csl                 #ρxF
-   #out[16] = prd[16]*0.5*csl                      #Vn/2
+   for i ∈ 1:length(nf)
+      out[ 9+4i] = prd[13]*csl                          #F
+      out[10+4i] = -2.0*prd[13]*prd[14]*csl             #ρzF
+      out[11+4i] = -prd[13]*prd[15]*csl                 #ρxF
+      out[12+4i] = prd[16]*0.5*csl                      #Vn/2
+   end
    #out[17] = prd[17]                              #ηz
    #out[18] = 0.5*prd[18]                          #ηx
    return out
@@ -241,8 +243,8 @@ function secordinp(molnam::String,ctrl)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
    #println(file)
    tpz = zeros(Int,2,length(ctrl.NFOLD ))
-   val = zeros(Float64,11)
-   errs = zeros(Float64,11)
+   val = zeros(Float64,11+4*length(ctrl.nf))
+   errs = zeros(Float64,length(val))
    unts = fill("MHz",11)
    for i in 1:len
       nam = string(strip(file[i,1]))
