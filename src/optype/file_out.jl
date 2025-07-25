@@ -410,46 +410,6 @@ function TraWriter(molnam,s, freqs, qunus)
 end
 
 
-function TraWriterold(molnam,freqs, qunus)
-   c = 29979.2458
-   p = sortperm(freqs[:,1])
-   freqs = freqs[p,:]
-   qunus = qunus[p,:]
-   out = fill("0",size(freqs,1))
-   counter = 0
-   for i in 1:size(freqs,1)
-      #J N Ka Kc sigma vt is the order in the array
-      #qunus for upper
-      ju = @sprintf("%2.1f", 0.5*qunus[i,1])
-      part = string(" ", lpad(ju,5),",", lpad(qunus[i,2],3),",", lpad(qunus[i,3],3),",",
-      lpad(qunus[i,4],3),",", lpad(qunus[i,5],3),",", lpad(qunus[i,6],3))
-      #qunus for lower
-      jl = @sprintf("%2.1f", 0.5*qunus[i,7])
-      part = string(part,",", lpad(jl,5),",", lpad(qunus[i,8],3),",", lpad(qunus[i,9],3),
-      ",", lpad(qunus[i,10],3),",", lpad(qunus[i,11],3),",", lpad(qunus[i,12],3))
-      #freq
-#      part = lpad(@sprintf("%0.4f", freqs[i,1]), 13)
-      freq = @sprintf("%13.4f", freqs[i,1])
-      #error
-      part = string(part,",", freq,",", @sprintf("%8.4f", 0.02))
-      #-log(Intensity)
-      #modint = log(freqs[i,2])#*.1
-      modint = freqs[i,2]#*.1
-      part = string(part, @sprintf("%8.4f", modint))
-      if modint ≥ 0.0001
-         counter += 1
-         out[counter] = part
-      end
-   end
-   out = out[1:counter]
-   io = open("$molnam.cat", "w") do io
-      for i in out
-         println(io, i)
-      end
-   end
-   println("Transitions written to $molnam.cat!")
-end
-
 """START CODE FOR UNCERTAINTY PRINTER THINGY"""
 
 function num_to_string(x,fmt="%.1f")
@@ -506,10 +466,7 @@ function uncrformattersci(values,unc)
    uncstr1 = Base.lstrip.(uncstr, '0')
    uncstr1 = Base.lstrip.(uncstr1, '.')
    uncstr1 = Base.lstrip.(uncstr1, '0')
-
-   
    uncunstr = tryparse.(Float64, uncstr1)
-
 
    for i in 1:length(uncunstr)
      # if typeof(uncunstr[i]) == Float64 && 10.0 <= uncunstr[i] < 100.0
@@ -641,101 +598,7 @@ function inpwriter2(molnam::String,ctrl,values)
 
 end
 
-
-function inpwriter(molnam::String, values, scales)
-
-   iterativecopier(molnam)
-
-   strlnctrl,strln2nd,strlnhigh,file = findstrinput_new(molnam)
-
-   #strlnctrl = first(findall(isequal("%CNTRLS"),file[:,1]))
-   #strln2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
-   #strlnhigh = first(findall(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file[:,1]))
-
-  # numvals = strlnhigh-strln2nd-1
-   secvalues = values[1:18] #new values of second order ops
-   #println(secvalues)
-
-   highstg= file[strlnhigh+2:end,end] #stages of higher order ops
-   ohighval = file[strlnhigh+2:end,2] #old vals of higher order ops
-   uval = ohighval[highstg .== 0.0] #values only of dipole moments
-   newhighval = values[19:end] #new values of higher order ops
-
-   highervalues = vcat(uval,newhighval) #all higher order ops, incl dipoles
-
-
-   controls = file[strlnctrl:strln2nd-1, 1]
-#   secnam = file[strln2nd+1:strlnhigh-1,1]
-#   secscale = file[strln2nd+1:strlnhigh-1,3]
-
-   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵyy","ϵzx","ϵxz","χzz","χxz","χxmy","F","ρz","ρx","Vn","ηz","ηx"]
-
-   highnam = file[strlnhigh+2:end,1]
-   highscale = file[strlnhigh+2:end,3]
-   higha= file[strlnhigh+2:end,4]
-   highb= file[strlnhigh+2:end,5]
-   highc= file[strlnhigh+2:end,6]
-   highd= file[strlnhigh+2:end,7]
-   highe= file[strlnhigh+2:end,8]
-   highf= file[strlnhigh+2:end,9]
-   highg= file[strlnhigh+2:end,10]
-   highh= file[strlnhigh+2:end,11]
-   highj= file[strlnhigh+2:end,12]
-   
-   secondord = fill("0",18)
-   higherord = fill("0",length(file[strlnhigh+2:end,1]))
-
-
-   for i in 1:length(secvalues)
-      ln = 30 - length(secnam[i])
-      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(scales[i],6))
-   end
-
-   for i in 1:length(higherord)
-      ln = 30 - length(highnam[i])
-      higherord[i] = string(highnam[i],"; ",lpad(highervalues[i],ln),";",
-         lpad(highscale[i],6),";",lpad(higha[i],4),";",lpad(highb[i],4),";",
-         lpad(highc[i],4),";",lpad(highd[i],4),";",lpad(highe[i],4),";",
-         lpad(highf[i],4),";",lpad(highg[i],4),";",lpad(highh[i],4),";",lpad(highj[i],4),";",lpad(highstg[i],4))
-   end
-
-   time = now()
-   io = open("$molnam.inp", "w") do io
-      println(io,molnam, "   @   ", time)
-      for i in 1:length(controls)
-         println(io, controls[i])
-      end
-      println(io, "")
-      println(io,"%2NDORDER")
-      for i in 1:length(secondord)
-         println(io, secondord[i])
-      end
-      println(io,"")
-      println(io,"%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))")
-      println(io,"%Op;                         Val;   Scl;   a;   b;   c;   d;   e;   f;   g;   h;   j;  stg")
-      for i in 1:length(higherord)
-         println(io, higherord[i])
-      end
-   end
-end
-
 """END CODE FOR INPUT FILE WRITER"""
-
-function findstrinput(molnam)
-   strlnctrl = blockfind(molnam,"CNTRLS")[1]
-   strln2nd = blockfind(molnam,"2NDORDER")[1]
-   strlnhigh = blockfind(molnam,"PARAMS")[1]
-   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
-   return strlnctrl,strln2nd,strlnhigh,file
-end
-
-function findstrinput_new(molnam)
-   file = readdlm(pwd()*"/"*molnam*".inp",';',comments=true,comment_char='#')
-   strlnctrl = findfirst(isequal("%CNTRLS"),file)[1]
-   strln2nd = findfirst(isequal("%2NDORDER"),file)[1]
-   strlnhigh = findfirst(isequal("%PARAMS NᵃSᵇNzᶜSzᵈ(N₊ᵉS₊ᶠ + S₋ᶠN₋ᵉ)Pₐᵍcos(hα)sin(jα)Ny^(1-δ(0,j))"),file)[1]
-   return strlnctrl,strln2nd,strlnhigh,file
-end
 
 function secnam_gen(nfold::Int)::Vector{String}
    l = length(nfold)
@@ -753,7 +616,7 @@ function secnam_gen(nfold::Int)::Vector{String}
    return out
 end
 
-function outputinit2(molnam,params,scls,linecount,ctrl,ℋ)
+function outputinit2(molnam,params,scls,linecount,ctrl,ℋ,rms,λ)
    secnam = secnam_gen(ctrl.NFOLD)
    io = open("$molnam.out","w")
       println(io,molnam,"   @   ",time)
@@ -774,228 +637,106 @@ function outputinit2(molnam,params,scls,linecount,ctrl,ℋ)
             println(io," ",ℋ[i].nam,";", lpad(param[i+l],30),";", lpad(scls[i+l],8))
          end
       end
-      println(io,"")
-      println(io,"Number of lines = $linecount")
-      println(io,"")
-   close(io)
-
-end
-
-function outputinit(molnam,params,scls,linelength,ctrl)
-
-  strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
-
-   indexcon = first(findall(isequal("%CNTRLS"),file[:,1]))
-   index2nd = first(findall(isequal("%2NDORDER"),file[:,1]))
-
-   controls = file[indexcon+1:index2nd-2, 1]
-   
-   secvalues = params[1:18]
-   highervalues = params[19:end]
-   secscale = scls[1:18]
-   highscale = scls[19:end]
-   highstg= file[strlnhigh:end,end]
-
-
-   secnam =  ["BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
-             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
-             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
-   highnamall = file[strlnhigh:end,1]
-   highnam = highnamall[highstg .!= 0.0]
-   fullnam = vcat(secnam, highnam)
-   
-   secondord = fill("0",18)
-   higherord = fill("0",length(highnam))
-   
-   for i in 1:length(secondord)
-      ln = 30 - length(secnam[i])
-      secondord[i] = string(secnam[i],"; ", lpad(secvalues[i],ln),";",lpad(secscale[i],6))
-   end
-   
-   for i in 1:length(higherord)
-      ln = 30 - length(highnam[i])
-      higherord[i] = string(" ",highnam[i],"; ",lpad(highervalues[i],ln),";",lpad(highscale[i],6))
-   end
-   
-   time = now()
-   
-   io = open("$molnam.out","w")
-      println(io,molnam,"   @   ",time)
-      println(io,"")
-      println(io,"Control Parameters")
-      for (key,value) in ctrl
-         println(io,key," = ", value)
-      end
-      println(io,"")
-      println(io,"Initial Parameters")
-      for i in 1:length(secvalues)
-         println(io,secondord[i])
-      end
-      println(io,"")
-      for i in 1:length(higherord)
-         println(io,higherord[i])
-      end
-      println(io,"")
-      println(io,"Number of lines = $linelength")
-      println(io,"")
+      println(io,"\n\nNumber of lines = $linecount\n")
+      println(io,"Initial RMS = $rms MHz\n","Initial λ = $λ\n\n",repeat("-",37),"\n")
    close(io)
 end
-
-
-function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
-
-   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
-
-   #counter = parse(Int,scounter)
-   scounter = lpad(counter,3)
-   srms = (@sprintf("%0.4f", rms))
-   slλ = (@sprintf("%0.4f", log10(λlm)))
-
-
-   prd = paramarray[:,counter+1]
-   prdold = paramarray[:,counter]
-   highstg= file[strlnhigh:end,end]
-
-   
-   highervalues = prd[19:end]
-   
-   secnam =  ["BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
-             " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)", 
-             " F", " -2ρzF", " -ρxF", " V3/2", " ηz", " ηx"]
-   highnamall = file[strlnhigh:end,1]
-   highnam = highnamall[highstg .!= 0.0]
-   fullnam = vcat(secnam, highnam)
-   
-   change = zeros(length(prd))
-   change[perm] .+= βf
-
-   schange = fill("Fixed",length(change))
-   for i in 1:length(change)
-      if change[i] != 0
-        schange[i] = @sprintf("%0.4f",change[i])
-      else
-      end
-   end
-   
-   percent = zeros(length(change))
-   for i in 1:length(change)
-      if prdold[i] !=0   
-         percent[i] = abs((change[i]/prdold[i])*100)
-      else
-         percent[i] = 0.0
-      end
-   end
-   maxloc = argmax(percent)
-   spercent = @sprintf("%0.4f", percent[maxloc])
-   maxname = fullnam[maxloc]
-   
-
-   prdprint = fill("0",length(fullnam))
-   for i in 1:length(prdprint)
-      ln = 30 - length(fullnam[i])
-      prdprint[i] = string(" ",fullnam[i],"; ", lpad(prd[i],ln), "; ",lpad(schange[i],10))
-   end
-      
-   io = open("$molnam.out", "a")
-      println(io, "After $scounter Iterations:")
-      println(io, "")
-      println(io, "RMS = $srms MHz, log₁₀(λ) = $slλ")
-      println(io, "")
-      println(io, "                        Parameter     Change")
-      for i in 1:length(prdprint)
-         println(io, prdprint[i])
-      end
-      println(io,"")
-      println(io,"Max Change; $maxname, $spercent%")
-      println(io,"")
-      println(io,"-------------------------------------")
-      println(io,"")
-   close(io)
-end
-
 function outputstart(molnam,λ,rms)
+   outstr = string("Initial RMS = $rms MHz\n","Initial λ = $λ\n\n",repeat("-",37),"\n\n")
    io = open("$molnam.out", "a")
-   println(io,"Initial RMS = $rms MHz")
-   println(io,"Initial λ = $λ")
-   println(io,"")
-   println(io,"-------------------------------------")
-   println(io,"")
+      print(io, outsrt)
    close(io)
 end
-function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
+
+function iterationwriter2(molnam,params,rms,counter,λlm,βf,perm)
+   outstr = string("\nAfter $scounter Iterations:\n\n", 
+      "RMS = $(@sprintf("%0.4f", rms)) MHz, log₁₀(λ) = $(@sprintf("%0.4f", log10(λlm)))\n\n",
+      lpad("Parameter",33),lpad("Change",11),"\n")
+
+   changes = fill("Fixed",length(params))
+   changes[perm] .= @sprintf.("%0.4f",βf)
+   nams = secnam_gen(ctrl.nfold)
+   for i ∈ length(changes)
+      ln = 30 - length(nams[i])
+      outstr *= string(" ", nams[i],"; ", lpad(param[i],ln), "; ",lpad(changes[i],10),"\n")
+   end
+
+   ind = argmax(βf)
+   maxnam = nams[perm][ind]
+   percent = @sprintf("%0.4f", 100*βf[ind]/params[perm][ind] )
+
+   outstr *= string("\nMax Change; $maxnam, $percent%\n", repeat("-",37), "\n")
+   
+   io = open("$molnam.out", "a")
+      print(io, outstr)
+   close(io)
+end
+
+function outputfinal(molnam,ctrl,ℋ,stgsfrms,counter,slλ,puncs,params,endpoint)
 
    strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
 
    srms = (@sprintf("%0.4f", frms))
    scounter = lpad(counter,3)
 
-   secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
-             "χxx-χyy","F","ρz", "ρx", "V$(ctrl.NFOLD)","ηz","ηx"]
-   highnamall = file[strlnhigh:end,1]
-   highstg= file[strlnhigh:end,end]
-   highnam = highnamall[highstg .!= 0.0]
-   fullnam = vcat(secnam, highnam)
+   #secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
+   #          "χxx-χyy","F","ρz", "ρx", "V$(ctrl.NFOLD)","ηz","ηx"]
+   #highnamall = file[strlnhigh:end,1]
+   #highstg= file[strlnhigh:end,end]
+   #highnam = highnamall[highstg .!= 0.0]
+   #fullnam = vcat(secnam, highnam)
 
-   io = open("$molnam.out", "a")
+   fullnam = vcat(secnam_gen(nfold), ℋ[:].nam)
+
    if counter==0
       #This is a super sloppy bug fix for a bug when zero iterations occur
-      #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
-      #println(io,"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH")
-      println(io,"hi! this is to fix a bug in which the first 111 characters appended to a file vanish. I don't have a better fix")
+      outstr = repeat("-",111)
+   else
+      outstr = ""
+   end
+   if endpoint == "converge"
+      outstr *= "\n A miracle has come to pass. The fit has converged.\n"
+   elseif endpoint == "RMS"
+      outstr *= "\n The RMS has stopped decreasing. Hopefully it is low.\n"
+   elseif endpoint == "step size"
+      outstr *= "\n It would appear step size has converged.\n"
+   elseif endpoint == "LMthresh"
+      outstr *= "\n λlm exceeded threshold.\n"
+      outstr *= " If you were using the turducken, try again without it.\n"
+   elseif endpoint == "iter"
+      outstr *= "\n Alas, the iteration count has exceeded the limit.\n"
+   elseif endpoint == "grad"
+      outstr *= "\n The gradient has converged! Hurray!\n"
+   else
+      outstr *= "\n The output writer seems to be having issues.\n"
    end
 
-      if endpoint == "converge"
-         println(io," A miracle has come to pass. The fit has converged.")
-      elseif endpoint == "RMS"
-         println(io," The RMS has stopped decreasing. Hopefully it is low.")
-      elseif endpoint == "step size"
-         println(io," It would appear step size has converged.")
-      elseif endpoint == "LMthresh"
-         println(io," λlm exceeded threshold.")
-         println(io," If you were using the turducken, try again without it.")
-      elseif endpoint == "iter"
-         println(io," Alas, the iteration count has exceeded the limit.")
-      elseif endpoint == "grad"
-         println(io," The gradient has converged! Hurray!")
+outstr *= string("\nAfter $(lpad(counter,3)) iterations:\n\n","Final RMS = $srms MHz\n",
+   "Final log₁₀(λ) = $slλ\n\n",lpad("Parameter",34),lpad("Uncertainty",31),lpad("‰ Uncertainty",17),"\n")
+
+   for i in 1:length(params)
+      if iszero(puncs[i])#puncs[i] == 0.0
+         pdiffi = "-"
       else
-         println(" The output writer seems to be having issues.")
+         pdiffi = abs(round(puncs[i]/params[i]*1000,digits=4))
       end
-      println(io,"")
+      ln = 30 - length(fullnam[i])
+      ln2 = 30 - length(params[i])
+      ln3 = 17 - length(pdiffi)
+      outstr *= string(" ",fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2),
+          "; ", lpad(pdiffi, ln3),"\n")
+   end
+   outstr *= "\n\n"
 
-      println(io,"After $scounter iterations:")
-      println(io,"")
-      println(io,"Final RMS = $srms MHz")
-      println(io,"Final log₁₀(λ) = $slλ")
-      println(io,"\n")
-
-      unformat = fill("0",length(params))
-      println(io,"                         Parameter                    Uncertainty    ‰ Uncertainty")
-      for i in 1:length(params)
-         if puncs[i] == 0.0
-            pdiffi = "-"
-         else
-            pdiffi = abs(round(puncs[i]/params[i]*1000,digits=4))
-         end
-         ln = 30 - length(fullnam[i])
-         ln2 = 30 - length(params[i])
-         ln3 = 17 - length(pdiffi)
-         unformat[i] = string(" ",fullnam[i], "; ", lpad(params[i], ln), "; ", lpad(puncs[i], ln2), "; ", lpad(pdiffi, ln3))
-      end
-      for i in 1:length(unformat)
-         println(io,unformat[i])
-      end
-      println(io,"\n")
+   io = open("$molnam.out", "a")
 
       try
          finalunc = uncrformattersci(params,puncs)
          formatted = fill("0",2,length(fullnam))
-         for i in 1:length(fullnam)
-            ln = 30 - length(fullnam[i])
-            formatted[i] = string(fullnam[i], "; ", lpad(finalunc[i],ln))
-         end
          println(io,"Journal Formatted Values")
          for i in 1:length(fullnam)
-            println(io," ",formatted[i])
+            ln = 30 - length(fullnam[i])
+            println(io, string(fullnam[i], "; ", lpad(finalunc[i],ln)) )
          end
       catch
          println(io," Yikes! The uncertainty formatter failed")
@@ -1004,7 +745,7 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
       end
 
    println(io,"\n")
-   if ctrl.apology==true
+   if ctrl.apology # ==true
       println(io," Again, sorry about the name...")
    end
    println(io,"\n")
@@ -1012,18 +753,6 @@ function outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
 
    println("Output written to $molnam.out!")
 end
-
-#function triangleprint(mat;io=stdout,d=4)
-#   io ≠ stdout ? io = open(io, "a") : io=stdout
-#   println(io,"  Correlation matrix:\n")
-#   l = size(mat,1)
-#   for i in 1:l
-#      part = prod(lpad.(round.(mat[i,1:i],digits=d),2d+2))
-#      println(io,part)
-#   end
-#   io ≠ stdout ? println(io,"\n\n") : nothing
-#   io ≠ stdout ? close(io) : nothing
-#end
 
 
 function triangleprint(mat,nams;io=stdout,d=4,col=5)
