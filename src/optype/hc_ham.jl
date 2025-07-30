@@ -116,7 +116,7 @@ function htor(pr::Array{Float64},mc::Int,ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    for i ∈ 1:length(ψ.nf)
       r = length(ψ.nf) - i
       out += kron(I((2mc+1)^r), 
-                 htorhc(pr[9+4i],pr[12+4i], mc, ψ.ms[i], ψ,σ[i]), 
+                 htorhc(pr[9+6i],pr[12+6i], mc, ψ.ms[i], ψ,σ[i]), 
                  I((2mc+1)^(i-1)) )
    end
    return out
@@ -150,14 +150,15 @@ end
 function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::SparseMatrixCSC{Float64,Int}
    ns = nsgen(ψ.N)
    ks = ksgen(ψ.K)
-   out = rhorho(pr[13]*pr[14],pr[13]*pr[15],ns,ks)
+   lnf = length(ψ.T.nf)
+   out = rhorho(pr[rzind(1,lnf)],pr[rxind(1,lnf)],ns,ks)
    stgchk = ctrl.stages > 2
-   for i ∈ 2:length(ψ.T.nf)
+   for i ∈ 2:lnf
       tpart = pa_op(ψ.T,2)
       if stgchk
          tpart = sand(tpart,sparse(otvcs[:,:,i])) #' * tpart * otvcs[:,:,i]
       end
-      part = kron(tpart, rhorho(pr[10+4i],pr[11+4i],ns,ks))
+      part = kron(tpart, rhorho(pr[rzind(i,lnf)],pr[rxind(i,lnf)],ns,ks))
       out = kron(sparse(I,size(part,1),size(part,1)), out) + kron(part, sparse(I,size(out,1),size(out,1)))
    end
    if ctrl.stages > 1
@@ -178,7 +179,8 @@ function htsr2_1stg(ctrl::Controls,pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{
    H += rhomat(ctrl,vals,ψ)
    return Symmetric(H,:L)
 end
-function htsr2_2stg(ctrl::Controls,pr::Array{Float64},ψ::Psi,tvals::Array{Float64},tvecs::Array{Float64,2})::SparseMatrixCSC{Float64,Int}
+function htsr2_2stg(ctrl::Controls,pr::Array{Float64},ψ::Psi,tvals::Array{Float64},
+                     tvecs::Array{Float64,2})::SparseMatrixCSC{Float64,Int}
    H = hrot2(prm[1:4],ψ)
    if ctrl.S ≥1.0
       H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ψ.R)

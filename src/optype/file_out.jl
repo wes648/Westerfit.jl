@@ -4,17 +4,18 @@
 This handles the output files for the westerfit package. Sophie made most of this!
 """
 
-function paramrecov(prd::Array{Float64},ℋ::Vector{Op})::Array{Float64}
-   out = zeros(18)
+function paramrecov(prd::Array{Float64},nf::Vector{Int})::Array{Float64}
+   out = zero(prd)
 
    #first loop over nfs to correct A, B, ρs, F, Vn_1s
-
-   if prd[13] != 0.0
-      out[14] = prd[14]/(-2.0*prd[13])                #ρ
-      out[15] = prd[15]/(-1*prd[13])                  #ρx
-   else
-      out[14] = 0.0
-      out[15] = 0.0
+   for i ∈ length(nf)
+      if prd[13] ≠ 0.0
+         out[14] = prd[14]/(-2.0*prd[13])                #ρ
+         out[15] = prd[15]/(-1*prd[13])                  #ρx
+      else
+         out[14] = 0.0
+         out[15] = 0.0
+      end
    end
    out[ 1] = prd[1] + prd[2] - prd[13]*out[14]^2        #A
    out[ 2] = prd[2] + 2.0*prd[3] - prd[13]*out[15]^2    #B

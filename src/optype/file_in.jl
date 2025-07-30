@@ -148,16 +148,22 @@ function secnam_init()::Vector{String}
    return ["AZ"; "BX"; "CY"; "Dab"; "ϵzz"; "ϵxx"; "ϵyy"; "ϵzx"; "χzz"; "χxx-χyy"; "χxz"]
 end
 function sod2prep_lim(prd::Array{Float64},nf)::Array{Float64}
-   out = zeros(11)
-   ##tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρz²
-   ##tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρx²
+   lnf = length(nf)
+   out = zeros(11+6*lnf)
+   for i ∈ 1:length(nf)
+      out[ffind(i,lnf)] = prd[ffind(i,lnf)]*csl                           #F
+      out[rzind(i,lnf)] = -2.0*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]*csl    #ρzF
+      out[rxind(i,lnf)] = -prd[ffind(i,lng)]*prd[rxind(i,lnf)]*csl        #ρxF
+      out[vnind(i,lnf)] = prd[vnind(i,lnf)]*0.5*csl                       #Vn/2
+      prd[1] += csl*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]^2        #Aeff = A+Fρz^2
+      prd[2] += csl*prd[ffind(i,lng)]*prd[rxind(i,lnf)]^2        #Beff = B+Fρx^2
+   end
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[2] = 0.5*(prd[2] + prd[3])                 #BN
    out[3] = 0.25*(prd[2] - prd[3])                #B±
    out[4] = prd[4]                                #Dab
 
    out[5] = -(prd[5] + prd[6] + prd[7]) / √3      #T⁰₀(ϵ)
-#   out[6] = 0.5*(prd[8] - prd[9])                 #T¹₁(ϵ)
    out[6] = (2*prd[5] - prd[6] - prd[7]) / √6     #T²₀(ϵ)
    out[7] = -prd[8]                               #T²₁(ϵ)
    out[8] = (prd[6] - prd[7])*0.5                 #T²₂(ϵ)
@@ -166,12 +172,6 @@ function sod2prep_lim(prd::Array{Float64},nf)::Array{Float64}
    out[10] = -√(2.0/3.0)*prd[10]                  #T²₁(χ)
    out[11] = prd[11] / √(6.0)                     #T²₂(χ)
    #the factor of 0.5 on the x terms is from 2lₓ = l_+ + l_-
-   for i ∈ 1:length(nf)
-      out[ 9+4i] = prd[13]*csl                          #F
-      out[10+4i] = -2.0*prd[13]*prd[14]*csl             #ρzF
-      out[11+4i] = -prd[13]*prd[15]*csl                 #ρxF
-      out[12+4i] = prd[16]*0.5*csl                      #Vn/2
-   end
    #out[17] = prd[17]                              #ηz
    #out[18] = 0.5*prd[18]                          #ηx
    return out
@@ -185,33 +185,21 @@ function epszxcheck!(prd::Array{Float64},scl::Array{Float64})
    end
    return prd, scl
 end
-function irrepswap(irrep::String,sdict)
+function irrepswap(irrep::String)
    if irrep=="Il"
-      sdictA  = 1
-      sdictB  = 3
-      sdictC  = 2
+      out = [1;3;2]
    elseif irrep=="IIr"
-      sdictA  = 2
-      sdictB  = 3
-      sdictC  = 1
+      out = [2;3;1]
    elseif irrep=="IIl"
-      sdictA  = 2
-      sdictB  = 1
-      sdictC  = 3
+      out = [2;1;3]
    elseif irrep=="IIIr"
-      sdictA  = 3
-      sdictB  = 1
-      sdictC  = 2
+      out = [3;1;2]
    elseif irrep=="IIIl"
-      sdictA  = 3
-      sdictB  = 2
-      sdictC  = 1
+      out = [3;2;1]
    else #Ir is default
-      sdictA  = 1
-      sdictB  = 2
-      sdictC  = 3
+      out = [1;2;3]
    end
-   return sdict
+   return out
 end
 
 tornamind(str::String)::Int = occursin("_",str) ? parse(Int,split(str,"_")[2]) : 1
@@ -232,86 +220,82 @@ function secordinp(molnam::String,ctrl)
 #then convert to Op structure and start ℋ
    blk = ctrl.sobk  #blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
-   #println(len)
-#      ℋ = Op(1.0,tp=[2;0;;]) + Op(0.5) - Op(1.0,tp=[1+iseven(ctrl.NFOLD [1]);0;;])
-#      stgs = [1;1;-1]
-   ℋ = Vector{Op}(undef,0)
    nams = secnam_init()
-   stg = zeros(Int,0)
+   stgs = zeros(Int,11+6*length(ctrl.nf))
    secns = secordinit_lim()
    secns = irrepswap(ctrl.Irrep ,secns)
    file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
-   #println(file)
    tpz = zeros(Int,2,length(ctrl.NFOLD ))
-   val = zeros(Float64,11+4*length(ctrl.nf))
+   val = zeros(Float64,11+6*length(ctrl.nf))
    errs = zeros(Float64,length(val))
-   unts = fill("MHz",11)
+   lnf = length(ctrl.NFOLD)
    for i in 1:len
       nam = string(strip(file[i,1]))
       nvl = file[i,2]
+      stg = file[i,4]
       #ind = secns[nam]
       if nam ∈ keys(secns)
          ind = secns[nam] #get(secns, nam, 19)
          val[ind] = nvl
          errs[ind] = file[i,3]
-      elseif occursin("F",nam) && !iszero(nvl)
-         n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl.NFOLD ))
-         tmp[1,n] = 2
-         push!(val,csl*nvl)
-         push!(ℋ, Op(nam,tp=tmp))
-         push!(errs,file[i,3])
-         push!(stg,1)
-         push!(unts,"MHz")
-      elseif occursin("V",nam) && !iszero(nvl)
-         n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl.NFOLD ))
-         tmp[2,n] = 1+iseven(ctrl.NFOLD[n])
-         push!(ℋ, Op(nam,rf=[OpFunc(E,1)],tp=zero(tmp)), Op(nam,tp=tmp))
-         push!(val, 0.5*csl*nvl, -1.0)
-         push!(errs,file[i,3],0)
-         push!(stg,1,-1)
-         push!(unts,"cm-1","cm-1")
-      elseif occursin("ρ",nam) && !iszero(nvl)
+         if isinteger(stg)
+            stgs[ind] = stg
+         end 
+      elseif occursin("F",nam)# && !iszero(nvl)
+         ind = ffind(tornamind(nam),lnf)
+         val[ind] = nvl
+         errs[ind] = file[i,3]
+         if isinteger(stg)
+            stgs[ind] = stg
+         end 
+      elseif occursin("V",nam)# && !iszero(nvl)
+         ind = vnind(tornamind(nam),lnf)
+         val[ind] = nvl
+         errs[ind] = file[i,3]
+         if isinteger(stg)
+            stgs[ind] = stg
+         end 
+      elseif occursin("ρ",nam)# && !iszero(nvl)
          #okay so users will be restriced to an F ρz ρx ordering
-         n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl.NFOLD ))
-         tmp[1,n] = 1
          if occursin("x",nam)
-            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(nx,1)] ))
-            push!(val,-2*csl*nvl*file[i-2,2])
-            val[2] += csl*file[i-2,2]*nvl^2 #B -> Beff
+            ind = rxind(tornamind(nam),lnf)
+            val[ind] = nvl
+            errs[ind] = file[i,3]
+            if isinteger(stg)
+               stgs[ind] = stg
+            end 
          else#this is for z!!!!
-            push!(ℋ, Op(nam,d=1,tp=tmp))
-            push!(val,-2*csl*nvl*file[i-1,2])
-            val[1] += csl*file[i-1,2]*nvl^2 #A -> Aeff
-            #@show file[i-1,2]*file[i,2]
+            ind = rzind(tornamind(nam),lnf)
+            val[ind] = nvl
+            errs[ind] = file[i,3]
+            if isinteger(stg)
+               stgs[ind] = stg
+            end 
          end
-         push!(errs,file[i,3])
-         push!(stg,0)
-         push!(unts,"unitless")
-      elseif occursin("η",nam) && !iszero(nvl)
-         n = tornamind(nam)
-         tmp = zeros(Int,2,length(ctrl.NFOLD ))
-         tmp[1,n] = 1
+      elseif occursin("η",nam)# && !iszero(nvl)
          if occursin("x",nam)
-            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sx,1)] ))
-         else
-            push!(ℋ, Op(nam,tp=tmp,rf=[OpFunc(sz,1)] ))
+            ind = exind(tornamind(nam),lnf)
+            val[ind] = nvl
+            errs[ind] = file[i,3]
+            if isinteger(stg)
+               stgs[ind] = stg
+            end 
+         else#this is for z!!!!
+            ind = ezind(tornamind(nam),lnf)
+            val[ind] = nvl
+            errs[ind] = file[i,3]
+            if isinteger(stg)
+               stgs[ind] = stg
+            end 
          end
-         push!(val,nvl)
-         push!(errs,file[i,3])
-         push!(stg,0)
-         push!(unts,"MHz")
-      elseif iszero(nvl)
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
-   val[1:11] = sod2prep_lim(val[1:11])
-   #val, err = epszxcheck!(val,err)
+   val[1:3] = val[1:3][irrepswap]
+   val = sod2prep_lim(val)
    #@show val
-   return val, errs, ℋ, stg, unts
+   return val, errs, stgs
 end
 
 function unitdict()::Dict{String,Float64}
@@ -405,7 +389,7 @@ function stgvalset(H,stg)
    return H
 end
 
-function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
+function opreader(molnam,ctrl,vals,errs,stgs)
    #molnam = "test_input"
    blk = ctrl.opbk  #blockfind(molnam, "%OPS")
    #blk[1] += 1
@@ -418,7 +402,7 @@ function opreader(molnam,ctrl,vals,errs,ℋ,stgs)
    catch
       zeros(0,0)
    end
-
+   ℋ = Vector{Op}(undef,0)
    len = size(file,1)
 
    if size(file,2)≠7

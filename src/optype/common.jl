@@ -147,3 +147,13 @@ end
 function tplus!(a::SparseMatrixCSC{ComplexF64,Int})::SparseMatrixCSC{ComplexF64,Int}
    a .+= permutedims(conj(a))
 end
+
+
+#indexes for ntop operators
+#ti is the top index, nt is the number of tops
+ffind(ti::Int,nt::Int)::Int = 11 + ti
+rzind(ti::Int,nt::Int)::Int = 11 + ti +   nt
+rxind(ti::Int,nt::Int)::Int = 11 + ti + 2*nt
+vnind(ti::Int,nt::Int)::Int = 11 + ti + 3*nt
+ezind(ti::Int,nt::Int)::Int = 11 + ti + 4*nt
+exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
