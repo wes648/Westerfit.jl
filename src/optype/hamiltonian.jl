@@ -32,7 +32,7 @@ function enact_tor(tp::Array{Int,2},ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{T,Int} where T <: Number
+function enact(O::Op,ψ::Psi,val::Float64)#::SparseMatrixCSC{T,Int} where T <: Number
    out = enact_init(O,ψ.R,val)
    @inbounds for i in 1:length(O.rf)
       out *= eval_rop(O.rf[i],ψ.R)
@@ -52,7 +52,7 @@ function enact(O::Op,ψ::Psi,val::Float64)::SparseMatrixCSC{T,Int} where T <: Nu
    return out
 end
 #This allows the basis set to be distributed among a list of added Operators
-function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})::SparseMatrixCSC{T,Int} where T <: Number
+function enact(O::Vector{Op},ψ::Psi,val::Vector{Float64},stgs::Vector{Int})#::SparseMatrixCSC{T,Int} where T <: Number
    out = enact(O[1],ψ,val[1])
    @inbounds for i in 2:length(O)
       if stgs[i] ≥ 0
@@ -71,7 +71,7 @@ function tsrdiag_1(prm::Vector{Float64},ctrl,stgs,
 
    U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
    H = droptol!(sand(H,U),2*eps())
-   if isreal(eltype(H))
+   if eltype(H)<:Real #isreal(eltype(H))
       vals,vecs = eigen!(Symmetric(Matrix(H),:L))
    else
       vals,vecs = eigen!(Hermitian(Matrix(H),:L))

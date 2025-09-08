@@ -35,6 +35,7 @@ include("@__DIR__/../opt-com.jl")
 include("@__DIR__/../optimizer.jl")
 
 const csl::Float64 = 29979.2458
+#csl = 29979.2458
 
 BLAS.set_num_threads(Threads.nthreads())
 @show Threads.nthreads()
@@ -155,8 +156,8 @@ function westerfit(molnam::String,ctrl::Controls)
    The fitter!
 """
    println("westerfit!")
-   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
-   ℋ, stgs, errs, unts = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
+   prm, errs, stgs = secordinp(molnam,ctrl)
+   ℋ, stgs, errs, unts = opreader(molnam,ctrl,prm,errs,stgs)
    #if occursin("F",ctrl.RUNmode) #Normal Fit behavior, overpowers check
       lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#',
                      skipblanks=true)
@@ -172,6 +173,7 @@ function westerfit(molnam::String,ctrl::Controls)
    jlist = jlister(linds)
    #opt
    #outputinit(molnam,prm,errs,linelength,ctrl)
+   outputinit2(molnam,prm,errs,linelength,ctrl,ℋ)#16.0,8.0)
    tsrp, pcov, omcs, cfrqs, vals = lbmq(ctrl,jlist,ofreqs,luncs,linds,
                                              prm,errs,ℋ,stgs,molnam)
    reswritter(molnam,lines,omcs,cfrqs)
@@ -182,8 +184,8 @@ end
 #Base.@ccallable function main()::Cint
 function main(molnam)
    #molanm = ARGS[1]
-   @time ctrl = blockfind_all(molnam)
-   @time ctrl = ctrlinp(molnam,ctrl)
+   @time ctrl = blockfind_all(molnam) #0.3 s
+   @time ctrl = ctrlinp(molnam,ctrl) # 1s
    #vals,vecs,qns,tvecs = westereng(molnam,ctrl)
    #westersim(molnam,ctrl,vals,vecs,qns,tvecs)
    westerfit(molnam,ctrl)

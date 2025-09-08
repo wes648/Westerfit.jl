@@ -218,6 +218,7 @@ function westerfit(molnam::String)
    molnam = String(split(molnam,'.')[1])
    #read input file
    ctrl = ctrlinp(molnam)
+   @show ctrl["NFOLD"]
    if occursin("T",ctrl["RUNmode"])
       println("This RUNmode is probably not what you want")
       westersim(molnam,nothing, ctrl)

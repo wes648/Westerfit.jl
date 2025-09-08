@@ -601,9 +601,9 @@ end
 
 """END CODE FOR INPUT FILE WRITER"""
 
-function secnam_gen(nfold::Int)::Vector{String}
+function secnam_gen(nfold::Vector{Int})::Vector{String}
    l = length(nfold)
-   out =  [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)", " T¹₁(ϵ)"," T²₀(ϵ)",
+   out =  [" BK", " BN", " B⨦", " Dab", " T⁰₀(ϵ)"," T²₀(ϵ)",
           " T²₁(ϵ)"," T²₂(ϵ)", " T²₀(χ)"," T²₁(χ)"," T²₂(χ)"]
    if isone(l)
       out = vcat(out,[" F", " -2ρzF", " -ρxF", " V$(nfold[1])/2", " ηz", " ηx"])
@@ -617,7 +617,7 @@ function secnam_gen(nfold::Int)::Vector{String}
    return out
 end
 
-function outputinit2(molnam,params,scls,linecount,ctrl,ℋ,rms,λ)
+function outputinit2(molnam,params,scls,linecount,ctrl,ℋ) #,rms,λ)
    secnam = secnam_gen(ctrl.NFOLD)
    io = open("$molnam.out","w")
       println(io,molnam,"   @   ",time)
@@ -630,52 +630,58 @@ function outputinit2(molnam,params,scls,linecount,ctrl,ℋ,rms,λ)
       println(io,"Initial Parameters")
       l = length(secnam)
       for i in 1:l
-         println(io, secnam[i], ";", lpad(param[i],30),";", lpad(scls[i],8))
+         println(io, lpad(secnam[i],7), ";", lpad(params[i],30),";", lpad(scls[i],8))
       end
       println(io,"")
       for i in 1:length(ℋ)
          if scls[i] > 0.0
-            println(io," ",ℋ[i].nam,";", lpad(param[i+l],30),";", lpad(scls[i+l],8))
+            println(io," ",lpad(ℋ[i].nam,7),";", lpad(params[i+l],30),";", lpad(scls[i+l],8))
          end
       end
       println(io,"\n\nNumber of lines = $linecount\n")
-      println(io,"Initial RMS = $rms MHz\n","Initial λ = $λ\n\n",repeat("-",37),"\n")
+      #println(io,"Initial RMS = $rms MHz\n","Initial λ = $λ\n\n",repeat("-",37),"\n")
    close(io)
 end
 function outputstart(molnam,λ,rms)
    outstr = string("Initial RMS = $rms MHz\n","Initial λ = $λ\n\n",repeat("-",37),"\n\n")
    io = open("$molnam.out", "a")
-      print(io, outsrt)
+      print(io, outstr)
    close(io)
 end
 
-function iterationwriter2(molnam,params,rms,counter,λlm,βf,perm)
-   outstr = string("\nAfter $scounter Iterations:\n\n", 
-      "RMS = $(@sprintf("%0.4f", rms)) MHz, log₁₀(λ) = $(@sprintf("%0.4f", log10(λlm)))\n\n",
-      lpad("Parameter",33),lpad("Change",11),"\n")
+function iterationwriter2(ctrl,nam,molnam,params,rms,counter,λlm,βf,perm)
+   io = open("$molnam.out", "a")
+
+   println(io, "\nAfter $(lpad(counter,3)) Iterations:\n") 
+   println(io, "RMS = $(@sprintf("%0.4f", rms)) MHz, log₁₀(λ) = $(@sprintf("%0.4f", log10(λlm)))\n")
+   println(io, lpad("Parameter",33), lpad("Change",11),"\n")
 
    changes = fill("Fixed",length(params))
-   changes[perm] .= @sprintf.("%0.4f",βf)
-   nams = secnam_gen(ctrl.nfold)
-   for i ∈ length(changes)
-      ln = 30 - length(nams[i])
-      outstr *= string(" ", nams[i],"; ", lpad(param[i],ln), "; ",lpad(changes[i],10),"\n")
+   for i ∈ 1:length(perm)
+       changes[perm[i]] = @sprintf("%0.4f",βf[i])
+   end
+   nams = vcat(secnam_gen(ctrl.NFOLD),nam)
+   #@show changes
+   #@show nams
+   #@show length(changes)
+   for i ∈ 1:length(params)
+      #ln = 30 - length(changes)
+      println(io, " ", lpad(nams[i],5),"; ", lpad(params[i],30), "; ",lpad(changes[i],10))
    end
 
    ind = argmax(βf)
    maxnam = nams[perm][ind]
    percent = @sprintf("%0.4f", 100*βf[ind]/params[perm][ind] )
 
-   outstr *= string("\nMax Change; $maxnam, $percent%\n", repeat("-",37), "\n")
+   println(io,"\nMax Change; $maxnam, $percent%\n", repeat("-",37), "\n")
    
-   io = open("$molnam.out", "a")
-      print(io, outstr)
+#      print(io, outstr)
    close(io)
 end
 
-function outputfinal(molnam,ctrl,ℋ,stgsfrms,counter,slλ,puncs,params,endpoint)
+function outputfinal(molnam,ctrl,ℋ,stgs,frms,counter,slλ,puncs,params,endpoint)
 
-   strlnctrl,strln2nd,strlnhigh,file = findstrinput(molnam)
+   #,,, = findstrinput(molnam)
 
    srms = (@sprintf("%0.4f", frms))
    scounter = lpad(counter,3)
@@ -683,11 +689,11 @@ function outputfinal(molnam,ctrl,ℋ,stgsfrms,counter,slλ,puncs,params,endpoint
    #secnam = ["A","B","C","Dab","ϵzz","ϵxx","ϵzx","ϵxz","ϵyy","χzz","χxz",
    #          "χxx-χyy","F","ρz", "ρx", "V$(ctrl.NFOLD)","ηz","ηx"]
    #highnamall = file[strlnhigh:end,1]
-   #highstg= file[strlnhigh:end,end]
+   #highstg:= file[strlnhigh:end,end]
    #highnam = highnamall[highstg .!= 0.0]
    #fullnam = vcat(secnam, highnam)
 
-   fullnam = vcat(secnam_gen(nfold), ℋ[:].nam)
+   fullnam = vcat(secnam_gen(ctrl.NFOLD), getfield.(ℋ,:nam))
 
    if counter==0
       #This is a super sloppy bug fix for a bug when zero iterations occur

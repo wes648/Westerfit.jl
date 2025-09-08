@@ -102,6 +102,15 @@ function cos_old(mc,a)
    out = dropzeros!(u*out*u)
    return out
 end
+function cos_alt(mc,a)
+   l = 2mc+1
+   out = spdiagm(a=>fill(0.5,l-a))#,-a=>fill(0.5,l-a))
+   out += out'
+   u = ur(mc)
+   out = dropzeros!(u*out*u)
+   return out
+end
+
 function cos_dense(mc,a)
    l = 2mc+1
    out = diagm(a=>fill(0.5,l-a),-a=>fill(0.5,l-a))

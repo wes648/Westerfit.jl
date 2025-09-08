@@ -9,32 +9,12 @@ hessian - jtwj - done!
 2nd deriv - 2 stage
 hessian - birss 1 stage
 hessian - birss 2 stage
-
-20 may 25: code should be roughly finished. will fix from opt testing
 """
 
-function sumder(out::SparseMatrixCSC{Float64,Int},
-                id::Int,prm::Vector{Float64},stg::Vector{Int},
-                ℋ::Vector{Op},ψ::Psi)
-   ind = id+1
-   if ind ≤ length(stg)+11
-      check = stg[ind-11]
-      while check < zero(check)
-         pm = prm[ind]
-         out .+= enact(ℋ[ind-11],ψ,pm)#,ur,ut)
-         ind += 1
-         if ind-11 ≤ length(stg)
-            check = stg[ind-11]
-         else
-            check = 0
-         end
-      end
-   end
-   return out
-end
-function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
+function derivmat(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi)
-   if scl[id] ≤ 0 #should this be ≤ 0 ???
+   topcount = length(ψ.T.nf)
+   if scl[id] < 0 #should this be ≤ 0 ???
    elseif id ≤ 4 #pure rot
       pr = zeros(4)
       pr[id] = 1.0
@@ -50,28 +30,67 @@ function derivmat(id::Int,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{
       pr[id-9] = 1.0
       out = hqu(pr,ψ.R)
       out = kron(I(ψ.T.lng),out)
+   elseif 12 ≤ id ≤ 11+6*topcount
+      #get fucked past wes
+      opid = div(id-12, topcount)
+      tid = mod(id, topcount) + 1
+
+      if opid==0# F
+#         out = kron(p_top(ψ.T, 2,tid),I(ψ.R.lng))
+         out = htorhc(nf,1.0,0.0,mc,ψ.T.ms[tid],ψ.T.σ[tid])
+         out = kron(out, I(ψ.R.lng))
+      elseif opid==1# ρz
+         out = kron(p_tor(ψ.T, 1,tid), Diagonal(nz(ψ.R.K, 1)))
+      elseif opid==2# ρx
+         out = kron(p_tor(ψ.T, 1,tid), nx(ψ.R, 1))
+      elseif opid==3# V
+         out = htorhc(ψ.T.nf[tid],0.0,1.0,mc,ψ.T.ms[tid],ψ.T.σ[tid])
+         out = kron(out, I(ψ.R.lng))
+      elseif opid==4# ηz
+         out = kron(p_tor(ψ.T, 1,tid), sz(ψ.R, 1))
+      elseif opid==5# ηx
+         out = kron(p_tor(ψ.T, 1,tid), sx(ψ.R, 1))
+      else #FUCK 
+         @warn "something is very wrong with the torsional derivatives"
+      end
+      torsetter!(ψ.T,tid,out)
+
    else #user def
-      #UR = ur(ψ.R.J,ψ.R.S)
-      #UT = ur(Int( 0.5*(length(ψ.T.ms[1])-1) ))
-      out = enact(ℋ[id-11],ψ,1.0)
-      out .= sumder(out,id,prm,stg,ℋ,ψ)#,UR,UT)
+      out = enact(ℋ[id-11-6*topcount],ψ,1.0)
+      sumder!(out,id,prm,stg,ℋ,ψ)
    end
    return out
 end
+function sumder!(out::SparseMatrixCSC{Float64,Int},
+                id::Int,prm::Vector{Float64},stg::Vector{Int},
+                ℋ::Vector{Op},ψ::Psi)
+   ind = id+1
+   tpcnt = length(ψ.T.nf)
+   #if ind ≤ length(stg)+11
+      check = stg[ind-11-6*tpcnt]
+      while check < zero(check)
+         pm = prm[ind]
+         out .+= enact(ℋ[ind-11],ψ,pm)
+         #out .+= derivmat(id,prm,scl,stg,ℋ,ψ)
+         ind += 1
+         if ind-11 ≤ length(stg)
+            check = stg[ind-11]
+         else
+            check = 0
+         end#if
+      end#while
+   #end#if
+   #eturn out
+end
+
+
 function anaderiv(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi,vec)
 
-   mat = derivmat(id,prm,scl,stg,ℋ,ψ)
-   U = sparse(ones(1))
-   for i in 1:length(ψ.T.nf)
-#having U at the end of kron maintians the tight block structure of the lower index tops
-      if ψ.T.σ[i] == 0
-         U = kron(ur(mc),U)
-      else
-         U = kron(sparse(1.0I,2mc+1,2mc+1),U)
-   end;end
-   U = kron(U,ur(ψ.R.J,ψ.R.S))
-   mat = droptol!(U*mat*U,2*eps())
+   mat = derivmat(id,mc,prm,scl,stg,ℋ,ψ)
+   U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
+   mat = droptol!(sand(mat,U),2*eps())
+
    mat = transpose(vec)*mat*vec
    return mat #diag(out)
 end
@@ -108,7 +127,7 @@ function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
    for p in 1:length(perm)
       for a in 1:size(inds,1)
          #dν/dX = d/dX (ν_o - E_u + E_l) = -dE_u/dX + dE_l/dX 
-         jcbn[a,p] = -deriv[inds[a,3],inds[a,2],p] + deriv[inds[a,6],inds[a,5],p]
+         jcbn[a,p] = deriv[inds[a,3],inds[a,2],p] - deriv[inds[a,6],inds[a,5],p]
       end
    end
    return jcbn
@@ -218,7 +237,8 @@ end
 """
 jh_levels calculates the jacobian & hessian for the /energy levels/
 """
-function jh_levels(vals::Array{Float64},vecs::Array{Float64},prm::Vector{Float64},ℋ::Vector{Op})
+function jh_levels(vals::Array{Float64},vecs::Array{Float64},
+                   prm::Vector{Float64},ℋ::Vector{Op})
    lp = length(perm)
    jac = zeros(length(vals,lp))
    hes = zeros(length(vals), Int( 0.5*lp*(1+lp) ))

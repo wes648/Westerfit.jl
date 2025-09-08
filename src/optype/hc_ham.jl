@@ -116,18 +116,18 @@ function htor(pr::Array{Float64},mc::Int,ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    for i ∈ 1:length(ψ.nf)
       r = length(ψ.nf) - i
       out += kron(I((2mc+1)^r), 
-                 htorhc(pr[9+6i],pr[12+6i], mc, ψ.ms[i], ψ,σ[i]), 
+                 htorhc(ψ.nf[i], pr[9+6i],pr[12+6i], mc, ψ.ms[i], ψ.σ[i]), 
                  I((2mc+1)^(i-1)) )
    end
    return out
 end
 
-function htorhc(f,v,mc,ms,σ)
+function htorhc(nf,f,v,mc,ms,σ)
    out = sparse(1:2mc+1, 1:2mc+1, map(x -> f*x^2 + v, ms))
    if isodd(nf)&&iszero(σ)
       out[diagind(out,-1)[1:mc-1]] .= -0.5v
-      out[diagind(out,-1)[mc]] = -√0.5 * v
-      out[diagind(out,-1)[mc+1:end]] .= -0.5v   
+      out[diagind(out,-1)[mc+1]] = -√0.5 * v
+      out[diagind(out,-1)[mc+2:end]] .= -0.5v   
    elseif iseven(nf)&&iszero(σ)
       out[mc,mc] += 0.5v
       out[mc+2,mc+2] -= 0.5v
@@ -144,39 +144,43 @@ end
 function rhorho(rz,rx,ns,ks)::SparseMatrixCSC{Float64,Int}
    #shift is 4*topid
    out = spdiagm(rz .* ks)
-   out[diagind(out,-1)] .= rx .* fh.(ns,ks[1:end-1])#<ψ|Nxψ> has an intrinsict factor of 1/2, cancels with -2Fρx
+   out[diagind(out,-1)] .= rx .* fh.(ns[1:end-1],ks[1:end-1])
+   return out
 end
 
 function rhomat(ctrl,pr::Array{Float64},ψ::Psi;tvecs=[1.0],otvcs=[1.0])::SparseMatrixCSC{Float64,Int}
-   ns = nsgen(ψ.N)
-   ks = ksgen(ψ.K)
+   ns = nsgen(ψ.R.N)
+   ks = ksgen(ψ.R.K)
    lnf = length(ψ.T.nf)
    out = rhorho(pr[rzind(1,lnf)],pr[rxind(1,lnf)],ns,ks)
+   out = kron(p_tor(ψ.T,1,1),out)
    stgchk = ctrl.stages > 2
-   for i ∈ 2:lnf
-      tpart = pa_op(ψ.T,2)
+   for i ∈ 2:lnf #broken
+      tpart = p_tor(ψ.T,1)
       if stgchk
          tpart = sand(tpart,sparse(otvcs[:,:,i])) #' * tpart * otvcs[:,:,i]
       end
       part = kron(tpart, rhorho(pr[rzind(i,lnf)],pr[rxind(i,lnf)],ns,ks))
       out = kron(sparse(I,size(part,1),size(part,1)), out) + kron(part, sparse(I,size(out,1),size(out,1)))
    end
+   #@show size(out)
+   #@show ctrl.stages
    if ctrl.stages > 1
       out = sand(out,tvecs)
    end
    return out#sparse(out)
 end
 
-function htsr2_1stg(ctrl::Controls,pr::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
-   H = hrot2(prm[1:4],ψ)
+function htsr2_1stg(ctrl::Controls,prm::Array{Float64},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   H = hrot2(prm[1:4],ψ.R)
    if ctrl.S ≥1.0
       H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R) + hqu(prm[9:11],ψ.R.J,ψ.R.S,ψ.R)
    elseif ctrl.S ==0.5
       H += hsr(prm[5:8],ψ.R.J,ψ.R.S,ψ.R)
    end
    H = kron(I(ψ.T.lng),H)
-   H += kron( htor(pr, ctrl.mc, ψ.T), I(ψ.R.lng) )
-   H += rhomat(ctrl,vals,ψ)
+   H += kron( htor(prm, ctrl.mcalc, ψ.T), I(ψ.R.lng) )
+   H += rhomat(ctrl,prm,ψ)
    return Symmetric(H,:L)
 end
 function htsr2_2stg(ctrl::Controls,pr::Array{Float64},ψ::Psi,tvals::Array{Float64},

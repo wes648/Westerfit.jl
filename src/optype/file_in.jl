@@ -153,10 +153,12 @@ function sod2prep_lim(prd::Array{Float64},nf)::Array{Float64}
    for i ∈ 1:length(nf)
       out[ffind(i,lnf)] = prd[ffind(i,lnf)]*csl                           #F
       out[rzind(i,lnf)] = -2.0*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]*csl    #ρzF
-      out[rxind(i,lnf)] = -prd[ffind(i,lng)]*prd[rxind(i,lnf)]*csl        #ρxF
+      out[rxind(i,lnf)] = -prd[ffind(i,lnf)]*prd[rxind(i,lnf)]*csl        #ρxF
       out[vnind(i,lnf)] = prd[vnind(i,lnf)]*0.5*csl                       #Vn/2
+      @show out[vnind(i,lnf)]
+      @show out[vnind(i,lnf)]/csl
       prd[1] += csl*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]^2        #Aeff = A+Fρz^2
-      prd[2] += csl*prd[ffind(i,lng)]*prd[rxind(i,lnf)]^2        #Beff = B+Fρx^2
+      prd[2] += csl*prd[ffind(i,lnf)]*prd[rxind(i,lnf)]^2        #Beff = B+Fρx^2
    end
    out[1] = prd[1] - 0.5*(prd[2] + prd[3])        #BK
    out[2] = 0.5*(prd[2] + prd[3])                 #BN
@@ -221,12 +223,12 @@ function secordinp(molnam::String,ctrl)
    blk = ctrl.sobk  #blockfind(molnam, "%2NDORDER")
    len = blk[2] - blk[1] - 1
    nams = secnam_init()
-   stgs = zeros(Int,11+6*length(ctrl.nf))
+   stgs = zeros(Int,11+6*length(ctrl.NFOLD))
    secns = secordinit_lim()
-   secns = irrepswap(ctrl.Irrep ,secns)
-   file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])#,comments=true,comment_char='#')
+   #secns = irrepswap(ctrl.Irrep ,secns)
+   file = readdlm(pwd()*"/"*molnam*".inp",';', skipstart=blk[1])[1:len,:]#,comments=true,comment_char='#')
    tpz = zeros(Int,2,length(ctrl.NFOLD ))
-   val = zeros(Float64,11+6*length(ctrl.nf))
+   val = zeros(Float64,11+6*length(ctrl.NFOLD))
    errs = zeros(Float64,length(val))
    lnf = length(ctrl.NFOLD)
    for i in 1:len
@@ -238,21 +240,21 @@ function secordinp(molnam::String,ctrl)
          ind = secns[nam] #get(secns, nam, 19)
          val[ind] = nvl
          errs[ind] = file[i,3]
-         if isinteger(stg)
+         if typeof(stg)==Int
             stgs[ind] = stg
          end 
       elseif occursin("F",nam)# && !iszero(nvl)
          ind = ffind(tornamind(nam),lnf)
-         val[ind] = nvl
+         val[ind] = nvl*csl
          errs[ind] = file[i,3]
-         if isinteger(stg)
+         if typeof(stg)==Int
             stgs[ind] = stg
          end 
       elseif occursin("V",nam)# && !iszero(nvl)
          ind = vnind(tornamind(nam),lnf)
          val[ind] = nvl
          errs[ind] = file[i,3]
-         if isinteger(stg)
+         if typeof(stg)==Int
             stgs[ind] = stg
          end 
       elseif occursin("ρ",nam)# && !iszero(nvl)
@@ -261,39 +263,33 @@ function secordinp(molnam::String,ctrl)
             ind = rxind(tornamind(nam),lnf)
             val[ind] = nvl
             errs[ind] = file[i,3]
-            if isinteger(stg)
-               stgs[ind] = stg
-            end 
          else#this is for z!!!!
             ind = rzind(tornamind(nam),lnf)
             val[ind] = nvl
             errs[ind] = file[i,3]
-            if isinteger(stg)
-               stgs[ind] = stg
-            end 
          end
+         if typeof(stg)==Int
+            stgs[ind] = stg
+         end 
       elseif occursin("η",nam)# && !iszero(nvl)
          if occursin("x",nam)
             ind = exind(tornamind(nam),lnf)
             val[ind] = nvl
             errs[ind] = file[i,3]
-            if isinteger(stg)
-               stgs[ind] = stg
-            end 
          else#this is for z!!!!
             ind = ezind(tornamind(nam),lnf)
             val[ind] = nvl
             errs[ind] = file[i,3]
-            if isinteger(stg)
-               stgs[ind] = stg
-            end 
          end
+         if typeof(stg)==Int
+            stgs[ind] = stg
+         end 
       else
          @warn "Oops! $nam isn't implemented at 2nd order"
       end#else
    end#for
-   val[1:3] = val[1:3][irrepswap]
-   val = sod2prep_lim(val)
+   val[1:3] = val[1:3][irrepswap(ctrl.Irrep)]
+   val = sod2prep_lim(val,ctrl.NFOLD)
    #@show val
    return val, errs, stgs
 end

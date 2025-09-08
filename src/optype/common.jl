@@ -70,12 +70,16 @@ end
 #   return sparse(I,2n+1,2n+1)
 #end
 function ur(n::Int)::SparseMatrixCSC{Float64, Int}
+   if !iszero(n)
    out = spzeros(1:2n+1,1:2n+1)
    out[diagind(out)[1:n]] .= -√.5
    out[diagind(out)[n+2:end]] .= √.5
    out[adiagin(out)] .= √.5
    out[n+1,n+1] = 1.0
    return sparse(out)
+   else
+      return sparse(1.0I,1,1)
+   end
 end
 
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = n ≤ 20 ? ur1(n) : ur2(n)
@@ -157,3 +161,14 @@ rxind(ti::Int,nt::Int)::Int = 11 + ti + 2*nt
 vnind(ti::Int,nt::Int)::Int = 11 + ti + 3*nt
 ezind(ti::Int,nt::Int)::Int = 11 + ti + 4*nt
 exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
+
+function torsetter!(ψ::TPsi,i::Int,out)
+   lnf = length(ψ.nf)
+   lbk = ψ.lb
+   if lnf > 1
+      out = kron( sparse(I, lbk*(lnf-i), lbk*(lnf-i)), 
+                  out, 
+                  sparse(I, lbk*(i-1), lbk*(i-1)) )
+   end
+   return out
+end

@@ -110,7 +110,7 @@ function covarr2(hess,omc)
 end
 
 function permdeterm(scls,stgs)
-   out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(11),stgs) .≥ 0)]
+   out = collect(1:length(scls))[(scls .> 0) .* (stgs .≥ 0)]
 end
 
 function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)

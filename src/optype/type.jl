@@ -33,6 +33,7 @@ struct TPsi
    ms::Vector{StepRange{Int,Int}}
    σ::Vector{Int}
    lng::Int
+   lb::Int
    function TPsi(nf::Vector{Int},σ::Vector{Int},mc=3)
       if length(nf) > 1
          ms = msgen(nf,mc,σ)
@@ -42,10 +43,11 @@ struct TPsi
          nf = nf
       end
       lng = sum(length.(ms))
-      new(nf, ms, σ, lng)
+      #lb = 2mc+1
+      new(nf, ms, σ, lng, 2mc+1)
    end
    function TPsi(nf::Int,σ::Int,mc=3)
-      new([nf],[σ],mc,2mc+1)
+      new([nf],[σ],mc,2mc+1,2mc+1)
    end
 end
 struct VPsi

@@ -6,6 +6,8 @@ The paper is available [here](https://doi.org/10.1016/j.jms.2024.111928) and the
 
 Please feel free to direct any questions about the program to westerfit@proton.me
 
+Currently the program breaks when doing simulations with no internal rotor. I'll try to fix this in the upcoming 2.0 version of westerfit
+
 # Quickstart
 
 The following is intended to be a quick reference on the input file structure & program usage. 

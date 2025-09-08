@@ -44,18 +44,21 @@ ksgen(ks::Vector{UnitRange{Int}})::Vector{Int} = reduce(vcat, ks)
 #These functions are cooked into enact_init as they are purely diagonal
 #they are N^2a (NS)^b S^c Nz^d in this order
 function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
-   reduce(vcat, [fill(eh(n)^p,2n+1) for n ∈ ns])
+#   reduce(vcat, [fill(eh(n)^p,2n+1) for n ∈ ns])
+   mapreduce(x->fill(eh(x)^p, 2x+1), vcat, ns)
 end
 function n2(v::Float64,ns::UnitRange{Int},p::Int)::Vector{Float64}
-   reduce(vcat, [fill(v*eh(n)^p,2n+1) for n ∈ ns])
+   mapreduce(x->fill(v*eh(x)^p, 2x+1), vcat, ns)
 end
 function ns(j::Float64,s::Float64,ns::UnitRange,p::Int)::Vector{Float64}
-   reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
+   #reduce(vcat, [fill((eh(j) - eh(n) - eh(s))^p, 2n+1) for n ∈ ns ])
+   mapreduce(x->fill((eh(j) - eh(x) - eh(s))^p, 2x+1), vcat, ns)
 end
 function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
    reduce(vcat, [fill(0.5*(eh(j) - eh(n) - eh(s)), 2n+1) for n ∈ ns ])
 end
-nz(ks::Vector{UnitRange{Int}},p::Int)::Vector{Float64} = reduce(vcat, ks).^p
+#nz(ks::Vector{UnitRange{Int}},p::Int)::Vector{Float64} = mapreduce(x->x^p, vcat, ks)
+nz(ks::Vector{UnitRange{Int}},p::Int)::Vector{Float64} = map(x->x^p, reduce(vcat, ks))
 
 function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    ns = ψ.N[1+p:end]
@@ -76,7 +79,6 @@ function np_old(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int64}
    end
    return out
 end
-
 function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
    if p ≤ ψ.lng && p ≠ 0
       ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])[1+p:end]
@@ -91,6 +93,8 @@ function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
    end
    return out
 end
+
+
 nm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = permutedims(np(ψ,p))
 npm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,p))
 nx(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5*np(ψ,1))^p
@@ -212,19 +216,53 @@ end
 
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
-function pα(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    if iszero(ψ.σ[tid])
-      out = map(x -> abs(x)^p, ms[tid])
+      out = map(x -> abs(x)^p, ψ.ms[tid])
       if iseven(p)
-         out = sparse(1:ψ.lng, 1:ψ.lng, out)
+         out = sparse(1:ψ.lb, 1:ψ.lb, out)
       else isodd(p)
-         out = sparse(1:ψ.lng, ψ.lng:-1:1, out)
+         out = sparse(1:ψ.lb, ψ.lb:-1:1, out)
       end
    else
-      out = sparse(1:2mc+1, 1:2mc+1, ms[tid] .^p)
+      out = sparse(1:ψ.lb, 1:ψ.lb, ψ.ms[tid] .^p)
    end
+   torsetter!(ψ,tid,out)
    return out
 end
+
+function cos_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   l = 2mc+1
+   out = spdiagm(p=>fill(0.5,l-p),-p=>fill(0.5,l-p))
+   if iszero(ψ.σ[tid])
+      u = ur(mc)
+      out = dropzeros!(u*out*u)
+   end
+   torsetter!(ψ,tid,out)
+   return out
+end
+function sin_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
+   l = 2mc+1
+   out = spdiagm(p=>fill(0.5im,l-p),-p=>fill(-0.5im,l-p))
+   if iszero(ψ.σ[tid])
+      u = ur(mc)
+      out = dropzeros!(u*out*u)
+   end
+   torsetter!(ψ,tid,out)
+   return out
+end
+
+pα(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,1)
+pβ(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,2)
+pγ(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,3)
+
+cosα(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,1)
+cosβ(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,2)
+cosγ(ψ::TPsi,p::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,3)
+
+sinα(ψ::TPsi,p::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,1)
+sinβ(ψ::TPsi,p::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,2)
+sinγ(ψ::TPsi,p::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,3)
 
 
 function μ_gen(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}

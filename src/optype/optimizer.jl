@@ -49,7 +49,6 @@ end
 
 function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
    STAGE = ctrl.stages
-   @show params
    σs = σgen_indef(ctrl.NFOLD)
    σcnt = maximum(size(σs))
    mcd = Int(2*ctrl.mcalc+1)
@@ -179,7 +178,8 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       #ρlm = lbmq_gain2(β, J,omc,nomc)
       check = (nrms-rms)/rms
 #      @show check
-      @show norm(β)
+#      @show norm(β)
+#      @show β
 println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms = $(round(nwrms; digits=4)), θ = $θ")
 #      println("Δlm = $(round(Δlm; digits=4)), wrms = $(round(nwrms; digits=4))")
 #      println("λlm = $(round(λlm; digits=4)), norm(β) = $(round(norm(β);digits=4))")
@@ -194,7 +194,6 @@ println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms 
       stepcheck = ((nrms<rms)&&(ρlm>1e-6)) || ((nrms*(1-θ)^BOLD)<0.2*lrms)
       end
       #stepcheck = check > 1e-8
-      @show stepcheck
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
       if stepcheck
       #@show θ
@@ -215,8 +214,8 @@ println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms 
          #@time J = build_jcbn!(J,cdo,inds,S,ctrl,vecs,params,perm,scales)
       if STAGE==1
       #@time J = build_jcbn2!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg)
-         printstyled("updaing jacobian\n",color=:green)
-         @time build_jcbn!(J,inds,nlist,ℋ,ctrl,perm,vecs,params,scales,stg)
+         printstyled("updating jacobian\n",color=:green)
+         @time J = build_jcbn!(J,inds,nlist,ℋ,ctrl,perm,vecs,params,scales,stg)
       elseif STAGE==2
       @time J = build_jcbn_2stg!(J,cdo,nlist,inds,ctrl,nvecs,nparams,perm,scales,stg,tvcs)
       else
@@ -233,7 +232,7 @@ println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms 
          slλ = (@sprintf("%0.4f", log10(λlm)))
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
-         #iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
+         iterationwriter2(ctrl,getfield.(ℋ,:nam),molnam,params,rms,counter,λlm,sum(βf,dims=2),perm)
 #         @show wrms
 #         @show params
          μlm /= 10.0
@@ -260,7 +259,8 @@ println("ρlm = $(round(ρlm; digits=4)), nrms = $(round(nrms; digits=4)), wrms 
    #@show correl(H)
    params[1:18], puncs[1:18] = fullrecov(params[1:18],puncs[1:18],ctrl.Irrep)
    slλ = (@sprintf("%0.4f", log10(λlm)))
-   outputfinal(molnam,ctrl,frms,counter,slλ,puncs,params,endpoint)
+#   outputfinal(molnam,ctrl,ℋ,stgs,frms,counter,slλ,puncs,params,endpoint)
+   outputfinal(molnam,ctrl,ℋ,stg,frms,counter,slλ,puncs,params,endpoint)
    triangleprint(correl(H);io="$molnam.out")
    if occursin("J", ctrl.RUNmode)&&STAGE==2
       out_jcbn_2stg(molnam,ops,nlist,inds,ctrl,vecs,params,scales,stg,tvcs)

@@ -125,6 +125,7 @@ function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mmax,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
    tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
+   @warn "2 stages breaks for NFOLD=0. please use stages=1"
    tvals,tvecs = eigen(Symmetric(Matrix(tormat)))
    tvals = tvals[1:mmax+1]
    tvecs = tvecs[:,1:mmax+1]
