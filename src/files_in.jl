@@ -8,7 +8,7 @@ function ctrlinit()
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
       "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true,
       "assign"=>"ram36", "REJECT"=>1.0e+1, "Irrep"=>"Ir", "goal"=>1.0, "mmax"=>6, "stages"=>1,
-      "ctbk"=>[0;0],"sobk"=>[0;0],"opbk"=>[0;0])
+      "ctbk"=>[0;0],"sobk"=>[0;0],"opbk"=>[0;0],"ResPrint"=>0)
    return ctrl
 end
 function blockfind(molnam::String,blknam::String)
@@ -125,7 +125,7 @@ function sod2prep_full(prd::Array{Float64})::Array{Float64}
    out = zeros(18)
    tempa = prd[1] + csl*prd[13]*prd[14]^2         #Aeff = A + Fρx²
    tempb = prd[2] + csl*prd[13]*prd[15]^2         #Beff = B + Fρz²
-   out[1] = tempa - 0.5*(tempb + prd[3])          #BK
+   out[1] = tempa - 0.5*(prd[2] + prd[3])          #BK
    out[2] = 0.5*(tempb + prd[3])                  #BN
    out[3] = 0.25*(tempb - prd[3])                 #B±
    out[4] = prd[4]                                #Dab
@@ -288,7 +288,7 @@ elseif nf≠zero(nf) && iseven(nf)
    uncs = lns[:,12]
    inds = zeros(Int,size(lns,1),6)
    inds[:,1] = Int.(2 .* qunus[:,1])
-   inds[:,2] = (mod.(2 .*qunus[:,5],Int(0.5*nf)))
+   inds[:,2] = (mod.(qunus[:,5],Int(0.5*nf)))
    inds[:,3] = qn2ind.(Int(0.5*nf),vtm,qunus[:,5],qunus[:,1],s,qunus[:,2],qunus[:,3],qunus[:,4])
    inds[:,4] = Int.(2 .* qunus[:,6])
    inds[:,5] = Int.(mod.(qunus[:,10],Int(0.5*nf)))

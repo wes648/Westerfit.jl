@@ -217,6 +217,7 @@ end
 E(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = sparse(1.0I,ψ.lng,ψ.lng)
 
 function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   println("hi!!!")
    if iszero(ψ.σ[tid])
       out = map(x -> abs(x)^p, ψ.ms[tid])
       if iseven(p)

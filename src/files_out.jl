@@ -145,17 +145,35 @@ function reslin(line,omc,cfrq)       #this function does the pretty formatting f
    part *= " "*lpad(@sprintf("%0.6f", omc), 16)*";"      #sometimes it breaks because of floating point errors
    part *= " "*lpad(@sprintf("%0.5f", cfrq), 16)
 end
-
 function reswritter(molnam,lines,omcs,cfrqs)  #writes the .res file
    len = size(omcs,1)
-   out = fill("0", len)
-   @simd for i in 1:len
-      out[i] = reslin(lines[i,:],omcs[i],cfrqs[i])
-   end
    io = open("$molnam.res", "w") do io
-      for i in out
-         println(io, i)     #i'm not really sure why we're creating an array with the lines
-      end                   #and then printing the lines. maybe it's faster?
+      for i in 1:len
+         println(io, reslin(lines[i,:],omcs[i],cfrqs[i]))     
+      end                   
+   end
+end
+
+function reslin2(line,omc,ofrq,cfrq)       #this function does the pretty formatting for the
+   part  = lpad(line[ 1],4)*";"      #reswriter function with a bunch of lpads
+   part *= lpad(Int(line[ 2]),3)*";"
+   part *= lpad(Int(line[ 3]),3)*";"
+   part *= lpad(line[ 4],4)*";"
+   part *= lpad(Int(line[ 5]),3)*";"
+   part *= lpad(Int(line[ 6]),3)*";"
+   part *= " "*lpad(@sprintf("%0.5f", ofrq), 16)*";" #this part is where the number of sig figs gets fixed
+   part *= " "*lpad(@sprintf("%0.6f",  omc), 16)*";"      #sometimes it breaks because of floating point errors
+   part *= " "*lpad(@sprintf("%0.5f", cfrq), 16)
+end
+function resappender(molnam,inds,omcs,ofrqs,cfrqs)
+   len = size(omcs,1)
+   io = open("$molnam.out", "a") do io
+   println(io,"\n Residuals!")
+   println(io,"  Ju; nu; σu;  Jl; nl; σl;    Observed Freq;   Obs minus Calc;  Calculated Freq")
+      for i in 1:len
+         println(io, reslin2(inds[i,:],omcs[i],ofrqs[i],cfrqs[i]))     
+      end
+   println(io,"")              
    end
 end
 
@@ -793,6 +811,7 @@ function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
    end
       
    io = open("$molnam.out", "a")
+      println(io,"\n-------------------------------------\n")
       println(io, "After $scounter Iterations:")
       println(io, "")
       println(io, "RMS = $srms MHz, log₁₀(λ) = $slλ")
@@ -803,9 +822,6 @@ function iterationwriter(molnam,paramarray,rms,counter,λlm,βf,perm)
       end
       println(io,"")
       println(io,"Max Change; $maxname, $spercent%")
-      println(io,"")
-      println(io,"-------------------------------------")
-      println(io,"")
    close(io)
 end
 

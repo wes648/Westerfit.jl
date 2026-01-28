@@ -1,2 +1,2 @@
 #!/bin/bash
-time julia -t4 -e 'include("./main.jl"); @time main("./test_input")'
+time julia +1.11 -t4 -e 'include("./main.jl"); @time main("./test_input")'

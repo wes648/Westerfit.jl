@@ -8,11 +8,14 @@ function λgen(μ::Float64,er::Float64)::Float64
 end
 function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
    out = 2β' * (λ*Diagonal(h)*β + jtw*omc)
+#   out = 2.0*(sum(abs2,omc) - sum(abs2, omc + J*β))
    if out < 0
       println("fucking gain function")
-   end
+      out = 0.0
+   else
 #   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
-   out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
+      out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
+   end
    return out
 end
 function lbmq_gain2(β,J,omc,nomc)::Float64
@@ -46,12 +49,13 @@ end
 
 function rmscalc(vals,inds,ofreqs)
    cfreqs = zero(ofreqs)
-   #@show size(inds)
    #@show inds
    #@show size(ofreqs)
    #@show size(vals)
    #@show inds[1:5,:]
-   @threads for i in 1:size(cfreqs,1)
+   #@show inds[end-5:end,:]
+#@threads for i in 1:size(cfreqs,1)
+   for i in 1:size(cfreqs,1)
       cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
    end
    #println(cfreqs)
@@ -181,7 +185,8 @@ function derivcalc_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
    msd = Int((2*mcalc+1)*(2s+1))
-   @threads for j in jlist
+   #@threads for j in jlist
+   for j in jlist
       jd = Int(2.0*j) + 1
       sind, find = jvdest(j,s,ctrl["vtmax"])
       qns = qngen(j,s)
@@ -201,8 +206,9 @@ function build_jcbn2!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc(jlist,ops,ctrl,perm,vecs,params,scals,stg)
-   @threads for p in 1:length(perm)
-   @simd for a in 1:size(inds,1)
+   #@threads for p in 1:length(perm)
+   for p in 1:length(perm)
+   for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -221,8 +227,9 @@ function build_jcbn3!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg)
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds,1),length(tperm))
    deriv = derivcalc(jlist,ops,ctrl,tperm,vecs,params,scals,stg)
-   @threads for p in 1:length(tperm)
-   @simd for a in 1:size(inds,1)
+   #@threads 
+   for p in 1:length(tperm)
+   for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -239,8 +246,9 @@ function build_jcbn_sim(ops,inds,ctrl,vecs,params,perm,scals,stg)
    #jlist = unique(vcat(inds[:,1:3],inds[:,4:6]))
    jcbn = zeros(Float64,size(inds)[1],length(perm))
    deriv = derivcalc(jlist,ops,ctrl,perm,vecs,nf,params,scals,stg)
-   @threads for p in 1:length(perm)
-   @simd for a in 1:size(inds,1)
+   #@threads 
+   for p in 1:length(perm)
+   for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -315,6 +323,17 @@ function permdeterm(scls,stgs)
    out = collect(1:length(scls))[(scls .> 0) .* (vcat(ones(18),stgs) .> 0)]
 end
 
+function outputstart(molnam,λ,rms)
+   io = open("$molnam.out", "a")
+   println(io,"Initial RMS = $rms MHz")
+   println(io,"Initial λ = $λ")
+#   println(io,"")
+#   println(io,"-------------------------------------")
+#   println(io,"")
+   close(io)
+end
+
+
 function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)
    if (rms ≤ goal)#&&(counter > 1)
       println("A miracle has come to pass. The fit has converged")
@@ -376,9 +395,9 @@ function opt_frame(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    io = open("$molnam.out", "a")
    println(io,"Initial RMS = $rms MHz")
    println(io,"Initial λ = $λlm")
-   println(io,"")
-   println(io,"-------------------------------------")
-   println(io,"")
+   #println(io,"")
+   #println(io,"-------------------------------------")
+   #println(io,"")
    close(io)
 
    nparams = copy(params)

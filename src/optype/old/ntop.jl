@@ -1,7 +1,4 @@
 
-"""
-Returns the number of σ states for the value of nfold[1]
-"""
 function σcount(nfold::Real)::Int
    if isodd(nfold)
       out = ceil(Int,0.5*nfold)
@@ -12,20 +9,6 @@ function σcount(nfold::Real)::Int
    end
    return out
 end
-"""
-The counting of number of sigma states is different for additional rotors
-"""
-function σcount_post(nfold::Real)::Int
-   if nfold ≤ 2
-      out = 1
-   elseif nfold==3
-      out = 3
-   else
-      @warn "secondary tops must be nfold ≤ 3 for now"
-   end
-   return out
-end
-
 function σgen(nf1::Int,nf2::Int)::Array{Int,2}
    σcnt1 = σcount(nf1)
    σcnt2 = σcount(nf2)-1
@@ -48,7 +31,7 @@ function σgen(nf::Array{Int})::Array{Int,2}
       σlsti = nf[i] - iseven(nf[i])
       new = vcat(old,fill(0,size(old,2))')
       for j in 2:σlsti
-         σ = powneg1(j)*floor(Int,j/2)
+         σ = Int(cospi(j)*floor(j/2))
          part = vcat(old[:,1+(j==σlsti):end],fill(σ,size(old[:,1+(j==σlsti):end],2))')
          new = hcat(new,part)
       end#for j
@@ -83,17 +66,6 @@ function msgen(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,
    out = Vector{StepRange{Int,Int}}(undef,length(nf))
    for j in eachindex(nf)
       out[j] = msgen(nf[j],mcalc,σs[j])
-   end
-   return out
-end
-
-function nσfinder(tid::Int,σ::Int,nfold::Vector{Int})::Int
-   if isone(tid)
-      out = σ+1
-   else
-      out = σcount(nfold[1])
-      out += sum(nfold[2:tid-1])
-      out += abs(σ)+1
    end
    return out
 end

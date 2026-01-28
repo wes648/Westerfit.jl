@@ -142,7 +142,8 @@ function derivcalc_2stg_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    jmax = ctrl["Jmax"]
    jlist = collect(Float64,jmin:jmax)
    msd = Int((ctrl["mmax"]+1)*(2s+1))
-   @threads for j in jlist
+   #@threads 
+   for j in jlist
       jd = Int(2.0*j) + 1
       #tvcs = tvecs[:,:]
       sind, find = jvdest(j,s,ctrl["vtmax"])
@@ -162,8 +163,9 @@ function build_jcbn_2stg!(jcbn,ops,jlist,inds,ctrl,vecs,params,perm,scals,stg,tv
    #jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
    td = round.(deriv,sigdigits=5)
-   @threads for p in 1:length(perm)
-   @simd for a in 1:size(inds,1)
+   #@threads 
+   for p in 1:length(perm)
+   for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -177,8 +179,9 @@ function out_jcbn_2stg(molnam::String,ops,jlist,inds,ctrl,vecs,params,scals,stg,
    jcbn = zeros(Float64,size(inds,1),length(perm))
    deriv = derivcalc_2stg(jlist,ops,ctrl,perm,vecs,params,scals,stg,tvecs)
    td = round.(deriv,sigdigits=5)
-   @threads for p in 1:length(perm)
-   @simd for a in 1:size(inds,1)
+   #@threads 
+   for p in 1:length(perm)
+   for a in 1:size(inds,1)
       jcbn[a,p] = deriv[inds[a,3],inds[a,2]+1,p] - deriv[inds[a,6],inds[a,5]+1,p]
    end
    end
@@ -324,12 +327,12 @@ end
       else
          println("Someday....")
       end
-      nrms, nomc, = rmscalc(nvals,inds,ofreqs)
+      nrms, nomc, cfrqs = rmscalc(nvals,inds,ofreqs)
       nwrms = √(nomc' *W*nomc ./ length(nomc))
       ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
       check = abs(nrms-rms)/rms
-      println("ρlm = $ρlm, nrms = $nrms")
-      println("Δlm = $Δlm, wrms = $nwrms")
+      println("ρlm = $(round(ρlm;sigdigits=4)), nrms = $(round(nrms;sigdigits=4)), "*
+         "Δlm = $(round(Δlm;sigdigits=4)), wrms = $(round(nwrms;sigdigits=4))")
       #println("λlm = $λlm, norm(β) = $(norm(β))")
       #println("norm(β ./ params) = $(norm(β ./ params[perm]))")
       #println("inv(H)*β = $(inv(H)*β)")
@@ -376,6 +379,10 @@ end
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
+         println(mod(counter,ctrl["ResPrint"]))
+         if ctrl["ResPrint"]≠0 && iszero(mod(counter,ctrl["ResPrint"]))
+            resappender(molnam,inds,omc,ofreqs,cfrqs)
+         end
          @show wrms
          μlm /= 20.0
          Δlm *= min(1.1,5.0)

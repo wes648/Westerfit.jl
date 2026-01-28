@@ -11,9 +11,6 @@ powneg1(k::Real)::Int = isodd(k) ? -1 : 1
 
 Δlist2(J::Real,S::Real)::UnitRange{Int} = Int(abs(J-S)):Int(J+S)
 
-dgen(x::Real)::Int = Int(2*x) + 1
-
-sand(a::AbstractArray,b::AbstractArray) = b' * a * b
 
 function srprep(J,S)
    ns = Δlist2(J,S)
@@ -165,9 +162,6 @@ vnind(ti::Int,nt::Int)::Int = 11 + ti + 3*nt
 ezind(ti::Int,nt::Int)::Int = 11 + ti + 4*nt
 exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
 
-"""
-Applies Kronecker products with identity matrices in order to properly resize the ith one top matrix.
-"""
 function torsetter!(ψ::TPsi,i::Int,out)
    lnf = length(ψ.nf)
    lbk = ψ.lb
@@ -177,16 +171,4 @@ function torsetter!(ψ::TPsi,i::Int,out)
                   sparse(I, lbk*(i-1), lbk*(i-1)) )
    end
    return out
-end
-
-"""
-A simple wrapper for making the matrix Symmetric if Real or Hermitian if complex then diagonalize.
-Makes life easier and helps me keep the fully real setup for C_s while permitting the flexibility for C_1
-"""
-function diagwrap(H::AbstractArray)::Eigen
-   if eltype(H)<:Real #isreal(eltype(H))
-      return eigen!(Symmetric(Matrix(H), :L))
-   else
-      return eigen!(Hermitian(Matrix(H), :L))
-   end
 end

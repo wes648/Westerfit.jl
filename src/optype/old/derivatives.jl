@@ -34,7 +34,6 @@ function derivmat(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vect
       #get fucked past wes
       opid = div(id-12, topcount)
       tid = mod(id, topcount) + 1
-
       if opid==0# F
 #         out = kron(p_top(ψ.T, 2,tid),I(ψ.R.lng))
          out = htorhc(nf,1.0,0.0,mc,ψ.T.ms[tid],ψ.T.σ[tid])
@@ -57,21 +56,95 @@ function derivmat(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vect
 
    else #user def
       out = enact(ℋ[id-11-6*topcount],ψ,1.0)
-      sumder!(out,id,prm,stg,ℋ,ψ)
+      #sumder!(out,id,prm,stg,ℋ,ψ)
    end
    return out
 end
+function derivmat_2stg(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
+                  ℋ::Vector{Op},ψ::Psi,tvecs::Array{Float64,2})
+   topcount = length(ψ.T.nf)
+   if scl[id] < 0 #should this be ≤ 0 ???
+   elseif id ≤ 4 #pure rot
+      pr = zeros(4)
+      pr[id] = 1.0
+      out = hrot2(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
+   elseif 5 ≤ id ≤ 8 #spin-rot
+      pr = zeros(5)
+      pr[id-4] = 1.0
+      out = hsr(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
+   elseif 9 ≤ id ≤ 11 #qua
+      pr = zeros(3)
+      pr[id-9] = 1.0
+      out = hqu(pr,ψ.R)
+      out = kron(I(ψ.T.lng),out)
+   elseif 12 ≤ id ≤ 11+6*topcount
+      #get fucked past wes
+      opid = div(id-12, topcount)
+      tid = mod(id, topcount) + 1
+      if opid==0# F
+#         out = kron(p_top(ψ.T, 2,tid),I(ψ.R.lng))
+         out = sand(htorhc(nf,1.0,0.0,mc,ψ.T.ms[tid],ψ.T.σ[tid]), tvecs)
+         torsetter!(ψ.T,tid,out)
+         out = kron(out, I(ψ.R.lng))
+      elseif opid==1# ρz
+         out = kron(sand(p_tor(ψ.T, 1,tid), tvecs), Diagonal(nz(ψ.R.K, 1)))
+         torsetter!(ψ.T,tid,out)
+      elseif opid==2# ρx
+         out = kron(sand(p_tor(ψ.T, 1,tid), tvecs), nx(ψ.R, 1))
+         torsetter!(ψ.T,tid,out)
+      elseif opid==3# V
+         out = sand(htorhc(ψ.T.nf[tid],0.0,1.0,mc,ψ.T.ms[tid],ψ.T.σ[tid]), tvecs)
+         out = kron(out, I(ψ.R.lng))
+         torsetter!(ψ.T,tid,out)
+      elseif opid==4# ηz
+         out = kron(sand(p_tor(ψ.T, 1,tid), tvecs), sz(ψ.R, 1))
+         torsetter!(ψ.T,tid,out)
+      elseif opid==5# ηx
+         out = kron(sand(p_tor(ψ.T, 1,tid), tvecs), sx(ψ.R, 1))
+         torsetter!(ψ.T,tid,out)
+      else #FUCK 
+         @warn "something is very wrong with the torsional derivatives"
+      end
+   else #user def
+      out = enact_stg2(ℋ[id-11-6*topcount],ψ,1.0,tvecs)
+      sumder_2stg!(out,id,prm,stg,ℋ,ψ,tvecs)
+   end
+   return out
+end
+
 function sumder!(out::SparseMatrixCSC{Float64,Int},
                 id::Int,prm::Vector{Float64},stg::Vector{Int},
-                ℋ::Vector{Op},ψ::Psi)
+                ℋ::Vector{Op},ψ::Psi)::SparseMatrixCSC{Float64,Int}
+   ind = id+1
+   #tpcnt = length(ψ.T.nf)
+   shift = 11+6*length(ψ.T.nf)
+   if ind ≤ length(stg)
+      check = stg[ind-shift]
+      while check < zero(check)
+         pm = prm[ind]
+         out .+= enact(ℋ[ind-shift],ψ,pm)
+         ind += 1
+         if ind-shift ≤ length(stg)
+            check = stg[ind-shift]
+         else
+            check = 0
+         end#if
+      end#while
+   end#if
+   #eturn out
+end
+function sumder_2stg!(out::SparseMatrixCSC{Float64,Int},
+                id::Int,prm::Vector{Float64},stg::Vector{Int},
+                ℋ::Vector{Op},ψ::Psi,tvecs)::SparseMatrixCSC{Float64,Int}
    ind = id+1
    tpcnt = length(ψ.T.nf)
-   #if ind ≤ length(stg)+11
+   if ind ≤ length(stg)
       check = stg[ind-11-6*tpcnt]
       while check < zero(check)
          pm = prm[ind]
-         out .+= enact(ℋ[ind-11],ψ,pm)
-         #out .+= derivmat(id,prm,scl,stg,ℋ,ψ)
+         out .+= out = enact_stg2(ℋ[id-11-6*topcount],ψ,1.0,tvecs)
          ind += 1
          if ind-11 ≤ length(stg)
             check = stg[ind-11]
@@ -79,15 +152,22 @@ function sumder!(out::SparseMatrixCSC{Float64,Int},
             check = 0
          end#if
       end#while
-   #end#if
-   #eturn out
+   end#if
 end
 
 
 function anaderiv(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
                   ℋ::Vector{Op},ψ::Psi,vec)
-
    mat = derivmat(id,mc,prm,scl,stg,ℋ,ψ)
+   U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
+   mat = droptol!(sand(mat,U),2*eps())
+
+   mat = transpose(vec)*mat*vec
+   return mat #diag(out)
+end
+function anaderiv_2stg(id::Int,mc,prm::Vector{Float64},scl::Vector{Float64},stg::Vector{Int},
+                  ℋ::Vector{Op},ψ::Psi,vec,tvecs)
+   mat = derivmat(id,mc,prm,scl,stg,ℋ,ψ,tvecs)
    U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
    mat = droptol!(sand(mat,U),2*eps())
 
@@ -127,52 +207,12 @@ function build_jcbn!(jcbn,inds,jlist,ℋ,ctrl,perm,vecs,prm,scl,stg)
    for p in 1:length(perm)
       for a in 1:size(inds,1)
          #dν/dX = d/dX (ν_o - E_u + E_l) = -dE_u/dX + dE_l/dX 
-         jcbn[a,p] = deriv[inds[a,3],inds[a,2],p] - deriv[inds[a,6],inds[a,5],p]
+         jcbn[a,p] = -deriv[inds[a,3],inds[a,2],p] + deriv[inds[a,6],inds[a,5],p]
       end
    end
    return jcbn
 end
 
-function sumder_2stg(out,j,s,nf,rpid,prm,stg,ops,ms,qns,tvecs)
-   ind = rpid+1
-   if ind ≤ length(stg)+18
-      check = stg[ind-18]
-      while check < zero(check)
-         pm = prm[ind]
-         out .+= enact_stg2(O,ψ,val,tvcs,mc,ur,ut)
-         ind += 1
-         if ind-18 ≤ length(stg)
-            check = stg[ind-18]
-         else
-            check = 0
-         end
-      end
-   end
-   return out
-end
-function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
-   if scl[id] ≤ 0 #should this be ≤ 0 ???
-   elseif id ≤ 4 #pure rot
-      pr = zeros(4)
-      pr[id] = 1.0
-      out = hrot2(pr,qns)
-      out = kron(I(length(ms)),out)
-   elseif 5 ≤ id ≤ 8 #spin-rot
-      pr = zeros(5)
-      pr[id-4] = 1.0
-      out = hsr(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
-   elseif 9 ≤ id ≤ 11 #qua
-      pr = zeros(3)
-      pr[id-9] = 1.0
-      out = hqu(pr,j,s,qns)
-      out = kron(I(length(ms)),out)
-   else #user def
-      out = enact_stg2(O,ψ,val,tvcs,mc,ur,ut)
-      out .= sumder_2stg(out,id,prm,stg,ℋ,ψ)
-   end
-   return out
-end
 function anaderiv_2stg(prm,scl,stg,rpid,ops,j,s,nf,ms,qns,vec,tvec,mmax)
    mat = derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvec,mmax)
    out = transpose(vec)*mat*vec

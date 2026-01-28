@@ -113,10 +113,11 @@ end
 
 function htor(pr::Array{Float64},mc::Int,ψ::TPsi)::SparseMatrixCSC{Float64,Int}
    out = spzeros(ψ.lng,ψ.lng)
-   for i ∈ 1:length(ψ.nf)
+   l = length(ψ.nf)
+   for i ∈ 1:l
       r = length(ψ.nf) - i
       out += kron(I((2mc+1)^r), 
-                 htorhc(ψ.nf[i], pr[9+6i],pr[12+6i], mc, ψ.ms[i], ψ.σ[i]), 
+                 htorhc(ψ.nf[i], pr[ffind(i,l)],pr[vnind(i,l)], mc, ψ.ms[i], ψ.σ[i]), 
                  I((2mc+1)^(i-1)) )
    end
    return out

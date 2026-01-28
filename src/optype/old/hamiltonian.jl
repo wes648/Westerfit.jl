@@ -10,6 +10,7 @@ end
 
 function torop(a::Int,b::Int,nf::Int,ms::StepRange{Int,Int})::SparseMatrixCSC{Float64,Int}
 #performance of this function is deeply lacking
+   @warn "SCREAMING"
    if !iszero(b)
       @inbounds part = 0.5.* (ms[1+b:end] .- nf*b).^a
       out = spdiagm(b=>part)
@@ -43,12 +44,15 @@ function enact(O::Op,ψ::Psi,val::Float64)#::SparseMatrixCSC{T,Int} where T <: N
    else
       out = kron(I(ψ.T.lng),out)
    end
-#   if (strip(O.nam) == "δN")&&ψ.R.J==2.0
+   dropzeros!(out)
+#   if (strip(O.nam) == "ΔN")&&ψ.R.J==2.0
 #      @show O.nam
+#      @show val
+#      @show O.a
 #      @show ψ.R
-#      @show out
+#      @show diag(Matrix(out))
 #   end
-   0.5*tplus!(out)
+   tplus!(out)
    return out
 end
 #This allows the basis set to be distributed among a list of added Operators
@@ -67,7 +71,7 @@ end
 function tsrdiag_1(prm::Vector{Float64},ctrl,stgs,
                   ℋ::Vector{Op},ψ::Psi,σs)
    H = htsr2_1stg(ctrl,prm,ψ)
-   H += enact(ℋ,ψ,prm[12+4*length(ψ.T.nf):end],stgs)
+   H += enact(ℋ,ψ,prm[12+6*length(ψ.T.nf):end],stgs)
 
    U = kron(sparse(1.0I,ψ.T.lng,ψ.T.lng), ur(ψ.R.J,ψ.R.S))
    H = droptol!(sand(H,U),2*eps())
@@ -95,30 +99,30 @@ function tsrcalc_1stg!(vals,vecs,jlist,σs,ctrl,prm,stg,ℋ)
    return vals, vecs
 end#f
 
-function torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,sc)
-   tsize = (2*ctrl.mcalc +1)^length(ctrl.NFOLD )
-   dest = 1:ctrl.mmax +1
-   H = torbuild(ℋ,ϕ,stg,tsize,ctrl.mcalc )
-   H = Matrix(H)
-   H = eigen!(H)
-   tvals[:,sc] = H.values[dest]
-   tvecs[:,:,sc] = H.vectors[:,dest]
-end
 function torbuild(vals,O::Vector{Op},ψ::TPsi,stgs,msz,mc)::SparseMatrixCSC{Float64,Int}
    out = htor(vals, mc,ψ)
-   U = ur(mc)
    @inbounds for i in 1:length(O)
       if isone(stgs[i])
-         out += enact_tor(O[i].tp,ψ,U)*vals[i]
+         out += enact(O[i].tp,ψ)*vals[i]
       elseif (stgs[i] < 0) && isone(stgs[i+stgs[i]])
-         out += enact_tor(O[i].tp,ψ,U)*vals[i+stgs[i]]*vals[i]
+         out += enact(O[i].tp,ψ)*vals[i+stgs[i]]*vals[i]
       else
       end
    end
    #@show out
    return dropzeros!(out)
 end
-function enact_stg2(O::Op,ψ::Psi,val,tvcs,mc,ur,ut)::SparseMatrixCSC{Float64,Int}
+function torcalc!(tvals,tvecs,ctrl,prm,ℋ,ϕ,stg,sc)
+   tsize = (2*ctrl.mcalc +1)^length(ctrl.NFOLD )
+   dest = 1:ctrl.mmax +1
+   H = torbuild(prm,ℋ,ϕ,stg,tsize,ctrl.mcalc )
+   H = Matrix(H)
+   H = eigen!(H)
+   tvals[:,sc] = H.values[dest]
+   tvecs[:,:,sc] = H.vectors[:,dest]
+end
+
+function enact_stg2(O::Op,ψ::Psi,val,tvcs)::SparseMatrixCSC{Float64,Int} #,mc,ur,ut)::SparseMatrixCSC{Float64,Int}
    #printstyled("start\n",color=:green)
    #@show O.v
    out = enact_init(O,ψ.R,val)
@@ -134,35 +138,32 @@ function enact_stg2(O::Op,ψ::Psi,val,tvcs,mc,ur,ut)::SparseMatrixCSC{Float64,In
    else
       out = kron(I(size(tvcs,2)),out)
    end
-   if !isdiag(out) 
-      tplus!(0.5*out) 
-   end
-   #@show out
-   #printstyled("stop\n",color=:red)
+#   if !isdiag(out) 
+#      tplus!(0.5*out) 
+#   end
+   tplus!(out)
    return out #<- dispatch 
 end
 function h_stg2build!(Hmat,O::Vector{Op},ψ::Psi,vals,stgs,siz,tvcs,mc
       )::SparseMatrixCSC{Float64,Int}
    Ur = ur(ψ.R.J,ψ.R.S)
-   Ut = ur(mc)
-   part = spzeros(size(Hmat))
       @inbounds for i in 1:length(O)
       if iszero(stgs[i]) #this is for future oddities 
-         part .+= enact_stg2(O[i],ψ,vals[i],tvcs,mc,Ur,Ut)
+         part .+= enact_stg2(O[i],ψ,vals[i],tvcs,mc)
       elseif stgs[i] < 0 && iszero(stgs[i+stgs[i]])
-         part .+= enact_stg2(O[i],ψ,vals[i]*vals[i+stgs[i]],tvcs,mc,Ur,Ut)
+         part .+= enact_stg2(O[i],ψ,vals[i]*vals[i+stgs[i]],tvcs,mc)
       #else
       end
    end
-   Hmat .+= tplus!(part)
+   #Hmat .+= tplus!(part)
    return Hmat
 end
 
-function tsrdiag_2(Hr::SparseMatrixCSC{Float64,Int},ctrl,tvals,tvecs,ℋ::Vector{Op},
+function tsrdiag_2(ctrl,tvals,tvecs,ℋ::Vector{Op},
                   ψ::Psi,prm,stg)
    #printstyled("ψ.R.J = $(ψ.R.J), ψ.σ = $(ψ.σ)\n",color=:cyan)
-   H = kron(I(ctrl.mmax +1)^length(ctrl.NFOLD ),Hr) 
-   H[diagind(H)] .+= kron(tvals, ones(Int((2ψ.R.J+1)*(2ψ.R.S+1)) ))
+   H = htsr2_2stg(ctrl,pr,ψ,tvals,tvecs)
+
    h_stg2build!(H,ℋ,ψ,prm[12+4*length(ψ.T.nf):end],stg,(2*ctrl.mcalc +1)^length(ctrl.NFOLD ),
                tvecs,ctrl.mcalc )
    #tplus!(H)

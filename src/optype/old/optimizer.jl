@@ -70,6 +70,7 @@ function lbmq(ctrl,nlist,ofreqs,uncs,inds,params,scales,ℋ,stg,molnam)
       vl = sd*(2*maximum(nlist[:,1])+1)*(ctrl.mmax+1)
       vecs = zeros(Float64,Int(vl),jfd*vtd,σcnt)
       #initialize tvecs
+      tvals = zeros(ctrl.mmax+1,σcnt)
       tvecs = zeros(2*ctrl.mcalc+1,ctrl.mmax+1,σcnt)
 @time vals,vecs,tvals,tvecs = tsrcalc_2stg!(vals,vecs,tvals,tvecs,nlist,σs,ctrl,params,stg,ℋ)
    else

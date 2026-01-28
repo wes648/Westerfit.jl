@@ -409,6 +409,15 @@ function spm_op(out,j::Real,s::Real,qns::Array{Int,2},p::Int
    end
 end
 
+function npsp(j::Real,s::Real,qns::Array{Int,2},e::Int,f::Int
+   )::SparseMatrixCSC{Float64,Int64}
+   if iszero(e)&&iszero(f)
+      return spdiagm(ones(size(qns,1)))
+   else
+      return tplus!(np_op(qns,e)*sp_op(j,s,qns,f))
+   end
+end
+
 pa_op(ms::Array{Int},p::Int)::Diagonal{Float64, Vector{Float64}} = Diagonal(ms.^p)
 function cos_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    if p==0
@@ -436,7 +445,7 @@ function rsr_op(j::Real,s::Real,qns::Array{Int,2},a::Int,b::Int,
          c::Int,d::Int,e::Int,f::Int,jp::Int)::SparseMatrixCSC{Float64, Int64}
    out = nnss_op(j,s,qns,a,b)*nz_op(qns,c)
    out = out*sz_op(j,s,qns,d)
-   out = out*tplus!(np_op(qns,e)*sp_op(j,s,qns,f))
+   out = out*npsp(j,s,qns,e,f)
    out = out*iny_op(qns,jp)
    return dropzeros!(out)
 end
@@ -447,14 +456,14 @@ tor_op(ms,g,h,j)::SparseMatrixCSC{Float64, Int64} = pa_op(ms,g)*
 function tsr_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},ms::Array{Int},
                   a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                   jp::Int)::SparseMatrixCSC{Float64, Int64}
-   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
+   out = 0.5*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
    out = kron(tor_op(ms,g,h,jp),out)
    return dropzeros!(tplus!(out))
 end
 function tsr_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},
             ms::Array{Int},plist::Array{Int})::SparseMatrixCSC{Float64, Int64}
    #1/2 from a+a', 1/2 from np^0 + nm^0
-   out = 0.25*prm*rsr_op(j,s,qns,plist[1],plist[2],plist[3],
+   out = 0.5*prm*rsr_op(j,s,qns,plist[1],plist[2],plist[3],
                            plist[4],plist[5],plist[6],plist[9])
    out = kron(tor_op(ms,plist[7],plist[8],plist[9]),out)
    return dropzeros!(tplus!(out))
@@ -575,7 +584,8 @@ function tsrcalc2(prm,stg,cdo,nf,ctrl,jlist)
       jmsd = Int(msd*(2*jmax+1))
       jsvd = Int(jfd*vtd)
       jsublist = jlist[isequal.(jlist[:,2],σ), 1] .* 0.5
-      @threads for j in jsublist
+#      @threads for j in jsublist
+      for j in jsublist
          jd = Int(2.0*j) + 1
          sind, find = jvdest(j,s,vtm) 
          fvls[sind:find,sc], fvcs[1:jd*msd,sind:find,sc] = tsrdiag(ctrl,

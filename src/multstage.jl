@@ -97,6 +97,7 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
    else
    end
    for i in 1:length(cdf)
+      println("op # is $i")
       if cdf[i] ≠ 0.0
       ℋ .+= twostg_op(cdf[i],j,s,qns,ms,cdo[:,i], tvecs)
       end
@@ -105,7 +106,6 @@ function hjstage(sof,cdf::Array,cdo::Array,j,s,nf,tvals,tvecs,ms)::SparseMatrixC
 end
 
 function twostg_diag(ctrl,sof,cdf,cdo,tvals,tvecs,ms,nf,mmax,mcalc,j,s,σ,vtm)
-   #println("ℋ time for J=$j")
    H = hjstage(sof,cdf,cdo,j,s,nf,tvals,tvecs,ms)
    if true ∈ isnan.(H)
       @warn "FUCK!!! j=$j, σ=$σ, NaN in H"
@@ -125,7 +125,9 @@ function twostg_calc(ctrl,prm,stg,cdo,nf,vtm,mcalc,mmax,jlist,s,sd,σ)
    sof = prm[1:18]
    cdf = prmsetter(prm[19:end],stg)
    tormat, ms = htor2v2(sof[13:16],nf,mcalc,σ)
-   @warn "2 stages breaks for NFOLD=0. please use stages=1"
+   if iszero(nf)
+      @warn "2 stages breaks for NFOLD=0. please use stages=1"
+   end
    tvals,tvecs = eigen(Symmetric(Matrix(tormat)))
    tvals = tvals[1:mmax+1]
    tvecs = tvecs[:,1:mmax+1]

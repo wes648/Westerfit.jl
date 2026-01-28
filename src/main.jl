@@ -1,12 +1,12 @@
 
-using MKL
+#using MKL
 using DelimitedFiles
 using LinearAlgebra
 using LinearAlgebra.BLAS
 using Printf
 using SparseArrays
 using StaticArrays
-using Base.Threads
+#using Base.Threads
 using Dates
 #include("@__DIR__/../WIGXJPF.jl")
 #Δ δ ρ ϵ χ
@@ -17,7 +17,9 @@ using Dates
    wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
    wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
 else
-   using WIGXJPFjl
+#   using WIGXJPFjl
+   include("/home/julia/files/WIGXJPFjl.jl/src/WIGXJPFjl.jl")
+   using .WIGXJPFjl
 end
 
 include("@__DIR__/../assign.jl")

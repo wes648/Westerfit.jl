@@ -1,19 +1,11 @@
 function qfreqs!(cfreqs,vals,inds)
-   @threads for i in 1:size(cfreqs,1)
+   #@threads 
+   for i in 1:size(cfreqs,1)
       cfreqs[i] = vals[inds[i,3],inds[i,2]+1] - vals[inds[i,6],inds[i,5]+1]
    end
    return cfreqs
 end
 
-function outputstart(molnam,λ,rms)
-   io = open("$molnam.out", "a")
-   println(io,"Initial RMS = $rms MHz")
-   println(io,"Initial λ = $λ")
-   println(io,"")
-   println(io,"-------------------------------------")
-   println(io,"")
-   close(io)
-end
 
 function iterprint(rms,λlm,counter)
    srms = (@sprintf("%0.4f", rms))

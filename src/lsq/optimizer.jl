@@ -58,7 +58,8 @@ function wellcon_acc()
    xs = collect(1:count)
    p0 = zeros(2)
    γ = zeros(length(perm))
-   @threads for i in 1:length(perm)
+   #@threads 
+   for i in 1:length(perm)
       y = βset[i,:]
       if allequal(sign.(y))
          p0[1] = y[1]
@@ -164,9 +165,9 @@ function lbmq_opttr(ctrl,nlist,ofreqs,uncs,inds,params,scales,cdo,stg,molnam)
    io = open("$molnam.out", "a")
    println(io,"Initial RMS = $rms MHz")
    println(io,"Initial λ = $λlm")
-   println(io,"")
-   println(io,"-------------------------------------")
-   println(io,"")
+   #println(io,"")
+   #println(io,"-------------------------------------")
+   #println(io,"")
    close(io)
 
    nparams = copy(params)

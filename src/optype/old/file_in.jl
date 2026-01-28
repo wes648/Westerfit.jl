@@ -155,8 +155,6 @@ function sod2prep_lim(prd::Array{Float64},nf)::Array{Float64}
       out[rzind(i,lnf)] = -2.0*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]*csl    #ρzF
       out[rxind(i,lnf)] = -prd[ffind(i,lnf)]*prd[rxind(i,lnf)]*csl        #ρxF
       out[vnind(i,lnf)] = prd[vnind(i,lnf)]*0.5*csl                       #Vn/2
-      @show out[vnind(i,lnf)]
-      @show out[vnind(i,lnf)]/csl
       prd[1] += csl*prd[ffind(i,lnf)]*prd[rzind(i,lnf)]^2        #Aeff = A+Fρz^2
       prd[2] += csl*prd[ffind(i,lnf)]*prd[rxind(i,lnf)]^2        #Beff = B+Fρx^2
    end
@@ -245,7 +243,7 @@ function secordinp(molnam::String,ctrl)
          end 
       elseif occursin("F",nam)# && !iszero(nvl)
          ind = ffind(tornamind(nam),lnf)
-         val[ind] = nvl*csl
+         val[ind] = nvl
          errs[ind] = file[i,3]
          if typeof(stg)==Int
             stgs[ind] = stg
@@ -341,7 +339,7 @@ function opparse2(nam::String,s::String,lnf::Int,list::Dict{String,Function})::O
    abcd = zeros(Int,4)
    tops = zeros(Int,2,lnf)
    for i in eachindex(s)
-      part = string.(split(s[i],"^"))
+      part = string.(split(s[i],['^';'_']))
       #if part[1] ∈ imlist
       #   typecheck *= -1
       #   partype = ComplexF64
