@@ -43,6 +43,9 @@ function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    return ni
 end
 
+"""
+Returns a steprange of the indices of along the anti-diagonal of the input matrix
+"""
 function adiagin(a::AbstractMatrix)::StepRange{Int,Int}
    @assert size(a,1)==size(a,2)
    l = size(a,1)

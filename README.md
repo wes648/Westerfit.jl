@@ -70,6 +70,11 @@ I'm personally fond of the theory in **eeo** but find its performance lacking.
 This differs from BELGI as the first stage does not include $K$ dependent terms. 
 I like 1 better for being more elegant but 2 is substantially faster and highly recommended for 2-fold rotor problems.
 
+**ResPrint**(0::Int): Controls the frequency of printing the residuals in the main output file.
+The default behavior, 0, does not print them and only writes the final residuals to the res file.
+The check performed is mod(iterartion-number, ResPrint)==0.
+A value of 1 will print every iteration, 2 every even, and so on
+
 ### Second Order Parameters
 The second order Hamiltonian of westerfit is hardcoded. 
 You can comment out any lines with # but the number of lines must remain fixed in this section. 

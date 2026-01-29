@@ -85,10 +85,10 @@ function stage_1tproc()::Eigs
    end
    for i ∈ 1:length(nfold)
       vals, vecs = diagwrap(Hmat[:,:,i])
-      Eigs.top[i].vals = vals[1:ctrl.vtcalc]
-      Eigs.top[i].vecs = vecs[:,:, 1:ctrl.vtcalc]
+      wvs.top[i].vals = vals[1:ctrl.vtcalc]
+      wvs.top[i].vecs = vecs[:,:, 1:ctrl.vtcalc]
    end
-   return Eigs
+   return wvs
 end
 
 
