@@ -25,6 +25,13 @@ function σcount_post(nfold::Real)::Int
    end
    return out
 end
+function σcount(nfold::Vector{Int})::Int
+   out = σcount(nfold[1])
+   for i ∈ 2:length(nfold)
+      out += σcount_post(nfold[i])
+   end
+   return out
+end
 
 function σgen(nf1::Int,nf2::Int)::Array{Int,2}
    σcnt1 = σcount(nf1)
@@ -63,6 +70,33 @@ function σgen(nf::Int)::Array{Int}
    return collect(0:σcount(nf[1])-1)'
 end
 
+function σgen_post(nf::Int)::Arayy{Int}
+   if σ ≤ 2
+      out = [0]
+   elseif nfold==3
+      out = [1;0;-1]
+   else
+      @warn "secondary tops must be nfold ≤ 3 for now"
+   end
+   return out
+end
+
+function nth_σgen(nfold::Int,tid::Int)::Array{Int}
+   if tid > 1
+      return σgen(nfold)
+   else
+      return σgen_post(nfold)
+   end
+end
+function nth_σcount(nfold::Int,tid::Int)::Array{Int}
+   if tid > 1
+      return σcount(nfold)
+   else
+      return σcount_post(nfold)
+   end
+end
+
+
 function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
    if iszero(nfold)
       marray = 0:0
@@ -93,7 +127,7 @@ function nσfinder(tid::Int,σ::Int,nfold::Vector{Int})::Int
    else
       out = σcount(nfold[1])
       out += sum(nfold[2:tid-1])
-      out += abs(σ)+1
+      out += σ+2
    end
    return out
 end

@@ -40,6 +40,7 @@ ns_el(j,s,p,n)::Float64 = (0.5*eh(j) - eh(n) - eh(s))^p
 n2gen(ns::UnitRange{Int})::Vector{Float64} = reduce(vcat, [fill(eh(n),2n+1) for n ∈ ns])
 nsgen(ns::UnitRange{Int})::Vector{Int} = reduce(vcat, [fill(n,2n+1) for n ∈ ns])
 ksgen(ks::Vector{UnitRange{Int}})::Vector{Int} = reduce(vcat, ks)
+ksgen(n::Int)::Vector{Int} = reduce(vcat, -n:n)
 
 #These functions are cooked into enact_init as they are purely diagonal
 #they are N^2a (NS)^b S^c Nz^d in this order

@@ -43,6 +43,26 @@ function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    return ni
 end
 
+
+"""
+This returns the first and final indices for a certain J value for a given S.
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+function jinds(j,s)
+   snd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+   return collect(snd:fnd)
+end
+"""
+This returns the first and final indices for a certain J value for a given S and mcalc
+   This is used to place the eigenvalues & vectors in the final large arrays
+"""
+function jinds(j,s,m)
+   snd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+   return snd:fnd
+end
+
 """
 Returns a steprange of the indices of along the anti-diagonal of the input matrix
 """
@@ -59,7 +79,7 @@ function ur(j::Real,s::Real)::SparseMatrixCSC{Float64, Int64}
    if !iszero(s)
       ns, ni, jsd = srprep2(j,s)
       out = spzeros(jsd,jsd)
-      for i in 1:length(ns)
+      for i in eachindex(ns)
          out[ni[i], ni[i]] = ur(ns[i])
       end
       return out
@@ -91,12 +111,12 @@ end
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = n ≤ 20 ? ur1(n) : ur2(n)
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = ur(n)
 
-function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
 """
 This returns a unit range spanning from the first to the final indices for a 
    certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
+function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
    snd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):(j-1)) .+0.5))+1
    fnd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):j) .+0.5))
    return snd:fnd

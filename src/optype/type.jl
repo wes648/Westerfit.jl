@@ -1,28 +1,33 @@
 
 #lines I know won't work have been tagged with #<-----------
 
+# string to function conversion:
+# fn = getfield(Main, Symbol(str))
+
 @kwdef struct Controls
-   NFOLD::Vector{Int} = [0]
-   S::Float64 = 0.0
-   TK::Float64 = 8.0
-   mcalc::Int = 8
-   mmax::Int = 6
-   vtmax::Int = 0
-   Jmax::Float64 = 0.
    apology::Bool = true
-   νmin::Float64 = 0.0
+   RUNmode::String = "ESF"
+   stages::Int = 0
+   Irrep::String = "Ir"
+   assign::String = "ram36"
+   NFOLD::Vector{Int} = [0] # vector of symmetry folds of rotors
+   S::Float64 = 0. # float for spin value could maybe turn into int for 2s but eh
+   Jmax::Float64 = 0. # maximum J value
+   mcalc::Int = 10 # maximum |m| value for free rotor basis, basis size will be 2mmax+1
+   vtrunc::Int = 8 # maximum vt state output by first diag stage & to be used in the second. basis size will be vtrunc+1
+   # if length(nfold)==1 && stages > 1, vtrunc is replaced by vtcalc
+   vtcalc::Int = 8 # maximum vt state output by second diag stage & to be used in third. basis size will be vtmax+1
+   vtmax::Int = 0 # maximum vt state output by final diagonalization stage. basis size will be vtmax+1
+   νmin::Float64 = 0.2
    νmax::Float64 = 40.0
+   TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 0.0001
    λlm0::Float64 = 0.001
-   RUNmode::String = "ESF"
    turducken::Int = 1
    maxiter::Int = 60
-   overwrite::Bool = true 
-   assign::String = "ram36"
    REJECT::Float64 = 10.0
-   Irrep::String = "Ir"
    goal::Float64 = 1.0
-   stages::Int = 1 
+   overwrite::Bool = true 
    ctbk::Vector{Int} = zeros(Int,2)
    sobk::Vector{Int} = zeros(Int,2)
    inbk::Vector{Int} = zeros(Int,2)
@@ -32,7 +37,7 @@ end
 struct OpFunc{T <: Number, S<:AbPsi}
    f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{S,Int}} # function
    l::Int # power / rank
-   q::Int # component / top
+   q::Int # top / component 
    OpFunc(T::Type,f::Function,l::Int,q=0) = new{T}(f,l,q)
    OpFunc(f::Function,l::Int,q=0) = new{Float64}(f,l,q)
 end
@@ -43,20 +48,73 @@ struct Op
    rf::Vector{OpFunc} # vec of rot ops
    tf::Vector{OpFunc} # vec of tor ops
    stg::Int # stage
-   Op(nam::String,rf=Vector{OpFunc}[],tf=Vector{OpFunc}[],stg=0) = new(nam,rf,tf,stg)
+   Op(nam="E",rf=Vector{OpFunc}[],tf=Vector{OpFunc}[],stg=0) = new(nam,rf,tf,stg)
    Op(O::Op) = new(O.nam,O.rf,O.tf,O.stg)
 end
 
 #This is essentially a mutable version of the Eigen structure so I can rearrange & truncate as needed
 mutable struct SubEigs
    vals::AbstractArray
+   ders::Union{Nothing,AbstractArray}
    vecs::AbstractArray
+   SubEigs(x::Eigen) = new(x.values,nothing,x.vectors)
+   SubEigs(a::AbstractArray,c::AbstractArray) = new(a,nothing,c)
+   SubEigs(a::AbstractArray,b::AbstractArray,c::AbstractArray) = new(a,b,c)
+   """
+   SubEigs can be initiated with 3 integers: number of states, basis size, and number of σs
+      number of state should be less than or equal to the basis size
+   """
+   SubEigs(a::Int,b::Int,c::Int) = SubEigs(Array{Float64}(undef,a,c), nothing, Array{Float64}(undef,b,a,c))
 end
 mutable struct Eigs
+   #the vector of subeigs refers to different tops
+   # then vals[i,σ] is the ith energy of the σ symmetry
+   # then vecs[:,i,σ] is the ith wavefunction of the σ symmetry
    top::Union{Nothing,Vector{SubEigs}}
+   #vector inds will be sigma set
+   # vals[i,σ] is the ith energy of the σ_set symmetry
+   # vecs[:,i,σ] is the ith wavefunction of the σ_set symmetry
    ttp::Union{Nothing,SubEigs}
-  #vib::Union{Nothing,SubEigs}
+   #vib::Union{Nothing,SubEigs}
+   #vector inds will be sigma set
+   # vals[i,σ] is the ith energy of the σ_set symmetry
+   # vecs[:,i,σ] is the ith wavefunction of the σ_set symmetry
    rst::Union{Nothing,SubEigs}
+   function Eigs(ctrl::Controls)::Eigs
+      rscount = sum(Int,2 .* (0.5*isodd(2ctrl.jmax):ctrl.jmax) .+ 1)*dgen(ctrl.S)
+      σs = σcount(ctrl.NFOLD)
+      if isone(stages)
+         lm = rscount*(dgen(ctrl.mmax)^length(ctrl.nfold))
+         lv = rscount*(ctrl.vtmax + 1)
+         return new( nothing, nothing, SubEigs(lv,lm,σs) )
+      elseif isone(length(ctrl.NFOLD)) && stages > 1
+         lm = rscount*dgen(ctrl.mmax)
+         li = rscount*(ctrl.vtcalc + 1)
+         lv = rscount*(ctrl.vtmax + 1)
+         return new([ SubEigs(li,lm,σs) ],
+                    nothing,
+                    SubEigs(lv, li, σs) )
+      elseif stages==2
+         l1 = rscount* (dgen(ctrl.mmax)^length(ctrl.NFOLD))
+         #l2 = rscount*(ctrl.vtrunc + 1)
+         l2 = rscount*(ctrl.vtcalc + 1)
+         l3 = rscount*(ctrl.vtmax + 1)
+         return new(nothing,
+                    SubEigs(l2,l1,σs),
+                    SubEigs(l3,l2,σs) )
+      elseif stages==3
+         l1 = rscount* dgen(ctrl.mmax)
+         l2 = rscount*(ctrl.vtrunc + 1)
+         l3 = rscount*(ctrl.vtcalc + 1)
+         l4 = rscount*(ctrl.vtmax + 1)
+         return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.nfold)],
+                    SubEigs(l3,l2,σs) ,
+                    SubEigs(l4,l3,σs) )
+      else
+         @warn "This number of stages ($(ctrl.stages)) has not been defined!"
+         new(nothing,nothing,nothing)
+      end # if
+   end
 end
 
 """

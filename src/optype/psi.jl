@@ -24,7 +24,7 @@ struct RPsi <: AbPsi
       new(J,S,N,K,lng)
    end
 end
-struct TPsi_new  <: AbPsi
+struct TPsi  <: AbPsi
    nf::Int
    ms::StepRange{Int,Int}
    σ::Int
@@ -36,15 +36,17 @@ struct TPsi_new  <: AbPsi
 end
 struct TTPsi 
    topcnt::Int
-   tps::Vector{TPsi_new}
+   tps::Vector{TPsi}
    nfs::Vector{Int}
    σs::Vector{Int}
    l::Int
-   function TTPSi(top1::TPsi_new)
+   function TTPSi(top1::TPsi)
       new(1,[top1],top1.nf,top1.σ,top1.l)
    end
-   function TTPsi(tops::TPsi_new...)
+   function TTPsi(tops::TPsi...)
       new(length(tops),reduce(vcat,tops),reduce(vcat,tops.nf),reduce(vcat,tops.σ),reduce(+,tops.l))
+   end
+   function TTPsi(nfs::Vector{Int},σs,mc)
    end
 end
 struct VPsi

@@ -91,11 +91,11 @@ function derivcalc_2stg(jlist,ops,ctrl,perm,vecs,prm,scl,stg,tvecs)
             pid = perm[i]
             ders = anaderiv_2stg(prm,scl,stg,pid,ops,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
             derivs[sind:find,sc,i] = ders#*scl[pid]
-         end#perm loop
+         end #perm loop
       end #j loop
-   end#σ loop
+   end #σ loop
    return derivs
-end#function
+end #function
 
 function anaderiv_2stg(rpid,j,s,nf,ms,qns,vec,tvec,mmax)
    mat = derivmat_2stg(j,s,nf,rpid,ms,qns,tvec,mmax)
@@ -123,11 +123,11 @@ function derivcalc_2stg(jlist,ctrl,perm,vecs,tvecs)
             pid = perm[i]
             ders = anaderiv_2stg(pid,j,s,nf,ms,qns,vec,tvcs,ctrl["mmax"])
             derivs[sind:find,sc,i] = ders#*scl[pid]
-         end#perm loop
+         end #perm loop
       end #j loop
-   end#σ loop
+   end #σ loop
    return derivs
-end#function
+end #function
 
 function derivcalc_2stg_all(ops,ctrl,perm,vecs,prm,scl,stg,σ)
    #all as in all states
@@ -379,7 +379,7 @@ end
          scounter = lpad(counter,3)
          println("After $scounter iterations, RMS = $srms, log₁₀(λ) = $slλ")
          iterationwriter(molnam,paramarray,rms,counter,λlm,sum(βf,dims=2),perm)
-         println(mod(counter,ctrl["ResPrint"]))
+         #println(mod(counter,ctrl["ResPrint"]))
          if ctrl["ResPrint"]≠0 && iszero(mod(counter,ctrl["ResPrint"]))
             resappender(molnam,inds,omc,ofreqs,cfrqs)
          end
