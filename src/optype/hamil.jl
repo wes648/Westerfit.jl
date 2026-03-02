@@ -9,14 +9,14 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCS
    end
    out = sand(out,ur(ψ.R.J, ψ.R.S))
    if !isnothing(O.tf)
-      tpart = sparse(1,1,1.0)
+      tpart = sparse(I,ψ.T.l,ψ.T.l)
       @inbounds for i ∈ eachindex(O.tf)
          part = eval_top(O.tf[i],ψ.T)
          if stage_allow(wvs.top) 
             loc = nσfinder(O.tf[i].q, ψ.T.σs[top_id])
             part = sand(part, wvs.top[loc].vecs)
          end
-         torsetter!(ψ.T, O.tf[i].q, part)
+         #torsetter!(ψ.T, O.tf[i].q, part)
          tpart = tpart*part
       end #for
       if stage_allow(wvs.ttp)
@@ -117,22 +117,25 @@ inputs are: stage id #
 Outputs the Eig structure
 """
 function stageproc0(stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σid)::Eigs
-   l = stage_size(stage,stages,wvs)
+   l = ψ.R.lng*ψ.T.l #stage_size(stage,stages,wvs)
    H = spzeros(l,l)
    for i ∈ eachindex(ops)
       if ops[i].stg == stage
-         H += eval(ops[i],l,ψ,wvs,prms[i])
+         H += enact(ops[i],ψ,wvs,prms[i])
       elseif (ops[i].stg < 0)&& (ops[i + ops[i].stg].st == stage)
-         H += eval(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg ])
+         H += enact(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg ])
       else
       end
    end
    tplus!(H)
    #if assigncheck # energy caculation!
       vals, vecs = diagwrap(H)
-      wvs = assign_big_call(ctrl,wvs,ψ,σid)
-      jinds = XXXXXXX # <-----------
-      wvs.rst.vals[jinds,σid], wvs.rst.vecs[:,jinds,σid] = vals, vecs
+      @show vals
+      perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, 0, 0) # vtcalc, vtmax
+      @show perm
+      vldst = jinds(ψ.R.J,ψ.R.S,0+1) #vtmax
+      vcdst = jinds(ψ.R.J,ψ.R.S,0+1) #vtcalc
+      wvs.rst.vals[vldst,σid], wvs.rst.vecs[vcdst,vldst,σid] = vals, vecs
    #else # derivatives!
    #   wvs.rst.der[:,σid] = 
    #end
@@ -140,7 +143,7 @@ function stageproc0(stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σi
 end
 
 function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
-   σs = σgen(ctrl.nfold)
+   σs = σgen(ctrl.NFOLD)
    if ctrl.stages==3
       #one top
       wvs = stage_1tproc(wvs,prm,ops,ctrl)
@@ -148,17 +151,21 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
    if ctrl.stages ≥ 2
       # top-top
       for i ∈ 1:size(σs,2)
-         ψ = TTPsi(nfs,σs[:,i],ctrl.mcalc)
+         ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
          wvs = stage_ttproc(wvs,prm,ops,ψ,σind)
       end
    end
    for i ∈ 1:size(σs,2)
-      ϕ = TTPsi(nfs,σs[:,i],ctrl.mcalc)
-      for j ∈ 0.5*isodd(2*ctrl.S):ctrl.jmax
+      ϕ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
+      @show ϕ
+      for j ∈ 0.5*isodd(2*ctrl.S):ctrl.Jmax
          ψ = Psi( RPsi(j, ctrl.S), ϕ )
          wvs = stageproc0(0,wvs,prm,ops,ψ,stages,i)
       end # j loop
    end # σ loop
+   sparsify!(wvs.rst.vecs)
+   @show wvs.rst.vals
+   @show wvs.rst.vecs
    return wvs
 end
 

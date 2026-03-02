@@ -62,7 +62,7 @@ function σgen(nf::Array{Int})::Array{Int,2}
       old = new
    end#for i
    else
-      old = σgen_indef(nf[1])
+      old = σgen(nf[1])
    end
    return old
 end

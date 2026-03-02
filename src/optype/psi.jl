@@ -8,23 +8,22 @@ struct RPsi <: AbPsi
    K::Vector{UnitRange{Int}}
    lng::Int
    function RPsi(J::Number,S::Number)
-      J = convert(Float64,J)
-      S = convert(Float64,S)
+      J = Float64(J)
+      S = Float64(S)
       N = Δlist2(J,S)
       K = kgen(N)
-      lng = convert(Int,(2J+1)*(2S+1))
+      lng = Int((2J+1)*(2S+1))
       new(J,S,N,K,lng)
    end
    function RPsi(N::Int)
-      J = convert(Float64,N)
-      S = 0.0
+      J = Float64(N)
       N = Δlist2(J,0.0)
       K = kgen(N)
-      lng = convert(Int,(2J+1)*(2S+1))
-      new(J,S,N,K,lng)
+      lng = Int(2J+1)
+      new(J,0.0,N,K,lng)
    end
 end
-struct TPsi  <: AbPsi
+struct TPsi <: AbPsi
    nf::Int
    ms::StepRange{Int,Int}
    σ::Int
@@ -34,20 +33,30 @@ struct TPsi  <: AbPsi
       new(nf,ms,σ,length(ms))
    end
 end
-struct TTPsi 
+struct TTPsi <: AbPsi
    topcnt::Int
    tps::Vector{TPsi}
    nfs::Vector{Int}
    σs::Vector{Int}
+   mc::Int
    l::Int
    function TTPSi(top1::TPsi)
-      new(1,[top1],top1.nf,top1.σ,top1.l)
+      new(1, [top1], top1.nf, top1.σ, floor(Int,0.5*(top1.l-1)), top1.l )
    end
    function TTPsi(tops::TPsi...)
-      new(length(tops),reduce(vcat,tops),reduce(vcat,tops.nf),reduce(vcat,tops.σ),reduce(+,tops.l))
+      new(length(tops),reduce(vcat,tops),reduce(vcat,tops.nf),
+         reduce(vcat,tops.σ),reduce(x -> floor(Int, 0.5*(x-1)), tops.l),
+         reduce(+,tops.l))
    end
-   function TTPsi(nfs::Vector{Int},σs,mc)
+   function TTPsi(nfs::Vector{Int},σs::Vector{Int},mc::Int)
+      topcnt = length(nfs)
+      tps = Vector{TPsi}(undef,length(nfs))
+      for i ∈ 1:topcnt
+         tps[i] = TPsi(nfs[i],σs[i],mc)
+      end
+      new(topcnt, tps,nfs, σs, mc, dgen(mc)^topcnt)
    end
+   TTPsi(nfs::Int,σs::Int,mc::Int) = TTPsi([nfs],[σs],mc)
 end
 struct VPsi
    #each column refer to a vibrational polyad state
@@ -56,8 +65,8 @@ struct VPsi
    nus::Matrix{Int}
 end
 mutable struct Psi
-   R::RPsi
-   T::TTPsi
+   R::Union{RPsi,Nothing}
+   T::Union{TTPsi,Nothing}
 end
 
 convert(T::Type{Psi},ϕ::RPsi) = Psi(ϕ,TPsi(0,0,0))

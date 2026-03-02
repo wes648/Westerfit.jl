@@ -49,17 +49,18 @@ This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
 function jinds(j,s)
-   snd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
-   fnd = convert(Int, (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
-   return collect(snd:fnd)
+   snd = dgen(s) * Int(sum(2 .* (0.5*isodd(2*s)):(j-1) .+ 1)) +1
+   fnd = dgen(s) * Int(sum(2 .* ((0.5*isodd(2*s)):j) .+ 1))
+   return snd:fnd
 end
 """
-This returns the first and final indices for a certain J value for a given S and mcalc
+This returns the first and final indices for a certain J value for a given S and torsional
+   basis size.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-function jinds(j,s,m)
-   snd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
-   fnd = convert(Int, (2*m+1)*(2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
+function jinds(j,s,md)
+   snd = md*dgen(s)*Int( sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)) +1
+   fnd = md*dgen(s)*Int( sum(2 .* collect((0.5*isodd(2*s)):j) .+ 1))
    return snd:fnd
 end
 
@@ -191,9 +192,9 @@ exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
 """
 Applies Kronecker products with identity matrices in order to properly resize the ith one top matrix.
 """
-function torsetter!(ψ::TPsi,i::Int,out)
-   lnf = length(ψ.nf)
-   lbk = ψ.lb
+function torsetter!(ψ::TTPsi,i::Int,out)
+   lnf = length(ψ.nfs)
+   lbk = ψ.tps[i].l
    if lnf > 1
       out = kron( sparse(I, lbk*(lnf-i), lbk*(lnf-i)), 
                   out, 
@@ -212,4 +213,13 @@ function diagwrap(H::AbstractArray)::Eigen
    else
       return eigen!(Hermitian(Matrix(H), :L))
    end
+end
+
+
+function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
+   Base.Threads.@threads for i ∈ eachindex(A)
+      if isnan(A[i])|| abs(A[i] ≤ ϵ)
+         A[i] = 0.0
+   end; end
+   return A
 end

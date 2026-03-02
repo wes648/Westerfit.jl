@@ -19,20 +19,20 @@ end
 #using JET
 #using BenchmarkTools
 #using ProfileView
-
+include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
-include("@__DIR__/../derivatives.jl")
-include("@__DIR__/../file_in.jl")
-include("@__DIR__/../file_out.jl")
-include("@__DIR__/../hc_ham.jl")
+#include("@__DIR__/../derivatives.jl")
+#include("@__DIR__/../file_in.jl")
+#include("@__DIR__/../file_out.jl")
+#include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
-include("@__DIR__/../transitions.jl")
-include("@__DIR__/../opt-com.jl")
-include("@__DIR__/../optimizer.jl")
+#include("@__DIR__/../transitions.jl")
+#include("@__DIR__/../opt-com.jl")
+#include("@__DIR__/../optimizer.jl")
 
 const csl::Float64 = 29979.2458
 #csl = 29979.2458
@@ -40,10 +40,19 @@ const csl::Float64 = 29979.2458
 BLAS.set_num_threads(Threads.nthreads())
 @show Threads.nthreads()
 
-function westereng(molnam::String,ctrl::Controls)::wvs
-# 14 april 25, half the time here is from set up. should look into that
-   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
-   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
+function westereng()::Eigs
+#function westereng(molnam::String,ctrl::Controls)::Eigs
+#   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
+#   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
+   ctrl = Controls(vtcalc=0, Jmax=3., stages=1, mcalc=3, NFOLD=[3])
+   ℋ = [Op("BK",[OpFunc(Nz,2)]);
+         Op("BN",[OpFunc(N2,1)]);
+         Op("B±",[OpFunc(Npm,2)])
+         Op("F ",[],[OpFunc(Pα,2,1)]);
+         #Op("F ",[],[OpFunc(p_tor,2,1)]);
+         Op("V3",[],[OpFunc(cosα,3)])]
+   prm = [1.75; 1.25; 0.125; 5.0; 100.0]
+   stgs = [0;0;0]
    wvs = Eigs(ctrl)
    H_calc(ctrl,wvs,prm,ℋ,stgs)
    return wvs

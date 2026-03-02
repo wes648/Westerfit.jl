@@ -35,14 +35,19 @@
 end
 
 struct OpFunc{T <: Number, S<:AbPsi}
-   f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{S,Int}} # function
+   f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{S,Int,Int}} # function
    l::Int # power / rank
    q::Int # top / component 
-   OpFunc(T::Type,f::Function,l::Int,q=0) = new{T}(f,l,q)
-   OpFunc(f::Function,l::Int,q=0) = new{Float64}(f,l,q)
+   OpFunc(T::Type,S::Type,f::Function,l::Int,q=0) = new{T,S}(f,l,q)
+   function OpFunc(f::Function,l::Int,q=0)
+      new{Float64, Tuple(first(methods(f)).sig.parameters[2:end])[1]}(f,l,q)
+   end
 end
 eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
 eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
+eval_top(op::OpFunc,ψ::TTPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
+#eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.l,op.q)
+#eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.l,op.q)
 struct Op
    nam::String #this is a name field, mostly for debugging
    rf::Vector{OpFunc} # vec of rot ops
@@ -64,7 +69,7 @@ mutable struct SubEigs
    SubEigs can be initiated with 3 integers: number of states, basis size, and number of σs
       number of state should be less than or equal to the basis size
    """
-   SubEigs(a::Int,b::Int,c::Int) = SubEigs(Array{Float64}(undef,a,c), nothing, Array{Float64}(undef,b,a,c))
+   SubEigs(a::Int,b::Int,c::Int) = new(Array{Float64}(undef,a,c), nothing, Array{Float64}(undef,b,a,c))
 end
 mutable struct Eigs
    #the vector of subeigs refers to different tops
@@ -81,41 +86,41 @@ mutable struct Eigs
    # vecs[:,i,σ] is the ith wavefunction of the σ_set symmetry
    rst::Union{Nothing,SubEigs}
    function Eigs(ctrl::Controls)::Eigs
-      rscount = sum(Int,2 .* (0.5*isodd(2ctrl.jmax):ctrl.jmax) .+ 1)*dgen(ctrl.S)
+      rscount = sum(Int,2 .* (0.5*isodd(2ctrl.Jmax):ctrl.Jmax) .+ 1)*dgen(ctrl.S)
       σs = σcount(ctrl.NFOLD)
-      if isone(stages)
-         lm = rscount*(dgen(ctrl.mmax)^length(ctrl.nfold))
+      if isone(ctrl.stages)
+         lm = rscount*(dgen(ctrl.mcalc)^length(ctrl.NFOLD))
          lv = rscount*(ctrl.vtmax + 1)
          return new( nothing, nothing, SubEigs(lv,lm,σs) )
-      elseif isone(length(ctrl.NFOLD)) && stages > 1
-         lm = rscount*dgen(ctrl.mmax)
+      elseif isone(length(ctrl.NFOLD)) && ctrl.stages > 1
+         lm = rscount*dgen(ctrl.mmcalc)
          li = rscount*(ctrl.vtcalc + 1)
          lv = rscount*(ctrl.vtmax + 1)
          return new([ SubEigs(li,lm,σs) ],
                     nothing,
                     SubEigs(lv, li, σs) )
-      elseif stages==2
-         l1 = rscount* (dgen(ctrl.mmax)^length(ctrl.NFOLD))
+      elseif ctrl.stages==2
+         l1 = rscount* (dgen(ctrl.mmcalc)^length(ctrl.NFOLD))
          #l2 = rscount*(ctrl.vtrunc + 1)
          l2 = rscount*(ctrl.vtcalc + 1)
          l3 = rscount*(ctrl.vtmax + 1)
          return new(nothing,
                     SubEigs(l2,l1,σs),
                     SubEigs(l3,l2,σs) )
-      elseif stages==3
-         l1 = rscount* dgen(ctrl.mmax)
+      elseif ctrl.stages==3
+         l1 = rscount* dgen(ctrl.mmcalc)
          l2 = rscount*(ctrl.vtrunc + 1)
          l3 = rscount*(ctrl.vtcalc + 1)
          l4 = rscount*(ctrl.vtmax + 1)
-         return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.nfold)],
+         return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.NFOLD)],
                     SubEigs(l3,l2,σs) ,
                     SubEigs(l4,l3,σs) )
       else
          @warn "This number of stages ($(ctrl.stages)) has not been defined!"
          new(nothing,nothing,nothing)
       end # if
-   end
-end
+   end # function
+end # struct
 
 """
 This function initiates the Eigs structure by calling the ctrl object.
@@ -132,13 +137,13 @@ This function initiates the Eigs structure by calling the ctrl object.
 """
 function eigs_init(ctrl::Controls,nfold::Vector{Int})::Eigs
    if ctrl.stages==1
-      l3 = dgen(ctrl.mcalc)^length(nfold)*dgen(ctrl.s)*dgen(ctrl.jmax)
+      l3 = dgen(ctrl.mcalc)^length(nfold)*dgen(ctrl.s)*dgen(ctrl.Jmax)
       s3 = length(σgen(nfold))
       eigholder = Eigs(nothing, nothing, zeros(l3,l3,s3))
    elseif stages==2
       l2 = dgen(ctrl.mcalc)^length(nfold)
       s = length(σgen(nfold))
-      l3 = (ctrl.vtcalc+1)*dgen(ctrl.s)*dgen(ctrl.jmax)
+      l3 = (ctrl.vtcalc+1)*dgen(ctrl.s)*dgen(ctrl.Jmax)
       eigholder = Eigs(nothing, zeros(l2,l2,s), zeros(l3,l3,s))
    elseif stages==3
       l1 = dgen(ctrl.mcalc)^length(nfold)
@@ -148,7 +153,7 @@ function eigs_init(ctrl::Controls,nfold::Vector{Int})::Eigs
       end
       l2 = degen(vctrl.tcalc)
       s = length(σgen(nfold))
-      l3 = (ctrl.vtcalc+1)*dgen(ctrl.s)*dgen(ctrl.jmax)
+      l3 = (ctrl.vtcalc+1)*dgen(ctrl.s)*dgen(ctrl.Jmax)
       eigholder = Eigs(zeros(l1,l1,s1), zeros(l2,l2,s), zeros(l3,l3,s))
    else
       @warn "stages = $stages is not defined. Going to crash soon.
@@ -161,18 +166,52 @@ This function initiates the sparse zeros matrix for the new stage.
    Unfortunately it is hard coded.
 """
 function stage_size(stage,stages,wvs)::Int
+   println("stage is $stage")
    if stage==0# && stages ≥ 1
-      return size(wvs.rst,1)
+      return size(wvs.rst.vals,1)
    elseif (stage==2 && stages > 2) || (stage==1 && stages==2)
-      return size(wvs.ttp,1)
+      return size(wvs.ttp.vals,1)
    elseif stage==1 && stages==3
-      return size(wvs.top,1)
+      return size(wvs.top.vals,1)
    else
       @warn "stage = $stage is not defined. Going to crash soon."
 
    end
 end
-
+function stage_size2(ctrl::Controls)::Int
+   rscount = dgen(j)*dgen(ctrl.S)
+   σs = σcount(ctrl.NFOLD)
+   if isone(ctrl.stages)
+      l = rscount*(dgen(ctrl.mcalc)^length(ctrl.NFOLD))
+   elseif isone(length(ctrl.NFOLD)) && ctrl.stages > 1
+      lm = rscount*dgen(ctrl.mmcalc)
+      li = rscount*(ctrl.vtcalc + 1)
+      lv = rscount*(ctrl.vtmax + 1)
+      return new([ SubEigs(li,lm,σs) ],
+                 nothing,
+                 SubEigs(lv, li, σs) )
+   elseif ctrl.stages==2
+      l1 = rscount* (dgen(ctrl.mmcalc)^length(ctrl.NFOLD))
+      #l2 = rscount*(ctrl.vtrunc + 1)
+      l2 = rscount*(ctrl.vtcalc + 1)
+      l3 = rscount*(ctrl.vtmax + 1)
+      return new(nothing,
+                 SubEigs(l2,l1,σs),
+                 SubEigs(l3,l2,σs) )
+   elseif ctrl.stages==3
+      l1 = rscount* dgen(ctrl.mmcalc)
+      l2 = rscount*(ctrl.vtrunc + 1)
+      l3 = rscount*(ctrl.vtcalc + 1)
+      l4 = rscount*(ctrl.vtmax + 1)
+      return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.NFOLD)],
+                 SubEigs(l3,l2,σs) ,
+                 SubEigs(l4,l3,σs) )
+   else
+      @warn "This number of stages ($(ctrl.stages)) has not been defined!"
+      new(nothing,nothing,nothing)
+   end # if
+   return l
+end # function
 """
 Determines if previous stages are needed based on if the wavefunction matrix
    both exists (set by the stage keyword) and is nonzero (defined from said previous stage)
