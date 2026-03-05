@@ -44,8 +44,24 @@ struct OpFunc{T <: Number, S<:AbPsi}
    end
 end
 eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
-eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
-eval_top(op::OpFunc,ψ::TTPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
+#eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
+function eval_tor(O::Op, ψ::TTPsi, tvs)::SparseMatrixCSC{T,Int} where {T<:Number}
+   out = O.f(ψ.tps[O.q], O.p)
+   if isone(length(ψ.nfs)) #cases 0,1,2
+      #nothing
+   elseif length(ψ.nfs)>1 && isnothing(tvs) # cases 3,4,5
+      torsetter!(ψ,O.q,out)
+   elseif length(nf)>1 && !isnothing(tvs) && iszero(tvs) # case 6
+      #nothing
+   elseif length(nf)>1 && !isnothing(tvs) && !iszero(tvs) # case 7,8
+      out = sand(out,tvs)
+      torsetter!(ψ,O.q,out)
+   else
+   @warn "unexpected condition in evalulation of tor op"
+   end
+   return out
+end
+#eval_top(op::OpFunc,ψ::TTPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
 #eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.l,op.q)
 #eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{Float64,Int} = op.f(ψ,op.l,op.q)
 struct Op
@@ -69,7 +85,7 @@ mutable struct SubEigs
    SubEigs can be initiated with 3 integers: number of states, basis size, and number of σs
       number of state should be less than or equal to the basis size
    """
-   SubEigs(a::Int,b::Int,c::Int) = new(Array{Float64}(undef,a,c), nothing, Array{Float64}(undef,b,a,c))
+   SubEigs(a::Int,b::Int,c::Int) = new(zeros(a,c), nothing, zeros(b,a,c))
 end
 mutable struct Eigs
    #the vector of subeigs refers to different tops
@@ -87,34 +103,34 @@ mutable struct Eigs
    rst::Union{Nothing,SubEigs}
    function Eigs(ctrl::Controls)::Eigs
       rscount = sum(Int,2 .* (0.5*isodd(2ctrl.Jmax):ctrl.Jmax) .+ 1)*dgen(ctrl.S)
+      rsd = dgen(ctrl.S)*dgen(ctrl.Jmax)
       σs = σcount(ctrl.NFOLD)
       if isone(ctrl.stages)
-         lm = rscount*(dgen(ctrl.mcalc)^length(ctrl.NFOLD))
-         lv = rscount*(ctrl.vtmax + 1)
+         lm = rsd*(dgen(ctrl.mcalc)^length(ctrl.NFOLD))
+         lv = rscount*(ctrl.vtmax + 1) 
          return new( nothing, nothing, SubEigs(lv,lm,σs) )
-      elseif isone(length(ctrl.NFOLD)) && ctrl.stages > 1
-         lm = rscount*dgen(ctrl.mmcalc)
-         li = rscount*(ctrl.vtcalc + 1)
-         lv = rscount*(ctrl.vtmax + 1)
-         return new([ SubEigs(li,lm,σs) ],
-                    nothing,
-                    SubEigs(lv, li, σs) )
+#      elseif isone(length(ctrl.NFOLD)) && ctrl.stages > 1
+#         lm = dgen(ctrl.mcalc)
+#         li = (ctrl.vtcalc + 1)
+#         lv = rscount*(ctrl.vtmax + 1)
+#         return new([ SubEigs(li,lm,σs) ],
+#                    nothing,
+#                    SubEigs(lv, rsd*li, σs) )
       elseif ctrl.stages==2
-         l1 = rscount* (dgen(ctrl.mmcalc)^length(ctrl.NFOLD))
-         #l2 = rscount*(ctrl.vtrunc + 1)
-         l2 = rscount*(ctrl.vtcalc + 1)
+         l1 = (dgen(ctrl.mcalc)^length(ctrl.NFOLD))
+         l2 = (ctrl.vtcalc + 1)
          l3 = rscount*(ctrl.vtmax + 1)
          return new(nothing,
                     SubEigs(l2,l1,σs),
-                    SubEigs(l3,l2,σs) )
+                    SubEigs(l3,rsd*l2,σs) )
       elseif ctrl.stages==3
-         l1 = rscount* dgen(ctrl.mmcalc)
-         l2 = rscount*(ctrl.vtrunc + 1)
-         l3 = rscount*(ctrl.vtcalc + 1)
+         l1 =  dgen(ctrl.mcalc)
+         l2 = (ctrl.vtrunc + 1)
+         l3 = (ctrl.vtcalc + 1)
          l4 = rscount*(ctrl.vtmax + 1)
          return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.NFOLD)],
                     SubEigs(l3,l2,σs) ,
-                    SubEigs(l4,l3,σs) )
+                    SubEigs(l4,rsd*l3,σs) )
       else
          @warn "This number of stages ($(ctrl.stages)) has not been defined!"
          new(nothing,nothing,nothing)
@@ -216,5 +232,5 @@ end # function
 Determines if previous stages are needed based on if the wavefunction matrix
    both exists (set by the stage keyword) and is nonzero (defined from said previous stage)
 """
-stage_allow(x)::Bool = !isnothing(x) && !iszero(x)
+stage_allow(x)::Bool = !isnothing(x) && !iszero(x.vecs)
 

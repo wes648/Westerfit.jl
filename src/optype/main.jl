@@ -44,14 +44,15 @@ function westereng()::Eigs
 #function westereng(molnam::String,ctrl::Controls)::Eigs
 #   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
 #   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
-   ctrl = Controls(vtcalc=0, Jmax=3., stages=1, mcalc=3, NFOLD=[3])
+   ctrl = Controls(vtmax=0, Jmax=3., stages=2, mcalc=9, vtcalc=8, NFOLD=[3])
    ℋ = [Op("BK",[OpFunc(Nz,2)]);
          Op("BN",[OpFunc(N2,1)]);
          Op("B±",[OpFunc(Npm,2)])
-         Op("F ",[],[OpFunc(Pα,2,1)]);
+         Op("F ",[],[OpFunc(Pα,2,1)],1);
          #Op("F ",[],[OpFunc(p_tor,2,1)]);
-         Op("V3",[],[OpFunc(cosα,3)])]
-   prm = [1.75; 1.25; 0.125; 5.0; 100.0]
+         Op("V3",[],[OpFunc(vncα,3,1)],1);
+         Op("Rz",[OpFunc(Nz,1)],[OpFunc(Pα,2,1)])]
+   prm = [1.75; 1.25; 0.125; 5.0; 100.0; -2*5*3*0.02]
    stgs = [0;0;0]
    wvs = Eigs(ctrl)
    H_calc(ctrl,wvs,prm,ℋ,stgs)

@@ -8,23 +8,24 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCS
       out *= eval_rop(O.rf[i],ψ.R)
    end
    out = sand(out,ur(ψ.R.J, ψ.R.S))
-   if !isnothing(O.tf)
+   if !iszero(length(O.tf))#!isnothing(O.tf)
       tpart = sparse(I,ψ.T.l,ψ.T.l)
       @inbounds for i ∈ eachindex(O.tf)
-         part = eval_top(O.tf[i],ψ.T)
+         part = eval_top(O.tf[i], ψ.T.tps[O.tf[i].q])
          if stage_allow(wvs.top) 
             loc = nσfinder(O.tf[i].q, ψ.T.σs[top_id])
             part = sand(part, wvs.top[loc].vecs)
          end
-         #torsetter!(ψ.T, O.tf[i].q, part)
+         torsetter!(ψ.T, O.tf[i].q, part)
          tpart = tpart*part
-      end #for
-      if stage_allow(wvs.ttp)
-         tpart = sand(tpart, wvs.ttp[σfinder(O[i].tf.q, ψ.T.σs[O.tf[i].q], ψ.T.nfs)] )
-      end #top-top if
+         if stage_allow(wvs.ttp)
+            tpart = sand(tpart, 
+               wvs.ttp.vecs[:,:,nσfinder(O.tf[i].q, ψ.T.σs[O.tf[i].q], ψ.T.nfs)] )
+         end #top-top if
+      end #for i
       out = kron(tpart,out)
    else
-      out = kron(I(ψ.T.lng),out)
+      out = kron(I(size(wvs.ttp.vals,1)),out)
    end #tor if
    #if
    #end vib
@@ -52,10 +53,10 @@ function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
       topid = O.tf[i].q
       part = eval_top(O.tf[i], ψ.tps[topid])
       if stage_allow(wvs.top) 
-         loc = nσfinder(O.tf[i].q, ψ.T.σs[top_id])
+         loc = nσfinder(O.tf[i].q, ψ.tps.σs[top_id])
          part = sand(part, wvs.top[loc].vecs)
       end
-      torsetter!(ψ.T, O.tf[i].q, part)
+      torsetter!(ψ, O.tf[i].q, part)
       out *= part
    end #for
    droptol!(out,2eps())
@@ -92,17 +93,20 @@ function stage_1tproc(wvs::Eigs,ops,ctrl::Controls)::Eigs
    return wvs
 end
 
-function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops,ψ,σind::Int)::Eigs
+function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops,ψ,σind::Int,ctrl)::Eigs
    stage = 1
    Hmat = spzeros(ψ.l,ψ.l)
    for i ∈ eachindex(ops)
-      if ttstage_check(ops[i].stg,stage,stages)
-         H += enact_tt(ops[i],ψ,wvs,prms[i])
-      elseif ops[i].stg < 0 && ttstage_check(ops[i + ops[i].stg].stg,stage,stages)
-         H += enact_tt(ops[i],ψ,wvs,prms[i]*prms[i + op.stg])
+      if ttstage_check(ops[i].stg,stage,ctrl.stages)
+         Hmat += enact_tt(ops[i],ψ,wvs,prms[i])
+      elseif ops[i].stg < 0 && ttstage_check(ops[i + ops[i].stg].stg,stage,ctrl.stages)
+         Hmat += enact_tt(ops[i],ψ,wvs,prms[i]*prms[i + op.stg])
       end # stage if
    end # ops loop
-   wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = diagwrap(tplus!(Hmat))
+   #@show Hmat
+   vals, vecs = diagwrap(tplus!(Hmat))
+   #@show vals
+   wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:ctrl.vtcalc+1], vecs[:,1:ctrl.vtcalc+1]
    return wvs
 end
 
@@ -116,12 +120,18 @@ inputs are: stage id #
             stages is the vector if stages for the operators
 Outputs the Eig structure
 """
-function stageproc0(stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σid)::Eigs
-   l = ψ.R.lng*ψ.T.l #stage_size(stage,stages,wvs)
-   H = spzeros(l,l)
+function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σid)::Eigs
+   if !isnothing(wvs.ttp)
+      H = spdiagm(kron(wvs.ttp.vals[:,σid],ones(ψ.R.lng)))
+   else
+      #l = ψ.R.lng*ψ.T.l
+      H = spzeros(ψ.R.lng*ψ.T.l, ψ.R.lng*ψ.T.l)
+   end
    for i ∈ eachindex(ops)
       if ops[i].stg == stage
          H += enact(ops[i],ψ,wvs,prms[i])
+#         part = enact(ops[i],ψ,wvs,prms[i]); @show size(part)
+#         H += part 
       elseif (ops[i].stg < 0)&& (ops[i + ops[i].stg].st == stage)
          H += enact(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg ])
       else
@@ -130,12 +140,14 @@ function stageproc0(stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σi
    tplus!(H)
    #if assigncheck # energy caculation!
       vals, vecs = diagwrap(H)
-      @show vals
-      perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, 0, 0) # vtcalc, vtmax
-      @show perm
-      vldst = jinds(ψ.R.J,ψ.R.S,0+1) #vtmax
-      vcdst = jinds(ψ.R.J,ψ.R.S,0+1) #vtcalc
-      wvs.rst.vals[vldst,σid], wvs.rst.vecs[vcdst,vldst,σid] = vals, vecs
+      if isone(ctrl.stages)&&isone(length(ctrl.NFOLD))
+         perm = reshape(collect(1:ψ.R.lng).+ ψ.R.lng*(sortperm(by=abs,ψ.T.tps[1].ms) .-1)', ψ.R.lng*ψ.T.l)
+         vecs .= vecs[perm,:]
+      end
+      perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
+      vldst = jinds(ψ.R.J,ψ.R.S,ctrl.vtmax+1) 
+      vcdst = jinds(ψ.R.J,ψ.R.S,ctrl.vtcalc+1)
+      wvs.rst.vals[vldst,σid], wvs.rst.vecs[1:size(vecs,1),vldst,σid] = vals[perm], vecs[:,perm]
    #else # derivatives!
    #   wvs.rst.der[:,σid] = 
    #end
@@ -152,20 +164,17 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
       # top-top
       for i ∈ 1:size(σs,2)
          ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
-         wvs = stage_ttproc(wvs,prm,ops,ψ,σind)
+         wvs = stage_ttproc(wvs,prm,ops,ψ,i,ctrl)
       end
    end
    for i ∈ 1:size(σs,2)
       ϕ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
-      @show ϕ
       for j ∈ 0.5*isodd(2*ctrl.S):ctrl.Jmax
          ψ = Psi( RPsi(j, ctrl.S), ϕ )
-         wvs = stageproc0(0,wvs,prm,ops,ψ,stages,i)
+         wvs = stageproc0(ctrl,0,wvs,prm,ops,ψ,stages,i)
       end # j loop
    end # σ loop
-   sparsify!(wvs.rst.vecs)
-   @show wvs.rst.vals
-   @show wvs.rst.vecs
+#   sparsify!(wvs.rst.vecs)
    return wvs
 end
 

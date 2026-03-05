@@ -109,6 +109,20 @@ function ur(n::Int)::SparseMatrixCSC{Float64, Int}
    end
 end
 
+function ul(l::Int)::SparseMatrixCSC{Float64, Int}
+   n = floor(Int, 0.5*(l-1))
+   if !iszero(n)
+   out = spzeros(1:2n+1,1:2n+1)
+   out[diagind(out)[1:n]] .= -√.5
+   out[diagind(out)[n+2:end]] .= √.5
+   out[adiagin(out)] .= √.5
+   out[n+1,n+1] = 1.0
+   return sparse(out)
+   else
+      return sparse(1.0I,1,1)
+   end
+end
+
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = n ≤ 20 ? ur1(n) : ur2(n)
 #ur(n::Int)::SparseMatrixCSC{Float64, Int} = ur(n)
 
@@ -194,8 +208,8 @@ Applies Kronecker products with identity matrices in order to properly resize th
 """
 function torsetter!(ψ::TTPsi,i::Int,out)
    lnf = length(ψ.nfs)
-   lbk = ψ.tps[i].l
    if lnf > 1
+      lbk = size(out,1)#ψ.tps[i].l
       out = kron( sparse(I, lbk*(lnf-i), lbk*(lnf-i)), 
                   out, 
                   sparse(I, lbk*(i-1), lbk*(i-1)) )
@@ -214,7 +228,6 @@ function diagwrap(H::AbstractArray)::Eigen
       return eigen!(Hermitian(Matrix(H), :L))
    end
 end
-
 
 function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
    Base.Threads.@threads for i ∈ eachindex(A)

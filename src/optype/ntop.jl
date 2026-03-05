@@ -124,10 +124,12 @@ end
 function nσfinder(tid::Int,σ::Int,nfold::Vector{Int})::Int
    if isone(tid)
       out = σ+1
-   else
+   elseif !iszero(tid)
       out = σcount(nfold[1])
       out += sum(nfold[2:tid-1])
       out += σ+2
+   else
+      @warn "top id is zero. this will crash"
    end
    return out
 end

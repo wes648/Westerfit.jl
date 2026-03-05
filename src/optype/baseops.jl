@@ -33,32 +33,41 @@ function Npm(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 end
 
 
-function p_tor(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
-   if iszero(ψ.σs[tid])
-      out = map(x -> abs(x)^p, ψ.tps[tid].ms)
+function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   if iszero(ψ.σ)
+      out = map(x -> abs(x)^p, ψ.ms)
       if iseven(p)
          out = sparse(1:ψ.l, 1:ψ.l, out)
       else isodd(p)
          out = sparse(1:ψ.l, ψ.l:-1:1, out)
       end
    else
-      out = sparse(1:ψ.lb, 1:ψ.lb, ψ.ms[tid] .^p)
+      out = sparse(1:ψ.l, 1:ψ.l, ψ.ms .^p)
    end
    #@show tid
-   torsetter!(ψ,tid,out)
+   #torsetter!(ψ,tid,out)
    return out
 end
 
-function cos_tor(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
-   l = 2ψ.mc+1
-   out = spdiagm(p=>fill(0.5,l-p),-p=>fill(0.5,l-p))
-   if iszero(ψ.σs[tid])
-      u = ur(ψ.mc)
-      out = dropzeros!(u*out*u)
+function cos_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   out = spdiagm(p=>fill(0.5,ψ.l-p),-p=>fill(0.5,ψ.l-p))
+   if iszero(ψ.σ)
+      u = ul(ψ.l)
+      out = dropzeros!(sand(out,u))
    end
-   torsetter!(ψ,tid,out)
+   #torsetter!(ψ,tid,out)
    return out
 end
+function vnc_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   out = spdiagm(0=>ones(ψ.l),p=>fill(0.5,ψ.l-p),-p=>fill(0.5,ψ.l-p))
+   if iszero(ψ.σ)
+      u = ul(ψ.l)
+      out = dropzeros!(sand(out,u))
+   end
+   #torsetter!(ψ,tid,out)
+   return out
+end
+
 function sin_tor(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
    l = 2ψ.mc+1
    out = spdiagm(p=>fill(0.5im,l-p),-p=>fill(-0.5im,l-p))
@@ -70,14 +79,16 @@ function sin_tor(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
    return out
 end
 
+Pα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,1)
+Pβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,2)
+Pγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,3)
 
-Pα(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,1)
-Pβ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,2)
-Pγ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,3)
-
-cosα(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,1)
-cosβ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,2)
-cosγ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,3)
+cosα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,1)
+cosβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,2)
+cosγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,3)
+vncα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnc_tor(ψ,p,1)
+vncβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnc_tor(ψ,p,2)
+vncγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnc_tor(ψ,p,3)
 
 sinα(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,1)
 sinβ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,2)
