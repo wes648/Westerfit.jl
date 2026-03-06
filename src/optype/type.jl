@@ -45,16 +45,17 @@ struct OpFunc{T <: Number, S<:AbPsi}
 end
 eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
 #eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
-function eval_tor(O::Op, ψ::TTPsi, tvs)::SparseMatrixCSC{T,Int} where {T<:Number}
+function eval_tor(O::OpFunc, ψ::TTPsi, tvs)::SparseMatrixCSC{T,Int} where {T<:Number}
    out = O.f(ψ.tps[O.q], O.p)
-   if isone(length(ψ.nfs)) #cases 0,1,2
+   loc = nσfinder(O.q, ψ.tps.σs[top_id])
+   if isone(length(ψ.nfs)) # cases 0,1,2
       #nothing
    elseif length(ψ.nfs)>1 && isnothing(tvs) # cases 3,4,5
       torsetter!(ψ,O.q,out)
-   elseif length(nf)>1 && !isnothing(tvs) && iszero(tvs) # case 6
+   elseif length(nf)>1 && !isnothing(tvs) && iszero(tvs[loc].vecs) # case 6
       #nothing
-   elseif length(nf)>1 && !isnothing(tvs) && !iszero(tvs) # case 7,8
-      out = sand(out,tvs)
+   elseif length(nf)>1 && !isnothing(tvs) && !iszero(tvs[loc].vecs) # case 7,8
+      out = sand(out,tvs[loc].vecs)
       torsetter!(ψ,O.q,out)
    else
    @warn "unexpected condition in evalulation of tor op"

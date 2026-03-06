@@ -12,15 +12,15 @@ using Dates
 #Δ δ ρ ϵ χ
 
 
-@static if Sys.iswindows()
+#@static if Sys.iswindows()
    using WignerSymbols
    wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
    wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
-else
-#   using WIGXJPFjl
-   include("/home/julia/files/WIGXJPFjl.jl/src/WIGXJPFjl.jl")
-   using .WIGXJPFjl
-end
+#else
+##   using WIGXJPFjl
+#   include("/home/julia/files/WIGXJPFjl.jl/src/WIGXJPFjl.jl")
+#   using .WIGXJPFjl
+#end
 
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../common.jl")

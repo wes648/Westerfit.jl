@@ -40,7 +40,7 @@ end
 function enact_1t(O::Op,ψ::TPsi,val::Float64)
    out = Diagonal(fill(0.5*val,ψ.l))
    @inbounds for i ∈ eachindex(O.tf[i])
-      out *= eval_top(O.tf[i], ψ)
+      out *= eval_top(O.tf[i], ψ, nothing)
    end
    droptol!(out,2eps())
 #   tplus!(out)
@@ -51,7 +51,7 @@ function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
    out = Diagonal(fill(0.5*val,ψ.l))
    @inbounds for i ∈ eachindex(O.tf)
       topid = O.tf[i].q
-      part = eval_top(O.tf[i], ψ.tps[topid])
+      part = eval_top(O.tf[i], ψ.tps[topid], )
       if stage_allow(wvs.top) 
          loc = nσfinder(O.tf[i].q, ψ.tps.σs[top_id])
          part = sand(part, wvs.top[loc].vecs)
