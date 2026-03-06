@@ -182,6 +182,12 @@ westerfit(ARGS[1])
 
 Enjoy! And feel free to reach out if anything goes wrong or you have any questions!
 
+### Dev Version
+You can regard the version here on the git repo as being the Development version of westerfit.
+To install this:
+1. Install [Julia](https://julialang.org/). It is recommended that you do so through [juliaup](https://github.com/JuliaLang/juliaup).
+2. `git clone` the repo
+3. In Julia's package manager: `add DelimitedFiles, FunctionWrappers, SparseArrays, WIGXJPF`
 
 ## A remark of inspiration:
 
