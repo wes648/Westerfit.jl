@@ -6,8 +6,8 @@ function λgen(μ::Float64,er::Float64)::Float64
    λ += (1.0 - ρ)*μ*er/(1+er) #λARC
    return λ
 end
-function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
-   out = 2β' * (λ*Diagonal(h)*β + jtw*omc)
+function lbmq_gain(β,λ::Float64,j, h,omc,nomc)::Float64
+   out = 2β' * (λ*Diagonal(h)*β + j' *omc)
 #   out = 2.0*(sum(abs2,omc) - sum(abs2, omc + J*β))
    if out < 0
       println("fucking gain function")

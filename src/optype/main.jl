@@ -8,6 +8,8 @@ using FunctionWrappers
 import FunctionWrappers: FunctionWrapper
 using LinearAlgebra
 import Printf: @sprintf
+#import speed of light, plank, atomic mass, electron mass, fine structure constant
+import PhysicalConstants.CODATA2022: c_0
 using SparseArrays
 @static if Sys.iswindows()
    using WignerSymbols
@@ -34,10 +36,11 @@ include("@__DIR__/../ntop.jl")
 #include("@__DIR__/../opt-com.jl")
 #include("@__DIR__/../optimizer.jl")
 
-const csl::Float64 = 29979.2458
+#const csl::Float64 = 29979.2458
+const csl::Float64 = (c_0 * 1e-4).val #MHz/cm⁻¹
 #csl = 29979.2458
 
-BLAS.set_num_threads(Threads.nthreads())
+BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 @show Threads.nthreads()
 
 function westereng()::Eigs

@@ -45,7 +45,7 @@ function enact_1t(O::Op,ψ::TPsi,val::Float64)
    droptol!(out,2eps())
 #   tplus!(out)
    return out
-end
+end 
 
 function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
    out = Diagonal(fill(0.5*val,ψ.l))
@@ -66,7 +66,7 @@ end
 
 #processing 1 top hamiltonians
 function one_topproc(wvs::Eigs,prms::Vector{Float64},ops,ϕ::TPsi,topid::Int,σid::Int,dmc::Int)::Eigs
-   stage = 2
+   stage = 2#
 # initialize Hamiltonian with size 2mc+1 x 2mc+1
    Hmat = spzeros(dmc,dmc)
    for i ∈ eachindex(ops)

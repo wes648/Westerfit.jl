@@ -58,7 +58,7 @@ function derivmat_2stg(j,s,nf,rpid,prm,scl,stg,ops,ms,qns,tvecs,mmax)
    elseif rpid==17 # ηz
       out = kron(tvecs' * pa_op(ms,1) * tvecs, sz_op(j,s,qns,1)) 
    elseif rpid==18 # ηx
-      out = kron(tvecs' * pa_op(ms,1) * tvec, spm_op(j,s,qns,1))
+      out = kron(tvecs' * pa_op(ms,1) * tvecs, spm_op(j,s,qns,1))
    else #user def
       out = twostg_op(1.0,j,s,qns,ms,ops[:,rpid-18], tvecs )
       out .= sumder_2stg(out,j,s,nf,rpid,prm,stg,ops,ms,qns,tvecs)
@@ -237,7 +237,7 @@ else
    println("Someday....")
 end
    GEO = true
-   BOLD = 1
+   BOLD = 0
    LIMIT = ctrl["maxiter"]
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
@@ -329,7 +329,7 @@ end
       end
       nrms, nomc, cfrqs = rmscalc(nvals,inds,ofreqs)
       nwrms = √(nomc' *W*nomc ./ length(nomc))
-      ρlm = lbmq_gain(β,λlm,jtw,H,omc,nomc)
+      ρlm = lbmq_gain(β,λlm,J, H,omc,nomc)
       check = abs(nrms-rms)/rms
       println("ρlm = $(round(ρlm;sigdigits=4)), nrms = $(round(nrms;sigdigits=4)), "*
          "Δlm = $(round(Δlm;sigdigits=4)), wrms = $(round(nwrms;sigdigits=4))")

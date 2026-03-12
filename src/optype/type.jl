@@ -43,8 +43,19 @@ struct OpFunc{T <: Number, S<:AbPsi}
       new{Float64, Tuple(first(methods(f)).sig.parameters[2:end])[1]}(f,l,q)
    end
 end
+"""
+eval_rop evaluates a rotational operator!
+The arguments are op::OpFunc and ψ::RPsi
+so function that acts on the rotational wavefunctions and said wavefunction
+"""
 eval_rop(op::OpFunc,ψ::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
 #eval_top(op::OpFunc,ψ::TPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψ,op.l,op.q)
+"""
+eval_tor evaluates a torsional operator!
+The arguments are O::OpFunc, ψ::TTPsi, and tvs::Union{nothing,Matrix}
+O acts on the torsional wavefunctions, ψ is the top-top wave function object
+and tvs are the collection of one top wavefunctions
+"""
 function eval_tor(O::OpFunc, ψ::TTPsi, tvs)::SparseMatrixCSC{T,Int} where {T<:Number}
    out = O.f(ψ.tps[O.q], O.p)
    loc = nσfinder(O.q, ψ.tps.σs[top_id])
@@ -153,6 +164,7 @@ This function initiates the Eigs structure by calling the ctrl object.
       finally tsr: |JSNK⟩⊗|vₜσ⟩
 """
 function eigs_init(ctrl::Controls,nfold::Vector{Int})::Eigs
+   @warn "you need to double check this function wes"
    if ctrl.stages==1
       l3 = dgen(ctrl.mcalc)^length(nfold)*dgen(ctrl.s)*dgen(ctrl.Jmax)
       s3 = length(σgen(nfold))
@@ -168,7 +180,7 @@ function eigs_init(ctrl::Controls,nfold::Vector{Int})::Eigs
       for i ∈ 2:length(nfold)
          s1 += nfold[i]
       end
-      l2 = degen(vctrl.tcalc)
+      l2 = degen(ctrl.vtcalc)
       s = length(σgen(nfold))
       l3 = (ctrl.vtcalc+1)*dgen(ctrl.s)*dgen(ctrl.Jmax)
       eigholder = Eigs(zeros(l1,l1,s1), zeros(l2,l2,s), zeros(l3,l3,s))
