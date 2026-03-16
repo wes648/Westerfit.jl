@@ -1,0 +1,55 @@
+4cl2ftol   @   2026-03-16T20:53:05.155
+
+Control Parameters
+overwrite = false
+maxiter = 60
+assign = ram36
+REJECT = 10.0
+RUNmode =  F
+νmin = 0.0
+INTthres = 1.0e-5
+Irrep = Ir
+stages = 2
+mmax = 6
+Jmax = 0.5
+turducken = 1
+sobk = [0, 0]
+apology = true
+bold = 1
+vtmax = 0
+NFOLD = 3
+mcalc = 8
+νmax = 40.0
+goal = 1.0
+λlm0 = 0.0001
+ctbk = [2, 10]
+S = 1.5
+TK = 8.0
+opbk = [0, 0]
+
+Initial Parameters
+ BK;          2310.8047315151925;   1.0
+ BN;                      758.15;   1.0
+ B⨦;                      46.125;   1.0
+ Dab;                     -88.25;   1.0
+ T⁰₀(ϵ);                    -0.0;   0.0
+ T¹₁(ϵ);                     0.0;   0.0
+ T²₀(ϵ);                     0.0;   0.0
+ T²₁(ϵ);                    -0.0;   0.0
+ T²₂(ϵ);                     0.0;   0.0
+ T²₀(χ);                   -70.7;   1.0
+ T²₁(χ);                    -0.0;   0.0
+ T²₂(χ);       0.352236625012221;   1.0
+ F;               157930.6668744;   0.0
+ -2ρzF;       -5966.620594514831;   1.0
+ -ρxF;                      -0.0;   0.0
+ V3/2;           3.01891005206e6;   1.0
+ ηz;                         0.0;   0.0
+ ηx;                         0.0;   0.0
+
+ DN;                      -8.0e-6;   1.0
+ V3N;                        -0.4;   1.0
+ V3N;                        -1.0;   0.0
+
+Number of lines = 312
+
