@@ -237,7 +237,7 @@ else
    println("Someday....")
 end
    GEO = true
-   BOLD = 0
+   BOLD = ctrl["bold"]
    LIMIT = ctrl["maxiter"]
 
    paramarray = zeros(Float64, length(params), LIMIT+1)
@@ -345,7 +345,7 @@ end
       end
 
       #if ((nrms*(1-θ)^BOLD)< lrms)&&BOLD>0|| ((nrms<rms)&&(ρlm>1e-3))# || bad > 2
-      if stepcheck
+      if stepcheck && !iszero(ρlm)
       #@show θ
       #@show round.(bf, sigdigits=5)
       #@show round.(bf./nparams[perm], sigdigits=5)

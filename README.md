@@ -108,10 +108,10 @@ The table below shows how the scale values in the 2nd order section are actually
 | User Facing   | Internal      | User Facing   | Internal      |
 |:-------------:|:------------: |:-------------:|:------------: |
 | A  | BK $N_z^2$           | ϵzz | T⁰₀(ϵ) $T^0_0(N,S)$ |
-| B  | BN $N^2$             | ϵxx | T²₀(ϵ) $T^2_0(N,S)$ |
-| C  | B± $(N_+^2 + N_-^2)$ | ϵyy | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
+| B  | BN $N^2$             | ϵxx | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
+| C  | B± $(N_+^2 + N_-^2)$ | ϵyy | T²₀(ϵ) $T^2_{0}(N,S)$ |
 | ρz | rz $P_{\alpha}N_z$   | ϵzx | T²₁(ϵ) $T^2_{\pm1}(N,S)$ |
-| ρx | rx $P_{\alpha}N_x$   | ϵxz | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
+| ρx | rx $P_{\alpha}N_x$   | ϵxz | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
 
 ### Higher order operators
 These are manual coded in operators that are implemented as the anti-commutator of what the user codes in. 

@@ -8,7 +8,7 @@ function ctrlinit()
       "Jmax" => 0, "apology" => true, "νmin"=>0.0, "νmax"=>40., "INTthres"=>0.00001, 
       "λlm0"=>0.0001, "RUNmode"=>"ESF", "turducken"=>1, "maxiter"=>60, "overwrite"=>true,
       "assign"=>"ram36", "REJECT"=>1.0e+1, "Irrep"=>"Ir", "goal"=>1.0, "mmax"=>6, "stages"=>1,
-      "ctbk"=>[0;0],"sobk"=>[0;0],"opbk"=>[0;0],"ResPrint"=>0)
+      "ctbk"=>[0;0],"sobk"=>[0;0],"opbk"=>[0;0],"ResPrint"=>0, "bold"=>0)
    return ctrl
 end
 function blockfind(molnam::String,blknam::String)
