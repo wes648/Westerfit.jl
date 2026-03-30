@@ -259,6 +259,22 @@ Outputs energy levels with state assignments to a csv-like file
    end
 end
 
+function linstring(qunl)
+   part  = lpad(qunl[1],4)*"," #J
+   part *= lpad(Int(qunl[2]),3)*","     #N
+   part *= lpad(Int(qunl[3]),3)*","     #Ka
+   part *= lpad(Int(qunl[4]),3)*","     #Kc
+   part *= lpad(Int(qunl[5]),3)*","     #m 
+   part *= lpad(qunl[6],4)*"," #J
+   part *= lpad(Int(qunl[7]),3)*","     #N
+   part *= lpad(Int(qunl[8]),3)*","     #Ka
+   part *= lpad(Int(qunl[9]),3)*","    #Kc
+   part *= lpad(Int(qunl[10]),3)*","    #m
+   part *= " "*lpad(qunl[11], 20)*","
+   part *= lpad(qunl[12],8)
+   return part
+end
+
 function linestrng(s,frql,qunl)   #this formats the lines for the transition writer
    if s==zero(s)                  #frql and qunl are lines of freqs and qunus
       part  = lpad(qunl[2],3)*","  #N

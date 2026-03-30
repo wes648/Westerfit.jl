@@ -329,7 +329,8 @@ end
       end
       nrms, nomc, cfrqs = rmscalc(nvals,inds,ofreqs)
       nwrms = √(nomc' *W*nomc ./ length(nomc))
-      ρlm = lbmq_gain(β,λlm,J, H,omc,nomc)
+      #ρlm = lbmq_gain(β,λlm,J, H,omc,nomc)
+      ρlm = lbmq_gain3(β,omc,nomc,λlm,J,W)
       check = abs(nrms-rms)/rms
       println("ρlm = $(round(ρlm;sigdigits=4)), nrms = $(round(nrms;sigdigits=4)), "*
          "Δlm = $(round(Δlm;sigdigits=4)), wrms = $(round(nwrms;sigdigits=4))")

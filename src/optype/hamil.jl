@@ -1,4 +1,8 @@
 
+
+#import Base.size
+#size(x::Nothing,y::Int)::Int = 1
+
 ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages>stage)
 
 function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCSC#{T,Int} where T <: Number
@@ -9,22 +13,24 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCS
    end
    out = sand(out,ur(ψ.R.J, ψ.R.S))
    if !iszero(length(O.tf))#!isnothing(O.tf)
-      tpart = sparse(I,ψ.T.l,ψ.T.l)
+      if !isnothing(wvs.ttp) 
+         tpart = sparse(I, size(wvs.ttp.vecs,1), size(wvs.ttp.vecs,1))
+      else
+         tpart = sparse(I,dgen(ψ.T.mc)^ψ.T.topcnt,dgen(ψ.T.mc)^ψ.T.topcnt)
+      end
       @inbounds for i ∈ eachindex(O.tf)
-         part = eval_top(O.tf[i], ψ.T.tps[O.tf[i].q])
-         if stage_allow(wvs.top) 
-            loc = nσfinder(O.tf[i].q, ψ.T.σs[top_id])
-            part = sand(part, wvs.top[loc].vecs)
-         end
-         torsetter!(ψ.T, O.tf[i].q, part)
+         part = eval_top(O.tf[i], ψ.T, wvs.top)
          tpart = tpart*part
          if stage_allow(wvs.ttp)
+#            println("hi!")
             tpart = sand(tpart, 
                wvs.ttp.vecs[:,:,nσfinder(O.tf[i].q, ψ.T.σs[O.tf[i].q], ψ.T.nfs)] )
          end #top-top if
       end #for i
       out = kron(tpart,out)
-   else
+   elseif isnothing(wvs.ttp)
+      out = kron(I(ψ.T.l), out)
+   else # !isnothing(wvs.ttp.vals)
       out = kron(I(size(wvs.ttp.vals,1)),out)
    end #tor if
    #if
@@ -39,8 +45,8 @@ end
 
 function enact_1t(O::Op,ψ::TPsi,val::Float64)
    out = Diagonal(fill(0.5*val,ψ.l))
-   @inbounds for i ∈ eachindex(O.tf[i])
-      out *= eval_top(O.tf[i], ψ, nothing)
+   @inbounds for i ∈ eachindex(O.tf)
+      out *= eval_top(O.tf[i], ψ)
    end
    droptol!(out,2eps())
 #   tplus!(out)
@@ -48,15 +54,11 @@ function enact_1t(O::Op,ψ::TPsi,val::Float64)
 end 
 
 function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
-   out = Diagonal(fill(0.5*val,ψ.l))
+   out = Diagonal(fill(0.5*val, size(wvs.ttp.vecs,1)))
    @inbounds for i ∈ eachindex(O.tf)
-      topid = O.tf[i].q
-      part = eval_top(O.tf[i], ψ.tps[topid], )
-      if stage_allow(wvs.top) 
-         loc = nσfinder(O.tf[i].q, ψ.tps.σs[top_id])
-         part = sand(part, wvs.top[loc].vecs)
-      end
-      torsetter!(ψ, O.tf[i].q, part)
+      tid = O.tf[i].q
+      σid = σ2ind(ψ.tps[O.tf[i].q].σ, tid,ψ.tps[O.tf[i].q].nf) # <-------------------
+      part = eval_top(O.tf[i], ψ, wvs.top) # <-----------------------
       out *= part
    end #for
    droptol!(out,2eps())
@@ -70,7 +72,7 @@ function one_topproc(wvs::Eigs,prms::Vector{Float64},ops,ϕ::TPsi,topid::Int,σi
 # initialize Hamiltonian with size 2mc+1 x 2mc+1
    Hmat = spzeros(dmc,dmc)
    for i ∈ eachindex(ops)
-      op = op[i]
+      op = ops[i]
       if (op.stg == stage)&&(op.tf[1].q == topid)
          #ϕ = ψ.tps[op.tf[1].q]
          Hmat += enact_1t(op, ϕ, prms[i])
@@ -79,14 +81,17 @@ function one_topproc(wvs::Eigs,prms::Vector{Float64},ops,ϕ::TPsi,topid::Int,σi
       else
       end # stage if
    end # ops loop
-   wvs.top[topid].vals[:,σid], wvs.top[topid].vecs[:,:,σid] = diagwrap(tplus!(Hmat))
+   vals,vecs = diagwrap(tplus!(Hmat)) 
+   l = size(wvs.top[topid].vals,1)
+   wvs.top[topid].vals[:,σid] = vals[1:l]
+   wvs.top[topid].vecs[:,:,σid] = vecs[:,1:l]
    return wvs
 end
-function stage_1tproc(wvs::Eigs,ops,ctrl::Controls)::Eigs
+function stage_1tproc(wvs::Eigs,prms::Vector{Float64},ops,ctrl::Controls)::Eigs
    dmc = dgen(ctrl.mcalc)
    nfold = ctrl.NFOLD
    for i ∈ 1:length(nfold), j ∈ 1:nth_σcount(nfold[i],i) # <-------------
-      σ = nth_σgen(nfold[i],i)
+      σ = nth_σgen(nfold[i],i)[j]
       ϕ = TPsi(nfold[i],σ,ctrl.mcalc)
       wvs = one_topproc(wvs,prms,ops,ϕ,i,j,dmc)
    end # nested for
@@ -95,7 +100,7 @@ end
 
 function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops,ψ,σind::Int,ctrl)::Eigs
    stage = 1
-   Hmat = spzeros(ψ.l,ψ.l)
+   Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
    for i ∈ eachindex(ops)
       if ttstage_check(ops[i].stg,stage,ctrl.stages)
          Hmat += enact_tt(ops[i],ψ,wvs,prms[i])
@@ -105,7 +110,6 @@ function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops,ψ,σind::Int,ctrl)::E
    end # ops loop
    #@show Hmat
    vals, vecs = diagwrap(tplus!(Hmat))
-   #@show vals
    wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:ctrl.vtcalc+1], vecs[:,1:ctrl.vtcalc+1]
    return wvs
 end
@@ -130,8 +134,6 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stage
    for i ∈ eachindex(ops)
       if ops[i].stg == stage
          H += enact(ops[i],ψ,wvs,prms[i])
-#         part = enact(ops[i],ψ,wvs,prms[i]); @show size(part)
-#         H += part 
       elseif (ops[i].stg < 0)&& (ops[i + ops[i].stg].st == stage)
          H += enact(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg ])
       else
@@ -163,7 +165,12 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
    if ctrl.stages ≥ 2
       # top-top
       for i ∈ 1:size(σs,2)
-         ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
+#         println("fucking hell the matrix size is messy here")
+         if ctrl.stages > 2
+            ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc,ctrl.vtcalc)
+         else
+            ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
+         end
          wvs = stage_ttproc(wvs,prm,ops,ψ,i,ctrl)
       end
    end

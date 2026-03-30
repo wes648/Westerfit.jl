@@ -33,6 +33,9 @@ function σcount(nfold::Vector{Int})::Int
    return out
 end
 
+"""
+Generates all the sigmas for the 2 rotor problem based on both sym folds
+"""
 function σgen(nf1::Int,nf2::Int)::Array{Int,2}
    σcnt1 = σcount(nf1)
    σcnt2 = σcount(nf2)-1
@@ -48,6 +51,9 @@ function σgen(nf1::Int,nf2::Int)::Array{Int,2}
    end#for
    return out
 end#function
+"""
+Generates all the σs for a vector of rotor folds
+"""
 function σgen(nf::Array{Int})::Array{Int,2}
    if length(nf) > 1
    old = σgen(nf[1],nf[2])
@@ -66,37 +72,49 @@ function σgen(nf::Array{Int})::Array{Int,2}
    end
    return old
 end
+"""
+Generates the σs for 1 rotor
+"""
 function σgen(nf::Int)::Array{Int}
    return collect(0:σcount(nf[1])-1)'
 end
-
-function σgen_post(nf::Int)::Arayy{Int}
-   if σ ≤ 2
+"""
+generates list of σs for a later rotor
+"""
+function σgen_post(nf::Int)::Array{Int}
+   if nf ≤ 2
       out = [0]
-   elseif nfold==3
+   elseif nf==3
       out = [1;0;-1]
    else
       @warn "secondary tops must be nfold ≤ 3 for now"
    end
    return out
 end
-
+"""
+Generates the σs for the nth top
+"""
 function nth_σgen(nfold::Int,tid::Int)::Array{Int}
-   if tid > 1
+   if isone(tid)
       return σgen(nfold)
    else
       return σgen_post(nfold)
    end
 end
-function nth_σcount(nfold::Int,tid::Int)::Array{Int}
-   if tid > 1
+"""
+Generates the number of σs for the nth top
+"""
+function nth_σcount(nfold::Int,tid::Int)::Int
+   if isone(tid)
       return σcount(nfold)
    else
       return σcount_post(nfold)
    end
 end
 
-
+"""
+Returns the list of ms for a gien nfold, basis size, and σ
+"""
 function msgen(nfold::Int,mcalc::Int,σ::Int)::StepRange{Int,Int}
    if iszero(nfold)
       marray = 0:0
@@ -121,6 +139,20 @@ function msgen(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,
    return out
 end
 
+function σ2ind(σ::Int,tid::Int,nfold::Int)::Int
+   if isone(tid)
+      return σ+1
+   elseif tid > 1
+      return σcount(nfold) - σ
+   else
+      @warn "why is tid zero?"
+   end
+end
+
+"""
+I don't understand what or why this function exists
+it appears to return 
+"""
 function nσfinder(tid::Int,σ::Int,nfold::Vector{Int})::Int
    if isone(tid)
       out = σ+1

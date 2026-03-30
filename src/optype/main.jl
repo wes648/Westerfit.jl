@@ -26,7 +26,7 @@ include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
 #include("@__DIR__/../derivatives.jl")
-#include("@__DIR__/../file_in.jl")
+include("@__DIR__/../file_in.jl")
 #include("@__DIR__/../file_out.jl")
 #include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
@@ -39,9 +39,10 @@ include("@__DIR__/../ntop.jl")
 #const csl::Float64 = 29979.2458
 const csl::Float64 = (c_0 * 1e-4).val #MHz/cm⁻¹
 #csl = 29979.2458
-
+const hccount::Int = 11
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 @show Threads.nthreads()
+
 
 function westereng()::Eigs
 #function westereng(molnam::String,ctrl::Controls)::Eigs
@@ -52,10 +53,13 @@ function westereng()::Eigs
          Op("BN",[OpFunc(N2,1)]);
          Op("B±",[OpFunc(Npm,2)])
          Op("F ",[],[OpFunc(Pα,2,1)],1);
+         #Op("F2 ",[],[OpFunc(Pα,2,1)],2);
          #Op("F ",[],[OpFunc(p_tor,2,1)]);
          Op("V3",[],[OpFunc(vncα,3,1)],1);
+         #Op("V3_2",[],[OpFunc(vncα,3,1)],2);
          Op("Rz",[OpFunc(Nz,1)],[OpFunc(Pα,2,1)])]
-   prm = [1.75; 1.25; 0.125; 5.0; 100.0; -2*5*3*0.02]
+         #Op("Rz2",[OpFunc(Nz,1)],[OpFunc(Pα,2,2)])]
+   prm = [1.75; 1.25; 0.125; 5.0; 5.0; 100.0; 200.0; -2*5*3*0.02; -2*5*3*0.01]
    stgs = [0;0;0]
    wvs = Eigs(ctrl)
    H_calc(ctrl,wvs,prm,ℋ,stgs)

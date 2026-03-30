@@ -57,6 +57,15 @@ struct TTPsi <: AbPsi
       new(topcnt, tps,nfs, σs, mc, dgen(mc)^topcnt)
    end
    TTPsi(nfs::Int,σs::Int,mc::Int) = TTPsi([nfs],[σs],mc)
+   function TTPsi(nfs::Vector{Int},σs::Vector{Int},mc::Int,vtc::Int)
+      topcnt = length(nfs)
+      tps = Vector{TPsi}(undef,length(nfs))
+      for i ∈ 1:topcnt
+         tps[i] = TPsi(nfs[i],σs[i],mc)
+      end
+      new(topcnt, tps,nfs, σs, mc, dgen(vtc+2))
+   end
+   TTPsi(nfs::Int,σs::Int,mc::Int,vtc::Int) = TTPsi([nfs],[σs],mc)
 end
 struct VPsi
    #each column refer to a vibrational polyad state

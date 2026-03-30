@@ -1,0 +1,27 @@
+[info]
+molnam = "test"
+date = 2026-03-26T19:07:47.793Z
+
+[controls]
+vtmax = 0
+Jmax = 3.0
+stages = 2
+mcalc = 9
+vtcalc = 8
+NFOLD = [3]
+
+[second_order]
+A = [3000.0, 1.0, 1]
+B = [1500.0, 1.0, 1]
+C = [1000.0, 1.0, 1]
+
+[user_def]
+#Nam = [Func, val, unit, scale, stage]
+DK  = ["Nz^4", 0.52, "MHz", 1.0, 0]
+F1  = ["Pα^2",  5.1, "MHz", 1.0, 1]
+F12 = ["Pα Pβ", 0.1, "MHz", 1.0, 2]
+
+[intensities]
+"μz" = ["μz", 1.0]
+"μx" = ["μx", 0.8]
+"μy" = ["μy", 0.1]

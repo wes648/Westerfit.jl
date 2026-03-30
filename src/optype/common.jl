@@ -208,11 +208,14 @@ Applies Kronecker products with identity matrices in order to properly resize th
 """
 function torsetter!(ψ::TTPsi,i::Int,out)
    lnf = length(ψ.nfs)
+   lbk = size(out,1)
    if lnf > 1
       lbk = size(out,1)#ψ.tps[i].l
-      out = kron( sparse(I, lbk*(lnf-i), lbk*(lnf-i)), 
+      l1 = max(lbk*(lnf-i),1)
+      l2 = max(lbk*(i-1),1)
+      out = kron( sparse(I, l1, l1), 
                   out, 
-                  sparse(I, lbk*(i-1), lbk*(i-1)) )
+                  sparse(I, l2, l2) )
    end
    return out
 end

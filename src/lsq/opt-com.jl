@@ -28,7 +28,11 @@ function lbmq_gain2(β,J,omc,nomc)::Float64
    #out = (curr - actu) / ( curr - pred)
    return out
 end
-
+function lbmq_gain3(β,omc,nomc,λ,j,w)::Float64
+   actu = sum(abs2,omc) - sum(abs2,nomc)
+   pred = β' *(λ .*Diagonal(j' *w*j)*β + j' *w*omc )
+   return out = actu / abs(pred)
+end
 
 function jlister(inds)
    #finds all the unique J & σ pairs
