@@ -11,6 +11,7 @@ import Printf: @sprintf
 #import speed of light, plank, atomic mass, electron mass, fine structure constant
 import PhysicalConstants.CODATA2022: c_0
 using SparseArrays
+using TOML
 @static if Sys.iswindows()
    using WignerSymbols
    wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
@@ -21,12 +22,12 @@ end
 #using JET
 #using BenchmarkTools
 #using ProfileView
+include("@__DIR__/../file_in.jl")
 include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
 #include("@__DIR__/../derivatives.jl")
-include("@__DIR__/../file_in.jl")
 #include("@__DIR__/../file_out.jl")
 #include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
@@ -43,26 +44,16 @@ const hccount::Int = 11
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 @show Threads.nthreads()
 
-
-function westereng()::Eigs
-#function westereng(molnam::String,ctrl::Controls)::Eigs
-#   prm, errs, ℋ, stgs = secordinp(molnam,ctrl)
-#   ℋ, stgs, errs = opreader(molnam,ctrl,prm,errs,ℋ,stgs)
-   ctrl = Controls(vtmax=0, Jmax=3., stages=2, mcalc=9, vtcalc=8, NFOLD=[3])
-   ℋ = [Op("BK",[OpFunc(Nz,2)]);
-         Op("BN",[OpFunc(N2,1)]);
-         Op("B±",[OpFunc(Npm,2)])
-         Op("F ",[],[OpFunc(Pα,2,1)],1);
-         #Op("F2 ",[],[OpFunc(Pα,2,1)],2);
-         #Op("F ",[],[OpFunc(p_tor,2,1)]);
-         Op("V3",[],[OpFunc(vncα,3,1)],1);
-         #Op("V3_2",[],[OpFunc(vncα,3,1)],2);
-         Op("Rz",[OpFunc(Nz,1)],[OpFunc(Pα,2,1)])]
-         #Op("Rz2",[OpFunc(Nz,1)],[OpFunc(Pα,2,2)])]
-   prm = [1.75; 1.25; 0.125; 5.0; 5.0; 100.0; 200.0; -2*5*3*0.02; -2*5*3*0.01]
-   stgs = [0;0;0]
+function westereng(ctrl,prm,ℋ)::Eigs 
    wvs = Eigs(ctrl)
-   H_calc(ctrl,wvs,prm,ℋ,stgs)
+   H_calc(ctrl,wvs,prm,ℋ)
+   return wvs
+end
+
+function westermain()
+   molnam = "test"
+   ctrl, ℋ, prms, scls = inp_reader(molnam)
+   wvs = westereng(ctrl,prms, ℋ)
    return wvs
 end
 
@@ -98,7 +89,7 @@ function westersim(molnam,ctrl,fvls,fvcs,fqns,tvecs)
 end#westersim
 
 
-function westermain(molnam::String)
+function westermain_old(molnam::String)
    molnam = String(split(molnam,'.')[1])
    #read input file
    ctrl = ctrlinp(molnam)

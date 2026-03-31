@@ -17,13 +17,10 @@
    λlm0::Float64 = 0.001
    turducken::Int = 1
    maxiter::Int = 60
+   BOLD::Int = 0
    REJECT::Float64 = 10.0
    goal::Float64 = 1.0
    overwrite::Bool = true 
-   ctbk::Vector{Int} = zeros(Int,2)
-   sobk::Vector{Int} = zeros(Int,2)
-   inbk::Vector{Int} = zeros(Int,2)
-   opbk::Vector{Int} = zeros(Int,2)
 end
 
 function inp_reader(molnam::String)
@@ -31,20 +28,47 @@ function inp_reader(molnam::String)
    if typeof(inp)==Base.TOML.ParserError
       @warn "Something is wrong with input TOML! Double check the file.
          Look at line $(inp.line) for a $(inp.type)"
+      exit()
    end
    ctrl = controls_in(inp["controls"])
    #prms, scls, stgs 
    secpart = secorder_in(inp["second_order"])
    H, prms, scls = ops_in(inp["user_def"])
-   return H, [secpart[1], prms], [secpart[2], scls]
+   return ctrl, H, vcat(secpart[1], prms), vcat(secpart[2], scls)
 end
 
-function controls_in(inp)
+function ctrl_sanity(ctrl::Controls)::Controls
+   if iszero(ctrl.stages)
+      println("You must define the number of stages")
+      exit()
+   end
+   if iszero(length(ctrl.NFOLD))||(isone(length(ctrl.NFOLD))&&iszero(ctrl.NFOLD[1]))
+      println("Suppressing torsional behavior")
+      setproperty!(ctrl, mcalc, 0)
+      setproperty!(ctrl, vtcalc, 0)
+      setproperty!(ctrl, vtmax, 0)
+   end
+   if ctrl.νmin > ctrl.νmax
+      println("Enforcing νmin < νmax")
+      temp = ctrl.νmin
+      setproperty!(ctrl, νmin, ctrl.νmax)
+      setproperty!(ctrl, νmax, temp)
+   end
+   if isodd(2*ctrl.S)&&iseven(2*ctrl.Jmax)
+      println("Jmax must be half integer for half interger S. Adding 1/2")
+      setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
+   elseif iseven(2*ctrl.S)&&isodd(2*ctrl.Jmax)
+      println("Jmax must be integer for interger S. Adding 1/2")
+      setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
+   end
+   return ctrl
+end
+function controls_in(inp::Dict{String,Any})::Controls
    ctrl = Controls()
    for f ∈ eachindex(inp)
       setproperty!(ctrl, Symbol(f), inp[f])
    end
-   return ctrl
+   return ctrl_sanity(ctrl)
 end
 
 function secordinit_lim(topcount=0)::Dict{String,Int}
@@ -118,7 +142,7 @@ function opfn_proc(x,rf,tf)
       end
    else
       @warn "A function not dependent on the wavefunctions was called.
-         How??? Please double check the manual for valid functions"
+         Please double check the manual for valid functions"
    end
    return rf, tf
 end

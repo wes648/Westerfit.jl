@@ -50,6 +50,7 @@ function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
 end
 
 function cos_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
    out = spdiagm(p=>fill(0.5,ψ.l-p),-p=>fill(0.5,ψ.l-p))
    if iszero(ψ.σ)
       u = ul(ψ.l)
@@ -59,7 +60,8 @@ function cos_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    return out
 end
 function vnc_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
-   out = spdiagm(0=>ones(ψ.l),p=>fill(0.5,ψ.l-p),-p=>fill(0.5,ψ.l-p))
+   p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
+   out = spdiagm(0=>ones(ψ.l),p=>fill(-0.5,ψ.l-p),-p=>fill(-0.5,ψ.l-p))
    if iszero(ψ.σ)
       u = ul(ψ.l)
       out = dropzeros!(sand(out,u))

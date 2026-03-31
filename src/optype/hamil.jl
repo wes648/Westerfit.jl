@@ -7,6 +7,7 @@ ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages>
 
 function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCSC#{T,Int} where T <: Number
 #   out = enact_init(O,ψ.R,val) #potentially replace with just 0.5*val for improved readability
+   #@show O.nam
    out = Diagonal(fill(0.5*val,ψ.R.lng))
    @inbounds for i ∈ eachindex(O.rf)
       out *= eval_rop(O.rf[i],ψ.R)
@@ -62,7 +63,7 @@ function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
       out *= part
    end #for
    droptol!(out,2eps())
-   tplus!(out)
+   #tplus!(out)
    return out
 end
 
@@ -98,18 +99,21 @@ function stage_1tproc(wvs::Eigs,prms::Vector{Float64},ops,ctrl::Controls)::Eigs
    return wvs
 end
 
-function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops,ψ,σind::Int,ctrl)::Eigs
+function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},ψ::TTPsi,σind::Int,ctrl::Controls)::Eigs
    stage = 1
+   offset = hccount
    Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
    for i ∈ eachindex(ops)
       if ttstage_check(ops[i].stg,stage,ctrl.stages)
-         Hmat += enact_tt(ops[i],ψ,wvs,prms[i])
+         Hmat += enact_tt(ops[i],ψ,wvs,prms[i + offset])
       elseif ops[i].stg < 0 && ttstage_check(ops[i + ops[i].stg].stg,stage,ctrl.stages)
-         Hmat += enact_tt(ops[i],ψ,wvs,prms[i]*prms[i + op.stg])
+         Hmat += enact_tt(ops[i],ψ,wvs,prms[i + offset]*prms[i + op.stg + offset])
       end # stage if
    end # ops loop
    #@show Hmat
+   #@show Hmat
    vals, vecs = diagwrap(tplus!(Hmat))
+   #@show vals[1:ctrl.vtcalc+1] ./ csl
    wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:ctrl.vtcalc+1], vecs[:,1:ctrl.vtcalc+1]
    return wvs
 end
@@ -124,18 +128,19 @@ inputs are: stage id #
             stages is the vector if stages for the operators
 Outputs the Eig structure
 """
-function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stages,σid)::Eigs
+function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,σid)::Eigs
+   offset = hccount
    if !isnothing(wvs.ttp)
-      H = spdiagm(kron(wvs.ttp.vals[:,σid],ones(ψ.R.lng)))
+      H = spdiagm(kron(wvs.ttp.vals[:,σid],fill(0.5,ψ.R.lng)))
    else
       #l = ψ.R.lng*ψ.T.l
       H = spzeros(ψ.R.lng*ψ.T.l, ψ.R.lng*ψ.T.l)
    end
    for i ∈ eachindex(ops)
-      if ops[i].stg == stage
-         H += enact(ops[i],ψ,wvs,prms[i])
-      elseif (ops[i].stg < 0)&& (ops[i + ops[i].stg].st == stage)
-         H += enact(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg ])
+      if ops[i].stg == stage || isone(ctrl.stages)
+         H += enact(ops[i],ψ,wvs,prms[i + offset])
+      elseif (ops[i].stg < 0)&& (ops[i + ops[i].stg].st == stage || isone(ctrl.stages))
+         H += enact(ops[i],ψ,wvs,prms[i]*prms[i + ops[i].stg + offset])
       else
       end
    end
@@ -156,7 +161,7 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,stage
    return wvs
 end
 
-function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
+function H_calc(ctrl::Controls,wvs::Eigs,prm,ops)::Eigs
    σs = σgen(ctrl.NFOLD)
    if ctrl.stages==3
       #one top
@@ -172,13 +177,14 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,stages)::Eigs
             ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
          end
          wvs = stage_ttproc(wvs,prm,ops,ψ,i,ctrl)
+         #@show wvs.ttp.vals
       end
    end
    for i ∈ 1:size(σs,2)
       ϕ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
       for j ∈ 0.5*isodd(2*ctrl.S):ctrl.Jmax
          ψ = Psi( RPsi(j, ctrl.S), ϕ )
-         wvs = stageproc0(ctrl,0,wvs,prm,ops,ψ,stages,i)
+         wvs = stageproc0(ctrl,0,wvs,prm,ops,ψ,i)
       end # j loop
    end # σ loop
 #   sparsify!(wvs.rst.vecs)

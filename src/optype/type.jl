@@ -4,34 +4,6 @@
 # string to function conversion:
 # fn = getfield(Main, Symbol(str))
 
-@kwdef struct Controls
-   apology::Bool = true
-   RUNmode::String = "ESF"
-   stages::Int = 0
-   Irrep::String = "Ir"
-   assign::String = "ram36"
-   NFOLD::Vector{Int} = [0] # vector of symmetry folds of rotors
-   S::Float64 = 0. # float for spin value could maybe turn into int for 2s but eh
-   Jmax::Float64 = 0. # maximum J value
-   mcalc::Int = 10 # maximum |m| value for free rotor basis, basis size will be 2mmax+1
-   vtcalc::Int = 8 # maximum vt state output by second diag stage & to be used in third. basis size will be vtmax+1
-   vtmax::Int = 0 # maximum vt state output by final diagonalization stage. basis size will be vtmax+1
-   νmin::Float64 = 0.2
-   νmax::Float64 = 40.0
-   TK::Float64 = 8. # temperature in Kelvin to be used in simulation
-   INTthres::Float64 = 0.0001
-   λlm0::Float64 = 0.001
-   turducken::Int = 1
-   maxiter::Int = 60
-   REJECT::Float64 = 10.0
-   goal::Float64 = 1.0
-   overwrite::Bool = true 
-   ctbk::Vector{Int} = zeros(Int,2)
-   sobk::Vector{Int} = zeros(Int,2)
-   inbk::Vector{Int} = zeros(Int,2)
-   opbk::Vector{Int} = zeros(Int,2)
-end
-
 struct OpFunc{T <: Number, S<:AbPsi}
    f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{S,Int,Int}} # function
    l::Int # power / rank
