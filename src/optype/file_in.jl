@@ -38,6 +38,14 @@ function inp_reader(molnam::String)
 end
 
 function ctrl_sanity(ctrl::Controls)::Controls
+   if ctrl.apology
+      println("Sorry about the name...")
+   end
+   if length(ctrl.NFOLD) > 1
+      println("It appears you are using the n-top mode of westerfit.
+By doing so, you agree to not complain about the runtime to Wes.
+The matrices are very large & she's already losing sleep about it")
+   end
    if iszero(ctrl.stages)
       println("You must define the number of stages")
       exit()
@@ -60,6 +68,13 @@ function ctrl_sanity(ctrl::Controls)::Controls
    elseif iseven(2*ctrl.S)&&isodd(2*ctrl.Jmax)
       println("Jmax must be integer for interger S. Adding 1/2")
       setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
+   end
+   if isone(ctrl.stages) && length(ctrl.NFOLD) > 1
+      @warn "Single stage diagonalization is not implemented for multiple tops.
+         The assignment process is non-sensical & the diagonalization times are unpleasant.
+         One day I may try to implement this but I don't presently want to.
+         This code will now terminate. Sorry"
+      exit()
    end
    return ctrl
 end
@@ -119,7 +134,7 @@ function opfn_parse(x)
    fn = getfield(Main, Symbol(temp[1]))
    if length(temp) > 3
       @warn "A user-defined operator got fucked up. Too many ^ & _
-         Double check function input"
+         Double check function input of $x"
    end
    for i ∈ 2:length(temp)
       q[i-1] = parse(Int,temp[i])

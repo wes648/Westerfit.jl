@@ -52,7 +52,7 @@ end
 
 function westermain()
    molnam = "test"
-   ctrl, ℋ, prms, scls = inp_reader(molnam)
+   @time ctrl, ℋ, prms, scls = inp_reader(molnam)
    wvs = westereng(ctrl,prms, ℋ)
    return wvs
 end

@@ -139,11 +139,24 @@ function msgen(nf::Array{Int},mcalc::Int,σs::Array{Int})::Vector{StepRange{Int,
    return out
 end
 
+"""
+σ2ind returns the index of the σ states for the ith top of n-fold symmetry.
+Args: σ::Int, tid::Int, nfold::Int
+"""
 function σ2ind(σ::Int,tid::Int,nfold::Int)::Int
    if isone(tid)
       return σ+1
    elseif tid > 1
       return σcount(nfold) - σ
+   else
+      @warn "why is tid zero?"
+   end
+end
+function σ2ind(ψ::TTPsi,tid::Int)::Int
+   if isone(tid)
+      return ψ.σs[1]+1
+   elseif tid > 1
+      return σcount(ψ.nfs[tid]) - ψ.σs[tid]
    else
       @warn "why is tid zero?"
    end

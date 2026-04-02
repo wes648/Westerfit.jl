@@ -3,7 +3,8 @@
 #import Base.size
 #size(x::Nothing,y::Int)::Int = 1
 
-ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages>stage)
+#tstage_check(ostg,stage,stages)::Bool = (ostg==stage) || ( 1  ≥ 1   &&   3  > 1)
+ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages < 3)
 
 function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,check=false)::SparseMatrixCSC#{T,Int} where T <: Number
 #   out = enact_init(O,ψ.R,val) #potentially replace with just 0.5*val for improved readability
@@ -91,18 +92,35 @@ end
 function stage_1tproc(wvs::Eigs,prms::Vector{Float64},ops,ctrl::Controls)::Eigs
    dmc = dgen(ctrl.mcalc)
    nfold = ctrl.NFOLD
+   offset = hccount
    for i ∈ 1:length(nfold), j ∈ 1:nth_σcount(nfold[i],i) # <-------------
       σ = nth_σgen(nfold[i],i)[j]
       ϕ = TPsi(nfold[i],σ,ctrl.mcalc)
-      wvs = one_topproc(wvs,prms,ops,ϕ,i,j,dmc)
+      wvs = one_topproc(wvs,prms[offset+1:end],ops,ϕ,i,j,dmc)
    end # nested for
    return wvs
 end
 
-function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},ψ::TTPsi,σind::Int,ctrl::Controls)::Eigs
+function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},
+            ψ::TTPsi,σind::Int,ctrl::Controls)::Eigs
+   #println("\nstart σ = $σind")
    stage = 1
    offset = hccount
-   Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
+   l = ctrl.vtcalc+1
+   if isnothing(wvs.top)
+      Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
+   else
+      #@show wvs.top[1].vals[:,σ2ind(ψ,1)] 
+      Hmat = 0.5 * wvs.top[1].vals[:,σ2ind(ψ,1)] 
+      #temp = wvs.top[1].vals[:,σ2ind(ψ,1)] ./csl
+      for i ∈ 2:length(ctrl.NFOLD)
+         Hmat = kron(Hmat, ones(l) ) + 
+                kron( fill(0.5, l^(i-1)), wvs.top[i].vals[:,σ2ind(ψ,i)]) # <-------------
+         #temp = wvs.top[i].vals[:,σ2ind(ψ,i)] ./csl
+      end
+      #@show Hmat[1:6] ./csl
+      Hmat = spdiagm(Hmat)
+   end
    for i ∈ eachindex(ops)
       if ttstage_check(ops[i].stg,stage,ctrl.stages)
          Hmat += enact_tt(ops[i],ψ,wvs,prms[i + offset])
@@ -113,8 +131,9 @@ function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},ψ::TTPsi,
    #@show Hmat
    #@show Hmat
    vals, vecs = diagwrap(tplus!(Hmat))
-   #@show vals[1:ctrl.vtcalc+1] ./ csl
-   wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:ctrl.vtcalc+1], vecs[:,1:ctrl.vtcalc+1]
+   #@show vals[1:5] ./ csl
+   wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:l], vecs[:,1:l]
+   #println("end σ = $σind\n")
    return wvs
 end
 
@@ -147,13 +166,15 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,σid)
    tplus!(H)
    #if assigncheck # energy caculation!
       vals, vecs = diagwrap(H)
+      #@show vals[1:5] ./csl
       if isone(ctrl.stages)&&isone(length(ctrl.NFOLD))
          perm = reshape(collect(1:ψ.R.lng).+ ψ.R.lng*(sortperm(by=abs,ψ.T.tps[1].ms) .-1)', ψ.R.lng*ψ.T.l)
          vecs .= vecs[perm,:]
       end
+
       perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
-      vldst = jinds(ψ.R.J,ψ.R.S,ctrl.vtmax+1) 
-      vcdst = jinds(ψ.R.J,ψ.R.S,ctrl.vtcalc+1)
+      vldst = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
+      vcdst = jinds(ψ.R.J, ψ.R.S, ctrl.vtcalc+1)
       wvs.rst.vals[vldst,σid], wvs.rst.vecs[1:size(vecs,1),vldst,σid] = vals[perm], vecs[:,perm]
    #else # derivatives!
    #   wvs.rst.der[:,σid] = 
@@ -191,10 +212,3 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops)::Eigs
    return wvs
 end
 
-#=
-if stages==1
-   eval all
-elseif stages==2
-   eval !iszero(stage) ops
-   eval iszero(stage) ops
-=#
