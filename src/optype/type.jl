@@ -115,7 +115,7 @@ mutable struct Eigs
          l2 = (ctrl.vtcalc + 1)
          l3 = (ctrl.vtcalc + 1)
          l4 = rscount*(ctrl.vtmax + 1)
-         return new([SubEigs(l2,l1,σs) for i ∈ 1:length(ctrl.NFOLD)],
+         return new([SubEigs(l2,l1,nth_σcount(ctrl.NFOLD[i],i)) for i ∈ 1:length(ctrl.NFOLD)],
                     SubEigs(l3,l2^length(ctrl.NFOLD),σs) ,
                     SubEigs(l4,rsd*l3,σs) )
       else

@@ -26,6 +26,14 @@ function hrot2v(pr::Vector{Float64},ψ::RPsi)::SparseMatrixCSC{Float64, Int64}
    out[diagind(out,-2)] .= hr2of2v.(n2[3:end],ks[3:end], pr[3])
    return dropzeros!(out)
 end
+function hrot2v(pr::Vector{Float64},n,k)::SparseMatrixCSC{Float64, Int64}
+   n2 = n2gen(n)
+   ks = reduce(vcat, k)
+   out = spdiagm(hr2onv.(n2,ks,pr[1],pr[2]))
+   out[diagind(out,-1)] .= hr2of1v.(n2[2:end],ks[2:end], pr[4])
+   out[diagind(out,-2)] .= hr2of2v.(n2[3:end],ks[3:end], pr[3])
+   return dropzeros!(out)
+end
 
 function nsred2(nb::Int,nk::Int)::Float64
    if nb==nk

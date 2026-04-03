@@ -1,23 +1,29 @@
 
 eh(x::Real)::Float64 = x*(x+1)
-function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
-   mapreduce(x->fill(eh(x)^p, 2x+1), vcat, ns)
+□rt(x::Real)::Float64 =√(x*(x>zero(x)))
+fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
+fhv(x::Float64,y::Int)::Float64 = □rt(x - eh(y))
+
+function nz(ns::UnitRange{Int},p::Int)::Vector{Float64}
+   map(x->collect(-x:x).^p, append!, ns))
 end
+
+function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
+   mapreduce(x->fill(eh(x)^p, 2x+1), append!, ns)
+end
+
 function N2(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 	return spdiagm(n2(ψ.N,p))
 end
 
-nz(ks::Vector{UnitRange{Int}},p::Int)::Vector{Float64} = map(x->x^p, reduce(vcat, ks))
 function Nz(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
-	return spdiagm(nz(ψ.K,p))
+	return spdiagm(nz(ψ.N,p))
 end
 
-□rt(x::Real)::Float64 =√(x*(x>zero(x)))
-fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
-function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
+function Np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
    if p ≠ 0 &&p ≤ ψ.lng
       ns = reduce(vcat, [fill(n,2n+1) for n ∈ ψ.N])[1+p:end]
-      ks = reduce(vcat, ψ.K)[1+p:end]
+      ks = mapreduce(x->-x:x, vcat, ψ.N)[1+p:end]
       out = ones(length(ks))
       out = prod(fh.(ns,ks .- collect(1:p)'),dims=2)[:]
       out = spdiagm(-p=>out)
@@ -29,7 +35,7 @@ function np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
    return out
 end
 function Npm(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
-	return tplus!(np(ψ,p))
+	return tplus!(Np(ψ,p))
 end
 
 
@@ -44,8 +50,6 @@ function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    else
       out = sparse(1:ψ.l, 1:ψ.l, ψ.ms .^p)
    end
-   #@show tid
-   #torsetter!(ψ,tid,out)
    return out
 end
 

@@ -5,22 +5,22 @@ struct RPsi <: AbPsi
    J::Float64
    S::Float64
    N::UnitRange{Int}
-   K::Vector{UnitRange{Int}}
+   #K::Vector{UnitRange{Int}}
    lng::Int
    function RPsi(J::Number,S::Number)
       J = Float64(J)
       S = Float64(S)
       N = Δlist2(J,S)
-      K = kgen(N)
+#      K = kgen(N)
       lng = Int((2J+1)*(2S+1))
-      new(J,S,N,K,lng)
+      new(J,S,N,lng)
    end
    function RPsi(N::Int)
       J = Float64(N)
       N = Δlist2(J,0.0)
-      K = kgen(N)
+      #K = kgen(N)
       lng = Int(2J+1)
-      new(J,0.0,N,K,lng)
+      new(J,0.0,N,lng)
    end
 end
 struct TPsi <: AbPsi

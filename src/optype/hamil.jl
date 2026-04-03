@@ -128,10 +128,7 @@ function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},
          Hmat += enact_tt(ops[i],ψ,wvs,prms[i + offset]*prms[i + op.stg + offset])
       end # stage if
    end # ops loop
-   #@show Hmat
-   #@show Hmat
    vals, vecs = diagwrap(tplus!(Hmat))
-   #@show vals[1:5] ./ csl
    wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:l], vecs[:,1:l]
    #println("end σ = $σind\n")
    return wvs
@@ -149,11 +146,20 @@ Outputs the Eig structure
 """
 function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,σid)::Eigs
    offset = hccount
-   if !isnothing(wvs.ttp)
-      H = spdiagm(kron(wvs.ttp.vals[:,σid],fill(0.5,ψ.R.lng)))
+   H = hrot2_hc(prms[1:4],ψ.R.N)
+   if 0.0 < ψ.R.S < 1.0
+      hsr!(H,prms[5:8], ψ.R)
+   elseif 1.0 ≤ ψ.R.S
+      hsr!(H,prms[5:8], ψ.R)
+      hqu!(H,prms[9:11], ψ.R)
    else
-      #l = ψ.R.lng*ψ.T.l
-      H = spzeros(ψ.R.lng*ψ.T.l, ψ.R.lng*ψ.T.l)
+      #nothing
+   end
+   if !isnothing(wvs.ttp)
+      H = kron(sparse(I(size(wvs.ttp.vals,1))), H )
+      H[diagind(H)] .+= kron(wvs.ttp.vals[:,σid], fill(0.5,ψ.R.lng))
+   else
+      H = kron(sparse(I,ψ.T.l, ψ.T.l), H )
    end
    for i ∈ eachindex(ops)
       if ops[i].stg == stage || isone(ctrl.stages)
@@ -166,12 +172,10 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,σid)
    tplus!(H)
    #if assigncheck # energy caculation!
       vals, vecs = diagwrap(H)
-      #@show vals[1:5] ./csl
       if isone(ctrl.stages)&&isone(length(ctrl.NFOLD))
          perm = reshape(collect(1:ψ.R.lng).+ ψ.R.lng*(sortperm(by=abs,ψ.T.tps[1].ms) .-1)', ψ.R.lng*ψ.T.l)
          vecs .= vecs[perm,:]
       end
-
       perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
       vldst = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
       vcdst = jinds(ψ.R.J, ψ.R.S, ctrl.vtcalc+1)
@@ -191,7 +195,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops)::Eigs
    if ctrl.stages ≥ 2
       # top-top
       for i ∈ 1:size(σs,2)
-#         println("fucking hell the matrix size is messy here")
+         #println("now doing σ = $(σs[:,i])")
          if ctrl.stages > 2
             ψ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc,ctrl.vtcalc)
          else
@@ -204,6 +208,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops)::Eigs
    for i ∈ 1:size(σs,2)
       ϕ = TTPsi(ctrl.NFOLD,σs[:,i],ctrl.mcalc)
       for j ∈ 0.5*isodd(2*ctrl.S):ctrl.Jmax
+         #println("now doing j = $j, σ = $(σs[:,i])")
          ψ = Psi( RPsi(j, ctrl.S), ϕ )
          wvs = stageproc0(ctrl,0,wvs,prm,ops,ψ,i)
       end # j loop

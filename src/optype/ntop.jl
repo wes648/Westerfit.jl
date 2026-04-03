@@ -25,10 +25,21 @@ function σcount_post(nfold::Real)::Int
    end
    return out
 end
+#function σcount(nfold::Vector{Int})::Int
+#   out = σcount(nfold[1])
+#   for i ∈ 2:length(nfold)
+#      out += σcount_post(nfold[i])
+#   end
+#   return out
+#end
 function σcount(nfold::Vector{Int})::Int
-   out = σcount(nfold[1])
-   for i ∈ 2:length(nfold)
-      out += σcount_post(nfold[i])
+   if isone(length(nfold))
+      out = σcount(nfold[1])
+   elseif length(nfold) > 1
+      out = size(σgen(nfold), 2)
+   else 
+      @warn "How was length(nfold) zero???"
+      out = 0
    end
    return out
 end
