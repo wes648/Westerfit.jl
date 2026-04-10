@@ -48,8 +48,8 @@ function nfinder(svcs,vind,md,vtmax,jsd,ns,ni)
          ovrlp[i,:] += transpose(sum(tvcs[frst:last, :], dims=1))
       end
    end
-   nind = zeros(Int,size(svcs,1))
-   part = zeros(Int,length(list))
+   nind = zeros(Int, size(svcs,1) )
+   part = zeros(Int, length(list) )
    for i in 1:length(ns)
       nd = (2*ns[i]+1)*min((vtmax+1),md)
       perm = sort(sortperm(ovrlp[i,:], rev=true)[1:nd])
@@ -79,7 +79,7 @@ function ram36_2stg_assign(vecs,j,s,vtcalc,vtmax)
          frst = jsd*(v) + ni[ng,1]
          last = jsd*(v) + ni[ng,2]
          part = col[nfilter .* (vind .== (v+1))]
-         part = part[keperm(ns[ng])]
+#         part = part[keperm(ns[ng])]
          perm[frst:last] = part#col[filter][keperm(ns[ng])]
       end # v for
    end # n for

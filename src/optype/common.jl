@@ -132,8 +132,8 @@ This returns a unit range spanning from the first to the final indices for a
    This is used to place the eigenvalues & vectors in the final large arrays
 """
 function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
-   snd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):(j-1)) .+0.5))+1
-   fnd = convert(Int, (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):j) .+0.5))
+   snd = Int( (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):(j-1)) .+0.5))+1
+   fnd = Int( (vtm+1)*(2*s+1)*2*sum(collect((0.5*isodd(2*s)):j) .+0.5))
    return snd:fnd
 end
 
@@ -146,7 +146,7 @@ function qnlab(j,s,vtm,σ)::Array{Int,2}
       nd = Int(2*n+1)
       part = zeros(Int,nd,3)
       part[:,1] = fill(n,nd)
-      part[:,2] = collect(Int,-n:n)
+      part[:,2] = sort(collect(Int,-n:n),by=abs)
       part[:,3] = k2kc.(part[:,1],part[:,2])
       out = vcat(out,part)
    end
@@ -171,7 +171,16 @@ function k2kc(n,k)
    return kc
 end
 
+function qnlab_full_simple(jmax,s,vtm,σ)::Array{Int,2}
+   qns = qnlab(0.5*isodd(2s),s,vtm,σ)
+   for j ∈ (0.5*isodd(2s)+1):jmax
+      qns = vcat(qns, qnlab(j,s,vtm,σ))
+   end
+   return qns
+end
+
 function bigqngen(l,jlist,s,vtm,σs)
+   @warn "i literally don't remember this function"
    σcnt = maximum(size(σs))
    out = zeros(Int,l,6,σcnt)
    for j ∈ jlist[:,1]
@@ -237,4 +246,13 @@ function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
          A[i] = 0.0
    end; end
    return A
+end
+
+function jσlister_full(s::Float64,j::Float64,σcount::Int)::Array{Int,2}
+   jlist = collect(1*isodd(2s):2:Int(2j))
+   out = zeros(Int,0,2)
+   for i ∈ 1:σcount
+      out = vcat(out, hcat(jlist, fill(i,length(jlist)) ) )
+   end
+   return out
 end

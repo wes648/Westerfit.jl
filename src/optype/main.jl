@@ -28,7 +28,7 @@ include("@__DIR__/../type.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
 #include("@__DIR__/../derivatives.jl")
-#include("@__DIR__/../file_out.jl")
+include("@__DIR__/../file_out.jl")
 include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
@@ -44,16 +44,21 @@ const hccount::Int = 11
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 @show Threads.nthreads()
 
-function westereng(ctrl,prm,ℋ)::Eigs 
+function westereng(molnam, ctrl,prm,ℋ)::Eigs 
    wvs = Eigs(ctrl)
-   H_calc(ctrl,wvs,prm,ℋ)
+   jsσs = jσlister_full(ctrl.S,ctrl.Jmax, σcount(ctrl.NFOLD))
+   H_calc(ctrl,wvs,prm,ℋ,jsσs)
+   if occursin("E",ctrl.RUNmode)
+      engwriter(molnam, ctrl.Jmax, ctrl.S, ctrl.vtmax, wvs.rst.vals)
+      println("yay! energy levels writen to $molnam.eng")
+   end
    return wvs
 end
 
 function westermain()
    molnam = "test"
    @time ctrl, ℋ, prms, scls = inp_reader(molnam)
-   wvs = westereng(ctrl,prms, ℋ)
+   wvs = westereng(molnam, ctrl,prms, ℋ)
    return wvs
 end
 

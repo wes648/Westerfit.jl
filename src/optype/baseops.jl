@@ -5,7 +5,7 @@ fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 fhv(x::Float64,y::Int)::Float64 = □rt(x - eh(y))
 
 function nz(ns::UnitRange{Int},p::Int)::Vector{Float64}
-   map(x->collect(-x:x).^p, append!, ns))
+   mapreduce(x->(-x:x).^p, append!, ns)
 end
 
 function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
@@ -39,7 +39,73 @@ function Npm(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 end
 
 
-function p_tor(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+function s2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
+   return spdiagm( fill(eh(ψ.S)^p,ψ.lng) )
+end
+
+function skqpart(j,s,k,q,nb,kb,nk,kk)::Float64
+   return wig3j(nb,k,nk,-kb,q,kk)*wig6j(s,nb,j,nk,s,k)*jnred(nb,nk)*powneg1(-kb)
+end
+function s0part(j,s,nb,kb,nk,kk)::Float64
+   return skqpart(j,s,1,0,nb,kb,nk,kk)::Float64
+end
+
+function Sz(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   #pr = [T0_0 T2_0 T2_1 T2_2]
+   J = ψ.J
+   S = ψ.S
+   nds = nindsgen(ψ.N)
+   out = spzeros(ψ.lng,ψ.lng)
+   sfact = nred(S)*powneg1(J+S)
+   for i ∈ 1:length(ψ.N), j ∈ max(i-1,1):min(i+1,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      frac = wig6j(S,nb,J,nk,S,1)*jnred(nb,nk)*sfact
+      #p = Δ
+      dest = diagind(blck,Δ)
+      kl = (-nk:nk)[(1:length(dest)).+δi(1,Δ)]
+      blck[dest] = srelem(frac,nb,nk,kl,1,0)
+   end
+   return dropzeros!(out^p)
+end
+#sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
+
+function Sq(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+   #pr = [T0_0 T2_0 T2_1 T2_2]
+   J = ψ.J
+   S = ψ.S
+   nds = nindsgen(ψ.N)
+   out = spzeros(ψ.lng,ψ.lng)
+   sfact = nred(S)*powneg1(J+S+p)
+   for i ∈ 1:length(ψ.N), j ∈ max(i-p,1):min(i+p,length(ψ.N))
+      nb = ψ.N[j]; nk = ψ.N[i]; Δ = nk - nb
+      blck = view(out,nds[j],nds[i])
+      frac = wig6j(S,nb,J,nk,S,p)*jnred(nb,nk)*sfact
+      p = Δ+p
+      dest = diagind(blck,p)
+      kl = (-nk:nk)[(1:length(dest))] .+ Δ
+      blck[dest] = srelem(frac,nb,nk,kl,p,-p)
+   end
+   dropzeros!(out)
+   return out
+end
+
+
+Sp(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*Sq(ψ,p,0)
+Sm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*Sq(ψ,-p,0)
+Spm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*Sq(ψ,p,0))
+function Sx(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+#   out  = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng, 1)
+#   out -= sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,-1)
+   out  = Sq(ψ, 1,0)
+   out -= Sq(ψ,-1,0)
+   out *= -√.5
+   out ^= p
+   return out
+end
+
+
+function Pt(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    if iszero(ψ.σ)
       out = map(x -> abs(x)^p, ψ.ms)
       if iseven(p)
@@ -85,9 +151,9 @@ function sin_tor(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
    return out
 end
 
-Pα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,1)
-Pβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,2)
-Pγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = p_tor(ψ,p,3)
+Pα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = Pt(ψ,p,1)
+Pβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = Pt(ψ,p,2)
+Pγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = Pt(ψ,p,3)
 
 cosα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,1)
 cosβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = cos_tor(ψ,p,2)

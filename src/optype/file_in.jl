@@ -32,7 +32,7 @@ function inp_reader(molnam::String)
    end
    ctrl = controls_in(inp["controls"])
    #prms, scls, stgs 
-   secpart = secorder_in(inp["second_order"])
+   secpart = secorder_in(inp["second_order"],length(ctrl.NFOLD))
    H, prms, scls = ops_in(inp["user_def"])
    return ctrl, H, vcat(secpart[1], prms), vcat(secpart[2], scls)
 end
@@ -42,9 +42,9 @@ function ctrl_sanity(ctrl::Controls)::Controls
       println("Sorry about the name...")
    end
    if length(ctrl.NFOLD) > 1
-      println("It appears you are using the n-top mode of westerfit.
-By doing so, you agree to not complain about the runtime to Wes.
-The matrices are very large & she's already losing sleep about it")
+      @info "It appears you are using the n-top mode of westerfit.
+      By doing so, you agree to not complain about the runtime to Wes.
+      The matrices are very large & she's already losing sleep about it"
    end
    if iszero(ctrl.stages)
       println("You must define the number of stages")
@@ -52,9 +52,9 @@ The matrices are very large & she's already losing sleep about it")
    end
    if iszero(length(ctrl.NFOLD))||(isone(length(ctrl.NFOLD))&&iszero(ctrl.NFOLD[1]))
       println("Suppressing torsional behavior")
-      setproperty!(ctrl, mcalc, 0)
-      setproperty!(ctrl, vtcalc, 0)
-      setproperty!(ctrl, vtmax, 0)
+      setproperty!(ctrl, :mcalc, 0)
+      setproperty!(ctrl, :vtcalc, 0)
+      setproperty!(ctrl, :vtmax, 0)
    end
    if ctrl.νmin > ctrl.νmax
       println("Enforcing νmin < νmax")
@@ -98,12 +98,14 @@ function secordinit_lim(topcount=0)::Dict{String,Int}
       prd["ρz"] = hccount + 2
       prd["ρx"] = hccount + 3
       prd["Vn"] = hccount + 4
+      prd["V3"] = hccount + 4
    end
    for i ∈ 1:topcount
       prd["F_$i"]  = hccount + 1 + 4(i-1)
       prd["ρz_$i"] = hccount + 2 + 4(i-1)
       prd["ρx_$i"] = hccount + 3 + 4(i-1)
       prd["Vn_$i"] = hccount + 4 + 4(i-1)
+      prd["V3_$i"] = hccount + 4 + 4(i-1)
    end
    return prd
 end
@@ -125,7 +127,7 @@ end
 function unit_dict()::Dict{String,Float64}
    return Dict{String,Float64}("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>1e-3,"Hz"=>1e-6,
    "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"arb"=>1.,"z"=>0.0,
-   "eV"=>241_798_840.7662022,"Hart"=>6_579_681_360.732768)
+   "eV"=>241_798_840.7662022,"Hart"=>6_579_681_360.732768, ""=>1.)
 end
 
 function opfn_parse(x)
@@ -179,10 +181,33 @@ function ops_in(inp::Dict{String,Any})
    ln = 1
    for i ∈ eachindex(inp)
       vec = inp[i]
-      prm[ln] = vec[2] * units[ vec[3] ]
-      rf,tf = op_parse(vec[1])
-      H[ln] = Op(i, rf, tf, vec[5])
-      scl[ln] = vec[4]
+      if typeof(vec[1]) == String
+         prm[ln] = vec[2] * units[ vec[3] ]
+         rf,tf = op_parse(vec[1])
+         H[ln] = Op(i, rf, tf, vec[5])
+         scl[ln] = vec[4]
+      elseif typeof(vec[1]) <: Vector
+         l = length(vec) -1
+         append!(H, Vector{Op}(undef,l))
+         append!(prm, zeros(Float64, l))
+         append!(scl, zeros(Float64, l))
+         part = vec[1]
+         val = part[2] * units[ part[3] ]
+         prm[ln] = val
+         rf,tf = op_parse(part[1])
+         H[ln] = Op(i, rf, tf, part[5])
+         scl[ln] = part[4]
+         for j ∈ 2:l+1
+            ln += 1
+            part = vec[j]
+            prm[ln] = part[2] * val
+            rf,tf = op_parse( part[1] )
+            H[ln] = Op(i, rf, tf, part[5])
+            scl[ln] = 1 - j
+         end # for 
+      else
+         @warn "Something very weird happed with the input file at key $i"
+      end # if
       ln += 1
    end
    return H, prm, scl
