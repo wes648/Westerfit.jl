@@ -71,7 +71,6 @@ end
 #sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
 
 function Sq(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
-   #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
    nds = nindsgen(ψ.N)

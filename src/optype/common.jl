@@ -43,16 +43,19 @@ function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    return ni
 end
 
-
 """
 This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
-function jinds(j,s)
+function jinds(j::Number,s::Number)::UnitRange{Int}
    snd = dgen(s) * Int(sum(2 .* (0.5*isodd(2*s)):(j-1) .+ 1)) +1
    fnd = dgen(s) * Int(sum(2 .* ((0.5*isodd(2*s)):j) .+ 1))
    return snd:fnd
 end
+function jinds(ψ::RPsi)::UnitRange{Int}
+   return jinds(ψ.j,ψ.s)
+end
+
 """
 This returns the first and final indices for a certain J value for a given S and torsional
    basis size.
@@ -248,6 +251,7 @@ function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
    return A
 end
 
+jlister(j,s) = collect(1*isodd(2s):2:Int(2j))
 function jσlister_full(s::Float64,j::Float64,σcount::Int)::Array{Int,2}
    jlist = collect(1*isodd(2s):2:Int(2j))
    out = zeros(Int,0,2)

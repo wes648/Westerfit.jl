@@ -10,6 +10,8 @@ function prm_proc(prm::Vector{Float64},lnf)::Vector{Float64}
    out[4:end] = prm[4:end]
    for i ∈ 1:lnf
       out[hccount + 4i - 3] *= csl
+      out[hccount + 4i - 2] *= -2.0 * out[hccount+4i-3]
+      out[hccount + 4i - 1] *= -out[hccount+4i-3]
       out[hccount + 4i] *= csl*0.5
    end
    return out
@@ -40,7 +42,6 @@ function hrot2_hc!(out::SparseMatrixCSC{Float64,Int},prm::Vector{Float64},ns::Un
    out[diagind(out,-2)] .= hr2of2v.(nv[3:end],kv[3:end], prm[3])
    return nothing #dropzeros!(out)
 end
-
 
 function nindsgen(ns::UnitRange{Int})::Vector{UnitRange{Int}}
    ni = Vector{UnitRange{Int}}(undef,length(ns))

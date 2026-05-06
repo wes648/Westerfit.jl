@@ -1,15 +1,11 @@
 
-"""
-This file is the actual implementation of the information in types.jl & baseops.jl
-"""
-
 using DelimitedFiles
 using FunctionWrappers
 import FunctionWrappers: FunctionWrapper
 using LinearAlgebra
 import Printf: @sprintf
 #import speed of light, plank, atomic mass, electron mass, fine structure constant
-import PhysicalConstants.CODATA2022: c_0
+import PhysicalConstants.CODATA2022: c_0, k_B, h
 using SparseArrays
 using TOML
 @static if Sys.iswindows()
@@ -33,12 +29,14 @@ include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
+include("@__DIR__/../dipoles.jl")
 #include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../opt-com.jl")
 #include("@__DIR__/../optimizer.jl")
 
 #const csl::Float64 = 29979.2458
-const csl::Float64 = (c_0 * 1e-4).val #MHz/cm⁻¹
+const csl::Float64 = (c_0 * 1e-4).val # MHz / cm⁻¹ = 
+const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 #csl = 29979.2458
 const hccount::Int = 11
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
@@ -67,7 +65,7 @@ function westersim(molnam,ctrl,fvls,fvcs,fqns,tvecs)
    σcnt = σcount(ctrl.NFOLD)
    jmax = ctrl.Jmax
    #perm = permdeterm(scls,stg)
-   kbT = ctrl.TK*20836.61912 #MHz/K
+   kbT = ctrl.TK*kb #MHz/K
    Qrt = qrtcalc(fvls,ctrl.TK)
    finfrq = zeros(0,4)
    finqns = zeros(Int,0,12)
