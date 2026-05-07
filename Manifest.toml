@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.12.5"
+julia_version = "1.12.6"
 manifest_format = "2.0"
 project_hash = "2d026f0a47262a69c7973cbeb19055c265209c1c"
 
@@ -148,15 +148,15 @@ version = "1.11.0"
 
 [[deps.WIGXJPFjl]]
 deps = ["Wigxjpf_jll"]
-git-tree-sha1 = "8396f918570ae7550599bff4004aa356cedbd632"
+git-tree-sha1 = "94a4cd8bbc5ac97ed631cf07faf6c6f8f6e8a489"
 uuid = "c012394e-041f-4dac-954c-af2908646be0"
-version = "1.13.3"
+version = "1.13.4"
 
 [[deps.Westerfit]]
 deps = ["Dates", "DelimitedFiles", "LinearAlgebra", "Printf", "SparseArrays", "StaticArrays", "WIGXJPFjl", "WignerSymbols"]
 path = "."
 uuid = "f202a280-4a11-4d8a-9d54-4c7a90dde5df"
-version = "1.3.0"
+version = "1.3.1"
 
 [[deps.WignerSymbols]]
 deps = ["HalfIntegers", "LRUCache", "Primes", "RationalRoots"]
