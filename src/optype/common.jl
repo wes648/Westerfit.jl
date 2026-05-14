@@ -48,12 +48,12 @@ This returns the first and final indices for a certain J value for a given S.
    This is used to place the eigenvalues & vectors in the final large arrays
 """
 function jinds(j::Number,s::Number)::UnitRange{Int}
-   snd = dgen(s) * Int(sum(2 .* (0.5*isodd(2*s)):(j-1) .+ 1)) +1
-   fnd = dgen(s) * Int(sum(2 .* ((0.5*isodd(2*s)):j) .+ 1))
+   snd = dgen(s) * Int(j*(j+1) - j + 1)
+   fnd = dgen(s) * Int(j*(j+1) + j + 1)
    return snd:fnd
 end
 function jinds(ψ::RPsi)::UnitRange{Int}
-   return jinds(ψ.j,ψ.s)
+   return jinds(ψ.J,ψ.S)
 end
 
 """
@@ -140,7 +140,7 @@ function jvdest2(j::Float64,s::Float64,vtm::Int)::UnitRange{Int}
    return snd:fnd
 end
 
-function qnlab(j,s,vtm,σ)::Array{Int,2}
+function qnlab(j,s,vtm)::Array{Int,2}
    nlist = Δlist2(j,s)
    jsd = Int((2*j+1)*(2*s+1))
    vd = Int(vtm+1)
@@ -156,7 +156,7 @@ function qnlab(j,s,vtm,σ)::Array{Int,2}
    out[:,2] = abs.(out[:,2])
    out = kron(ones(Int,vd),out)
    vtrray = kron(collect(0:vtm) ,ones(Int,jsd))
-   out = hcat(fill(Int(2*j),size(out,1)),out,vtrray,fill(σ,jsd*vd))
+   out = hcat(fill(Int(2*j),size(out,1)),out,vtrray)
    return out
 end
 """
@@ -174,10 +174,10 @@ function k2kc(n,k)
    return kc
 end
 
-function qnlab_full_simple(jmax,s,vtm,σ)::Array{Int,2}
-   qns = qnlab(0.5*isodd(2s),s,vtm,σ)
+function qnlab_full_simple(jmax,s,vtm)::Array{Int,2}
+   qns = qnlab(0.5*isodd(2s),s,vtm)
    for j ∈ (0.5*isodd(2s)+1):jmax
-      qns = vcat(qns, qnlab(j,s,vtm,σ))
+      qns = vcat(qns, qnlab(j,s,vtm))
    end
    return qns
 end

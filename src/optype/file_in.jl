@@ -12,7 +12,7 @@
    vtmax::Int = 0 # maximum vt state output by final diagonalization stage. basis size will be vtmax+1
    νrange::Vector{Float64} = [0.2; 40.0]
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
-   INTthres::Float64 = 0.0001
+   INTthres::Float64 = 1e-6
    λlm0::Float64 = 0.001
    turducken::Int = 1
    maxiter::Int = 60
@@ -33,7 +33,8 @@ function inp_reader(molnam::String)
    #prms, scls, stgs 
    secpart = secorder_in(inp["second_order"],length(ctrl.NFOLD))
    H, prms, scls = ops_in(inp["user_def"])
-   return ctrl, H, vcat(secpart[1], prms), vcat(secpart[2], scls)
+   μs = mus_in(inp["intensity"])
+   return ctrl, H, vcat(secpart[1], prms), vcat(secpart[2], scls), μs
 end
 
 function ctrl_sanity(ctrl::Controls)::Controls
@@ -55,12 +56,12 @@ function ctrl_sanity(ctrl::Controls)::Controls
       setproperty!(ctrl, :vtcalc, 0)
       setproperty!(ctrl, :vtmax, 0)
    end
-   if ctrl.νmin > ctrl.νmax
-      println("Enforcing νmin < νmax")
-      temp = ctrl.νmin
-      setproperty!(ctrl, νmin, ctrl.νmax)
-      setproperty!(ctrl, νmax, temp)
-   end
+#   if ctrl.νmin > ctrl.νmax
+#      println("Enforcing νmin < νmax")
+#      temp = ctrl.νmin
+#      setproperty!(ctrl, νmin, ctrl.νmax)
+#      setproperty!(ctrl, νmax, temp)
+#   end
    if isodd(2*ctrl.S)&&iseven(2*ctrl.Jmax)
       println("Jmax must be half integer for half interger S. Adding 1/2")
       setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
@@ -124,7 +125,7 @@ function secorder_in(inp::Dict{String,Any},topcount=0)::Tuple{Vector{Float64}, V
 end
 
 function unit_dict()::Dict{String,Float64}
-   return Dict{String,Float64}("MHz"=>1.,"cm-1"=>29979.2458,"kHz"=>1e-3,"Hz"=>1e-6,
+   return Dict{String,Float64}("MHz"=>1.,"cm-1"=>csl,"kHz"=>1e-3,"Hz"=>1e-6,
    "mHz"=>1e-9,"GHz"=>1e3,"THz"=>1e6,"arb"=>1.,"z"=>0.0,
    "eV"=>241_798_840.7662022,"Hart"=>6_579_681_360.732768, ""=>1.)
 end
@@ -158,7 +159,8 @@ function opfn_proc(x,rf,tf)
       end
    else
       @warn "A function not dependent on the wavefunctions was called.
-         Please double check the manual for valid functions"
+         Please double check the manual for valid functions.
+         Name is $x"
    end
    return rf, tf
 end
@@ -210,4 +212,46 @@ function ops_in(inp::Dict{String,Any})
       ln += 1
    end
    return H, prm, scl
+end
+
+function mufn_proc(x,rf,tf)
+   fn,q = opfn_parse(x)
+   if methods(fn)[1].sig.parameters[2]==RPsi
+      rf = vcat(rf, MuFunc(fn, q[1], q[2]) ) 
+   elseif methods(fn)[1].sig.parameters[2]==TPsi
+      if occursin("α",x)
+         tf = vcat(tf, MuFunc(fn, q[1], 1) )
+      elseif occursin("β",x)
+         tf = vcat(tf, MuFunc(fn, q[1], 2) )
+      elseif occursin("γ",x)
+         tf = vcat(tf, MuFunc(fn, q[1], 3) )
+      else
+         tf = vcat(tf, MuFunc(fn, q[1], q[2]) )
+      end
+   else
+      @warn "A function not dependent on the wavefunctions was called.
+         Please double check the manual for valid functions.
+         Name is $x"
+   end
+   return rf, tf
+end
+function mu_parse(fstr)
+   rf=Vector{MuFunc}[]
+   tf=Vector{MuFunc}[]
+   xs = split(fstr, ' ')
+   @inbounds for i ∈ eachindex(xs)
+      rf,tf = mufn_proc(xs[i],rf,tf)
+   end
+   return rf,tf
+end
+function mus_in(inp::Dict{String,Any})
+   μs = Vector{Mu}(undef,length(inp))
+   ln = 1
+   for i ∈ eachindex(inp)
+      vec = inp[i]
+      rf, tf = mu_parse(vec[1])
+      μs[ln] = Mu(i, rf, tf, vec[2] )
+      ln += 1
+   end
+   return μs
 end

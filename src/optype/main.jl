@@ -21,7 +21,6 @@ end
 include("@__DIR__/../file_in.jl")
 include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
-include("@__DIR__/../baseops.jl")
 include("@__DIR__/../common.jl")
 #include("@__DIR__/../derivatives.jl")
 include("@__DIR__/../file_out.jl")
@@ -29,13 +28,15 @@ include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
-include("@__DIR__/../dipoles.jl")
-#include("@__DIR__/../transitions.jl")
+include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../opt-com.jl")
 #include("@__DIR__/../optimizer.jl")
 
+include("@__DIR__/../baseops.jl")
+include("@__DIR__/../dipoles.jl")
+
 #const csl::Float64 = 29979.2458
-const csl::Float64 = (c_0 * 1e-4).val # MHz / cm⁻¹ = 
+const csl::Float64 = (c_0 * 1e-4).val # MHz / cm⁻¹
 const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 #csl = 29979.2458
 const hccount::Int = 11
@@ -53,43 +54,23 @@ function westereng(molnam, ctrl,prm,ℋ)::Eigs
    return wvs
 end
 
+function westersim(molnam, ctrl, μs, wvs)
+   σs = σcount(ctrl.NFOLD)
+   #jlst = jbjk
+   frqs, inds = tracalc(ctrl,μs,wvs)
+#   @show size(wvs.rst.vals)
+#   @show inds
+   writefreqs(molnam,ctrl,frqs,inds)
+end
+
 function westermain()
    molnam = "test"
-   @time ctrl, ℋ, prms, scls = inp_reader(molnam)
-   wvs = westereng(molnam, ctrl,prms, ℋ)
+   @time ctrl, ℋ, prms, scls, μs = inp_reader(molnam)
+   @time wvs = westereng(molnam, ctrl,prms, ℋ)
+   @time westersim(molnam, ctrl, μs, wvs)
    return wvs
 end
 
-function westersim(molnam,ctrl,fvls,fvcs,fqns,tvecs)
-   μf = intreader(molnam,ctrl) # function doesn't exist yet
-   σcnt = σcount(ctrl.NFOLD)
-   jmax = ctrl.Jmax
-   #perm = permdeterm(scls,stg)
-   kbT = ctrl.TK*kb #MHz/K
-   Qrt = qrtcalc(fvls,ctrl.TK)
-   finfrq = zeros(0,4)
-   finqns = zeros(Int,0,12)
-   for sc ∈ 1:σcnt
-      σ = sc - 1
-      vals = fvls[:,sc]
-      vecs = fvcs[:,:,sc]
-      quns = fqns[:,:,sc]
-      if ctrl.stages==1
-         #add uncertainty calculator
-         fr, qn = tracalc(ctrl,vals,vecs,tvecs,quns,μf,σ,Qrt)
-      elseif ctrl.stages==2
-         #add uncertainty calculator
-         @warn "function under construction"
-      else
-         @warn "this number of stages isn't implemented"
-      end
-      finfrq = vcat(finfrq,fr)
-      finqns = vcat(finqns,qn)
-   end#sigma loop
-   #TraWriterSPCAT(molnam, ctrl.S, finfrq, finqns)
-   #TraWriter(molnam, ctrl.S, finfrq, finqns)
-   return finfrq, finqns
-end#westersim
 
 
 function westermain_old(molnam::String)

@@ -38,7 +38,7 @@ function σcount(nfold::Vector{Int})::Int
    elseif length(nfold) > 1
       out = size(σgen(nfold), 2)
    else 
-      @warn "How was length(nfold) zero???"
+      @warn "How was length(nfold) zero?"
       out = 0
    end
    return out

@@ -63,6 +63,7 @@ struct TTPsi <: AbPsi
       end
       new(topcnt, tps,nfs, σs, mc, dgen(vtc+2))
    end
+   TTPsi(ctrl::Controls,σs::Vector{Int}) = TTPsi(ctrl.NFOLD,σs,ctrl.mcalc,ctrl.vtcalc)
    TTPsi(nfs::Int,σs::Int,mc::Int,vtc::Int) = TTPsi([nfs],[σs],mc)
 end
 struct VPsi
@@ -74,6 +75,8 @@ end
 mutable struct Psi
    R::Union{RPsi,Nothing}
    T::Union{TTPsi,Nothing}
+   l::Int
+   Psi(R::RPsi,T::TTPsi) = new(R,T, max(1,R.lng)*max(1,T.l) )
 end
 
 convert(T::Type{Psi},ϕ::RPsi) = Psi(ϕ,TPsi(0,0,0))

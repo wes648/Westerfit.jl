@@ -29,10 +29,10 @@ end
 function μ1q_elem(jb,jk,s,nb,kb,nk,kk,q)
    out = powneg1(nk+s+jk+1+nk-1-kk)*√((2jb+1)*(2jk+1)*(2nk+1))
    out *= (2nb+1)*wig3j(nk,1,nb, kk, q, -kb)
-#   out *= wig6j(nk,jk,s, jb,nb, 1)
+   out *= wig6j(nk,jk,s, jb,nb, 1)
 end
 
-function μ_k_q(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
+function μkq(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    jb = fill(ψb.J, ψb.lng)
    nb = mapreduce(x->fill(x,2x+1), append!, ψb.N )
    kb = mapreduce(x->-x:x, vcat, ψb.N )
@@ -44,13 +44,16 @@ function μ_k_q(ψb::RPsi,ψk::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return dropzeros!(out)
 end
 
-μ_z(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = μ_k_q(ψb,ψk,1,0)
-μ_x(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = √(0.5) .* (-μ_k_q(ψb,ψk,1,1) + μ_k_q(ψb,ψk,1,-1))
+μz(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = μkq(ψb,ψk,1,0)
+μx(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = √(0.5) .* (-μkq(ψb,ψk,1,1) + μkq(ψb,ψk,1,-1))
 
 function μcos(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    mb = collect(ψb.ms)
    mk = collect(ψk.ms)
-   out = abs.(mb .- mk) .== k
-   return out
+   out = abs.(mb' .- mk) .== k
+   return sparse(out)
 end
 
+μcosα(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int} = μcos(ψb,ψk,k,1)
+μcosβ(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int} = μcos(ψb,ψk,k,2)
+μcosγ(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int} = μcos(ψb,ψk,k,3)

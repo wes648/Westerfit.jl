@@ -97,14 +97,14 @@ I'm personally fond of the theory in **eeo** but find its performance lacking. -
 
 ### Second Order Parameters
 The second order Hamiltonian of westerfit is hardcoded. 
-You can comment out any lines with # but the number of lines must remain fixed in this section. 
 All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
-Each line must be in the structure of: \\
-N = [val, scale, stage] \\
-where N is the name of the parameter,
-val is a Float64 for the parameter value,
-scale is a Float64 for multiplying the step size by (0.0 for frozen),
+Each line must be in the structure of: <br>
+N = [val, scale, stage] <br>
+where N is the name of the parameter,<br>
+val is a Float64 for the parameter value,<br>
+scale is a Float64 for multiplying the step size by (0.0 for frozen),<br>
 and lastly stage is an integer.
+
 The stage is mostly ignored by the program but you can use negative values to enforce a shared value for the operators.
 For example for two equivalent tops, set the stage of F_2, ρz_2, ρx_2, and Vn_2 to -4 and each of their values to 1.0.
 This wil cause them to use the same values as used for top 1 and maintain this during fitting.
@@ -143,24 +143,27 @@ The table below shows how the scale values in the 2nd order section are actually
 | ρx | rx $P_{\alpha}N_x$   | ϵxz | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
 
 ### Higher order operators
-These are manual coded in operators that are implemented as the anti-commutator of what the user codes in. 
-These lines can also be commented out but do not remove the lines opening with %.
-The first column is a name string for the operators.
-Here are some unicode characters for easier name: Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ.
-The second is a Float64 for the value followed by a third column with a string to represent the unit.
-The value will be converted into MHz for internal use by the program. 
-Then there is a scale factor to be multiplied by step size in the optimizer. A value of zero will keep that operator fixed during the optimization.
-The stage column is used to indicate where the operator is implemented.
-This is ignored by the 1 stage mode and in the 2 stage mode, 1 is used for the purely torsional stage and 0 is used for the "principal" torsion-spin-rotation stage. This is not the most intuitive labeling scheme but it should help me in the future.
-Negative values of stage can be used to add mutliple operators together and the value on the lines with the negative values will be multiplied by the value in the operator that has the non-negative stage.
-The "v v" column is going to be similar to the vibrational tags on operators like in SPFIT but at this time does nothing.
-Lastly we have the operator column. This uses strings to represent the operators which can be raised to a given power by use of ^ followed by an Int.
-For multiplication use a space between the String^Int instances.
-An anticommuator will be applied internally to ensure Hermitivity.
-For the spin-rotation operators, N2^a NS^b S^c Nz^d will be applied first and in that order.
-I encourage you to maintain your own standard form for the other operators.
+These are manual coded in operators that are implemented as the anti-commutator of what the user codes in.
+Each line must be in the structure of: <br>
+N = [op, val, scale, stage] <br>
+where N is the name of the parameter,<br>
+op is a string defining the operator,<br>
+val is a Float64 for the parameter value,<br>
+scale is a Float64 for multiplying the step size by (0.0 for frozen),<br>
+and lastly stage is an integer.
+ 
 
+The stages are defined as:<br>
+2 for one-top terms<br>
+1 for top-top terms<br>
+0 for rotation dependent terms.<br>
+The code runs from high stage to low stage.
+If the number of stages is higher than the stage of the operator, it will be moved into the highest allowed stage (e.i. in 2 stage mode, a stage 2 operator will be used in stage 1).
+Negative values of stage can be used to add mutliple operators together and the value on the lines with the negative values will be multiplied by the value in the operator that has the non-negative stage.
+
+I encourage you to maintain your own standard form for the other operators.
 There are no checks of symmetry like in RAM36 so go wild but the user is also expected to know what they are doing. 
+ere are some unicode characters for easier name: Δ, δ, Φ, ϕ, ϵ, χ, ρ, η, μ.
 
 The current list of available operators and their meanings are given below:
 E: Identy matrix \
@@ -169,6 +172,21 @@ N2^n: $N^{2n}$ \
 Np^n: $N_+^n$ \
 Nm^n: $N_-^n$ \
 Npm^n: $N_+^n + N_-^n$
+
+You can add your own operators by editing the baseops.jl file.
+The operator functions must take the arguments of ψ<:Psi, p :: Int, and q::Int and must return a Sparse Matrix.
+Use RPsi for the wavefunction type for rotational operators and TPsi for torsional.
+VPsi will be added later to support vibrational operators.
+
+### Intensity
+The intensity section is used to define the molecular electric n-pole operators and their Fourier expansions with respect to a torsional coordinate.
+The lines for each operator follow the form of: <br>
+N = [op, val]<br>
+where N is a string containing the name of the term,<br>
+op is a string defining the operator, <br>
+and val is the value of the parameter.
+
+
 
 ### Line File Format
 The experimental transitions should be included in the molnam.lne file.
@@ -216,15 +234,14 @@ Useful Windows Notes:
 
 1. Install [Julia](https://julialang.org/). It is recommended that you do so through [juliaup](https://github.com/JuliaLang/juliaup).
 2. Run the command `julia` to enter a REPL session. Enter `]` to enter package mode. Enter `add Westerfit`.
-3. Unfortunately, WIGXJPFjl, a dependency, is often the source of failure. You can try to remedy this by typing `add WIGXJPFjl` in package mode. If that doesn't work, feel free to shoot me an email. I can help you manually set up [WIGXJPF](http://fy.chalmers.se/subatom/wigxjpf/) as well as an alternative version of the WIGXJPFjl wrapper that should work.
-4. Navigate to a directory in your PATH and create a file named `westerfit` containing the 3 lines below with X replaced by the number of threads you want to run on (more is better, you can also just remove the -tX altogether). You can use `which julia` to determine your exact path to Julia.
+3. Navigate to a directory in your PATH and create a file named `westerfit` containing the 3 lines below with X replaced by the number of threads you want to run on (more is better, you can also just remove the -tX altogether). You can use `which julia` to determine your exact path to Julia.
 ```
 #!/PATH/TO/julia -tX
 using Westerfit
 westerfit(ARGS[1])
 ```
-5. Run `chmod +x westerfit` to turn `westerfit` into an executeable. 
-6. Try running westerfit! Enter `westerfit molnam` and it will run on molnam.inp. Make sure you're in the directory that molnam.inp is in. "molnam" can be replaced with any molecule name.
+4. Run `chmod +x westerfit` to turn `westerfit` into an executeable. 
+5. Try running westerfit! Enter `westerfit molnam` and it will run on molnam.inp. Make sure you're in the directory that molnam.inp is in. "molnam" can be replaced with any molecule name.
 
 Enjoy! And feel free to reach out if anything goes wrong or you have any questions!
 

@@ -43,14 +43,30 @@ function eval_top(O::OpFunc, ψ::TTPsi, tvs)#::SparseMatrixCSC{T,Int} where {T<:
    elseif length(ψ.nfs)>1 && !isnothing(tvs) && iszero(tvs[O.q].vecs) # case 6
       #nothing
    elseif length(ψ.nfs)>1 && !isnothing(tvs) && !iszero(tvs[O.q].vecs) # case 7,8
-      out = sand(out,tvs[O.q].vecs[:,:, σ2ind(ψ.σs[O.q], O.q, ψ.nfs[O.q])]) # <---------- need to determine the sigma index
+      out = sand(out,tvs[O.q].vecs[:,:, σ2ind(ψ.σs[O.q], O.q, ψ.nfs[O.q])]) #
       out = torsetter!(ψ,O.q,out)
    else
       @warn "unexpected condition in evalulation of tor op"
    end
    return out
 end
-eval_rmu(ψb::RPsi,op::OpFunc,ψk::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψb,ψk,op.l,op.q)
+eval_rmu(ψb::RPsi,op::MuFunc,ψk::RPsi)::SparseMatrixCSC{T,Int} where {T<:Number} = op.f(ψb,ψk,op.l,op.q)
+function eval_tmu(ψb::TTPsi, O::MuFunc, ψk::TTPsi, tvs)#::SparseMatrixCSC{T,Int} where {T<:Number}
+   out = O.f(ψb.tps[O.q], ψk.tps[O.q], O.l, O.q)
+   if isone(length(ψk.nfs)) # cases 0,1,2
+      #nothing
+   elseif length(ψk.nfs)>1 && isnothing(tvs) # cases 3,4,5
+      out = torsetter!(ψk,O.q,out)
+   elseif length(ψk.nfs)>1 && !isnothing(tvs) && iszero(tvs[O.q].vecs) # case 6
+      #nothing
+   elseif length(ψk.nfs)>1 && !isnothing(tvs) && !iszero(tvs[O.q].vecs) # case 7,8
+      out = sand(out,tvs[O.q].vecs[:,:, σ2ind(ψk.σs[O.q], O.q, ψk.nfs[O.q])]) #
+      out = torsetter!(ψk,O.q,out)
+   else
+      @warn "unexpected condition in evalulation of tor op"
+   end
+   return out
+end
 
 struct Op
    nam::String #this is a name field, mostly for debugging
@@ -64,7 +80,8 @@ struct Mu
    nam::String
    rf::Vector{MuFunc}
    tf::Vector{MuFunc}
-   Mu(nam="E",rf=Vector{MuFunc}[],tf=Vector{MuFunc}[]) = new(nam,rf,tf)
+   val::Float64
+   Mu(nam="E",rf=Vector{MuFunc}[],tf=Vector{MuFunc}[],val=0.0) = new(nam,rf,tf,val)
    Mu(O::Mu) = new(O.nam,O.rf,O.tf)
 end
 #This is essentially a mutable version of the Eigen structure so I can rearrange & truncate as needed

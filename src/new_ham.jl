@@ -413,8 +413,8 @@ function npsp(j::Real,s::Real,qns::Array{Int,2},e::Int,f::Int
    )::SparseMatrixCSC{Float64,Int64}
    if iszero(e)&&iszero(f)
 #      return spdiagm(ones(size(qns,1)))
-      #for some reason the ⟨K|ℋ|K⟩ matrix elements need an additional factor of 1/2
-      # but the ⟨K'|ℋ|K⟩ elements don't...
+# for some reason the ⟨K|ℋ|K⟩ matrix elements need an additional factor of 1/2
+# but the ⟨K'|ℋ|K⟩ elements don't...
       return spdiagm(fill(2.0,size(qns,1)))
    elseif !iszero(e) &&  iszero(f)
       return tplus!(np_op(qns,e))

@@ -60,8 +60,8 @@ function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
    out = Diagonal(fill(0.5*val, size(wvs.ttp.vecs,1)))
    @inbounds for i ∈ eachindex(O.tf)
       tid = O.tf[i].q
-      σid = σ2ind(ψ.tps[O.tf[i].q].σ, tid,ψ.tps[O.tf[i].q].nf) # <-------------------
-      part = eval_top(O.tf[i], ψ, wvs.top) # <-----------------------
+      σid = σ2ind(ψ.tps[O.tf[i].q].σ, tid,ψ.tps[O.tf[i].q].nf)
+      part = eval_top(O.tf[i], ψ, wvs.top) 
       out *= part
    end #for
    droptol!(out,2eps())
@@ -96,7 +96,7 @@ function stage_1tproc(wvs::Eigs,prms::Vector{Float64},ops,ctrl::Controls)::Eigs
    dmc = dgen(ctrl.mcalc)
    nfold = ctrl.NFOLD
    offset = hccount
-   for i ∈ 1:length(nfold), j ∈ 1:nth_σcount(nfold[i],i) # <-------------
+   for i ∈ 1:length(nfold), j ∈ 1:nth_σcount(nfold[i],i) 
       σ = nth_σgen(nfold[i],i)[j]
       ϕ = TPsi(nfold[i],σ,ctrl.mcalc)
       wvs = one_topproc(wvs,prms,ops,ϕ,i,j,dmc)
@@ -118,13 +118,13 @@ function stage_ttproc(wvs::Eigs,prms::Vector{Float64},ops::Vector{Op},
       for i ∈ 2:length(ctrl.NFOLD)
          Hmat = kron(sparse(I,ln,ln), Hmat ) + 
                 kron( htor2_hc(prms[hccount+4i-3:hccount+4i], ψ.tps[i]),
-                sparse(0.5I, ln^(i-1),ln^(i-1)),  ) # <-------------
+                sparse(0.5I, ln^(i-1),ln^(i-1)),  ) 
       end
    else
       Hmat = 0.5 * wvs.top[1].vals[:,σ2ind(ψ,1)] 
       for i ∈ 2:length(ctrl.NFOLD)
          Hmat = kron(Hmat, ones(l) ) + 
-                kron( fill(0.5, l^(i-1)), wvs.top[i].vals[:,σ2ind(ψ,i)]) # <-------------
+                kron( fill(0.5, l^(i-1)), wvs.top[i].vals[:,σ2ind(ψ,i)]) 
       end
       #@show Hmat
       Hmat = spdiagm(Hmat)
