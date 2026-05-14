@@ -63,7 +63,7 @@ struct TTPsi <: AbPsi
       end
       new(topcnt, tps,nfs, σs, mc, dgen(vtc+2))
    end
-   TTPsi(ctrl::Controls,σs::Vector{Int}) = TTPsi(ctrl.NFOLD,σs,ctrl.mcalc,ctrl.vtcalc)
+   #TTPsi(ctrl::Controls,σs::Vector{Int}) = TTPsi(ctrl.NFOLD,σs,ctrl.mcalc,ctrl.vtcalc)
    TTPsi(nfs::Int,σs::Int,mc::Int,vtc::Int) = TTPsi([nfs],[σs],mc)
 end
 struct VPsi

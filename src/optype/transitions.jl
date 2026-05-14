@@ -1,3 +1,16 @@
+function qtot_calc(jmax::Float64,s::Float64,TK::Float64,wvs::Eigs)::Float64
+   jdlist = mapreduce(x->fill(x+1,Int(x)+1), append!, jlister(jmax,s))
+   out = exp.(-wvs.rst.vals .* (kb*TK)^-1 ) .* jdlist
+   if size(out,2) > 1
+      out[:,2:end] .* 2
+   end
+   return (2s+1)*sum(out)
+end
+function thermeff(ν,El,kT,Q)
+   x = (kT*csl)^-1
+   return ν*exp(-El*x)*(1.0-exp(-ν*x)) / Q*csl
+end
+
 
 function jbjklister(jmin,jmax,mΔj)
    out = zeros(0,2)
@@ -52,21 +65,14 @@ function enact_mu(O::Mu,ψb::Psi,σb::Int,ψk::Psi,σk::Int,wvs::Eigs)
       out = kron(wvs.ttp.vecs[:,:,σb]' * wvs.ttp.vecs[:,:,σk],out) # ⟨ ψt' | ψt ⟩
    end #tor if
    # ⟨ ψtr' | O_f | ψtr ⟩
-   out = sparsify!( 
+   #@show wvs.rst.vecs[1:size(out,1), jinds(ψb.R), σb]
+   #@show wvs.rst.vecs[1:size(out,2), jinds(ψk.R), σk]
+   out = #sparsify!( 
       wvs.rst.vecs[1:size(out,1), jinds(ψb.R), σb]' *
       out * 
       wvs.rst.vecs[1:size(out,2), jinds(ψk.R), σk]
-   ,1e-5)
+   #,1e-5)
    return sparse(out)
-end
-
-function qtot_calc(jmax::Float64,s::Float64,TK::Float64,wvs::Eigs)::Float64
-   jdlist = mapreduce(x->fill(x+1,Int(x)+1), append!, jlister(jmax,s))
-   out = exp.(-wvs.rst.vals .* (kb*TK)^-1 ) .* jdlist
-   if size(out,2) > 1
-      out[:,2:end] .* 2
-   end
-   return (2s+1)*sum(out)
 end
 
 function μ2_build(Ops::Vector{Mu},ψb::Psi,σb::Int,ψk::Psi,σk::Int,wvs::Eigs)
@@ -78,6 +84,7 @@ function μ2_build(Ops::Vector{Mu},ψb::Psi,σb::Int,ψk::Psi,σk::Int,wvs::Eigs
    if σb==σk && ψb.R.J==ψk.R.J
       μmat = sparse( UpperTriangular(μmat) - Diagonal(μmat) )
    end
+
    return μmat
 end
 
@@ -91,10 +98,6 @@ function μ_proc!(ctrl,ints,Ops,ψb,σb,ψk,σk,wvs)
    return sparse(ints)
 end
 
-function thermeff(ν,El,kT,Q)
-   x = exp(-El/(kT*csl))
-   return ν*x*(1.0-x) / Q*csl
-end
 
 function μσbσk_stage(ctrl,Ops, kT,Q, ϕb,σb, ϕk,σk, wvs)
    mΔj = 1
@@ -107,19 +110,19 @@ function μσbσk_stage(ctrl,Ops, kT,Q, ϕb,σb, ϕk,σk, wvs)
    end
    outfs = zeros(Float64, nnz(ints),3)
    outis = zeros(Int, nnz(ints),4)
-   rinds, cinds, = findnz(ints)
+   rinds, cinds, vints = findnz(ints)
    for i ∈ 1:nnz(ints)
       r = rinds[i]
       c = cinds[i]
       ν = wvs.rst.vals[r,σb] - wvs.rst.vals[c,σk]
       if ctrl.νrange[2] > ν*1e-3 > ctrl.νrange[1]
          outfs[i,1] = ν
-         outfs[i,2] = ints[i]*thermeff(ν,wvs.rst.vals[c,σk], kT,Q)
+         outfs[i,2] = vints[i]*thermeff(ν,wvs.rst.vals[c,σk], kT,Q)
          outfs[i,3] = wvs.rst.vals[c,σk]/csl
          outis[i,:] = [r σb c σk]
       elseif ctrl.νrange[2] > -ν*1e-3 > ctrl.νrange[1]
          outfs[i,1] = -ν
-         outfs[i,2] = ints[i]*thermeff(-ν,wvs.rst.vals[r,σb], kT,Q)
+         outfs[i,2] = vints[i]*thermeff(-ν,wvs.rst.vals[r,σb], kT,Q)
          outfs[i,3] = wvs.rst.vals[r,σb]/csl
          outis[i,:] = [c σk r σb]
       else
@@ -139,10 +142,10 @@ function tracalc(ctrl,Ops,wvs)
    Q = qtot_calc(ctrl.Jmax,ctrl.S,ctrl.TK,wvs)
    kT = ctrl.TK * kb
    for σb ∈ 1:σcount(ctrl.NFOLD)#, σk ∈ 1:σb
-      ϕb = TTPsi(ctrl,σs[:,σb])
-#     ϕk = TTPsi(ctrl,σs[:,σk])
-      ϕk = TTPsi(ctrl,σs[:,σb])
-      tinds, tfrqs = μσbσk_stage(ctrl, Ops, kT,Q, ϕb,σb, ϕk,σb, wvs)
+      ϕb = TTPsi(ctrl.NFOLD,σs[:,σb],ctrl.mcalc) 
+#     ϕk = TTPsi(ctrl.NFOLD,σs[:,σk])
+      #ϕk = TTPsi(ctrl.NFOLD,σs[:,σb])
+      tinds, tfrqs = μσbσk_stage(ctrl, Ops, kT,Q, ϕb,σb, ϕb,σb, wvs)
       inds = vcat(inds,tinds)
       frqs = vcat(frqs,tfrqs)
    end

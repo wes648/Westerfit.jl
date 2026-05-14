@@ -27,8 +27,8 @@ end
 =#
 
 function μ1q_elem(jb,jk,s,nb,kb,nk,kk,q)
-   out = powneg1(nk+s+jk+1+nk-1-kk)*√((2jb+1)*(2jk+1)*(2nk+1))
-   out *= (2nb+1)*wig3j(nk,1,nb, kk, q, -kb)
+   out = powneg1(s+jb-kb+nb+nk)*√((2jb+1)*(2jk+1)*(2nk+1)*(2nb+1))
+   out *= wig3j(nb,1,nk, -kb, q, kk)
    out *= wig6j(nk,jk,s, jb,nb, 1)
 end
 
