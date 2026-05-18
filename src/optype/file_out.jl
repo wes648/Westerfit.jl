@@ -1,13 +1,9 @@
 
 
 function englin(s,eng,qunl,σ)
-   if iszero(s)
-      part = lpad(qunl[2],4)*"," # N
-   else
-     # part = lpad(qunl[1],4)*"/2," #J
-      part = lpad(qunl[1],4)*","
-      part *= lpad(qunl[2],4)*"," # N
-   end
+  # part = lpad(qunl[1],4)*"/2," #J
+   part = lpad(qunl[1]*0.5,4)*","
+   part *= lpad(qunl[2],4)*"," # N
    part *= lpad(qunl[3],4)*"," # Ka
    part *= lpad(qunl[4],4)*"," # Kc
    part *= lpad(qunl[5],4)*"," # vt
@@ -19,12 +15,13 @@ end
 function engwriter(molnam, jmax,s,vtm,vals)
    σcnt = size(vals,2)
    io = open("$molnam.eng", "w") do io
+   println(io, "   J,   N,  Ka,  Kc,  vt,   σ,"*lpad("Energy (cm-1)",17))
       if iszero(s)
       end
       for i ∈ 1:σcnt
          qns = qnlab_full_simple(jmax,s,vtm)
          for j ∈ 1:size(vals,1)
-            println(io, englin(s, vals[j,i]/csl, qns[j,:], i-1))
+            println(io, englin(s, vals[j,i]/csl, qns[j,:], i))
          end # j loop
       end # i loop 
    end # io
@@ -61,6 +58,8 @@ function writefreqs(molnam,ctrl,freqs,inds)
       out[i] = linestrng(freqs[i,:], qunus[inds[i,1],:],inds[i,2], qunus[inds[i,3],:],inds[i,4])
    end
    io = open("$molnam.sim", "w") do io    #printing the lines
+   println(io, "  J', N',Ka',Kc',vt', σ',   J,  N, Ka, Kc, vt,  σ,"*
+         lpad("ν (MHz),",15)*lpad("Int (arb),",13)*lpad("E_low (cm⁻¹)",14))
       for i in out
          println(io, i)
       end

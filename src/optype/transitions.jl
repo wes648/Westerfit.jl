@@ -1,14 +1,19 @@
-function qtot_calc(jmax::Float64,s::Float64,TK::Float64,wvs::Eigs)::Float64
+function qtot_calc(jmax::Float64,s::Float64,nfold::Vector{Int},TK::Float64,wvs::Eigs)::Float64
    jdlist = mapreduce(x->fill(x+1,Int(x)+1), append!, jlister(jmax,s))
-   out = exp.(-wvs.rst.vals .* (kb*TK)^-1 ) .* jdlist
+   out = exp.(-wvs.rst.vals .* (kb*TK*csl)^-1 ) .* jdlist
    if size(out,2) > 1
-      out[:,2:end] .* 2
+      σ = σgen(nfold)
+      for i ∈ 1:size(σ,2)
+         out[:,i] .*= 2#^(sum(abs, σ[:,i]))
+      end
    end
    return (2s+1)*sum(out)
 end
 function thermeff(ν,El,kT,Q)
    x = (kT*csl)^-1
-   return ν*exp(-El*x)*(1.0-exp(-ν*x)) / Q*csl
+#   x = abs(ν)*exp(-El*x)*(1.0-exp(-abs(ν)*x)) / Q*csl
+   x = abs(ν/csl)*exp(-El*x)*(1.0-exp(-abs(ν)*x))  
+   return x
 end
 
 
@@ -129,9 +134,9 @@ function μσbσk_stage(ctrl,Ops, kT,Q, ϕb,σb, ϕk,σk, wvs)
       end
    end
    filt = findall(!iszero, outfs[:,1])
-   #outis = outis[filt,:] 
-   #outfs = outfs[filt,:]
-   #filt = findall(x -> abs(x)>ctrl.INTthres, outfs[:,2])
+   outis = outis[filt,:] 
+   outfs = outfs[filt,:]
+   filt = findall(x -> abs(x)>ctrl.INTthres, outfs[:,2])
    return outis[filt,:], outfs[filt,:]
 end
 
@@ -139,7 +144,7 @@ function tracalc(ctrl,Ops,wvs)
    inds = zeros(Int, 0,4)
    σs = σgen(ctrl.NFOLD)
    frqs = zeros(Float64, 0,3)
-   Q = qtot_calc(ctrl.Jmax,ctrl.S,ctrl.TK,wvs)
+   Q = qtot_calc(ctrl.Jmax,ctrl.S,ctrl.NFOLD,ctrl.TK,wvs)
    kT = ctrl.TK * kb
    for σb ∈ 1:σcount(ctrl.NFOLD)#, σk ∈ 1:σb
       ϕb = TTPsi(ctrl.NFOLD,σs[:,σb],ctrl.mcalc) 
