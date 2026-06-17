@@ -11,7 +11,19 @@ Please feel free to direct any questions about the program to westerfit@proton.m
 # Quickstart
 
 The following is intended to be a quick reference on the input file structure & program usage. 
-A more complete manual will be constructed once the paper is published.
+A more complete manual will be constructed once the v2 paper is published.
+
+The key file types are listed below and should all be proceeded by a shared name, represented here as ``molnam''.
+- Inputs:
+   - molnam.toml : Input file. .toml is used instead of .inp to take advantage of syntax highlighting
+   - molnam.lne : Line list file
+- Outputs:
+   - molnam.out : Fit summary
+   - molnam.res : Delimited residuals file
+   - molnam.eng : Delimited energy levels file
+   - molnam.sim : Delimited simulation file
+   - molnam.cat : SPFIT style simulation file
+
 The new westerfit input file is based on the [TOML](https://toml.io/en/) file structure for both human & machine readability.
 The westerfit input file is divided into 5 sections each with a designated header.
 The order of these blocks does not matter.

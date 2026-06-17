@@ -76,7 +76,8 @@ mutable struct Psi
    R::Union{RPsi,Nothing}
    T::Union{TTPsi,Nothing}
    l::Int
-   Psi(R::RPsi,T::TTPsi) = new(R,T, max(1,R.lng)*max(1,T.l) )
+   σ::Int
+   Psi(R::RPsi,T::TTPsi,σ::Int) = new(R,T, max(1,R.lng)*max(1,T.l), σ )
 end
 
 convert(T::Type{Psi},ϕ::RPsi) = Psi(ϕ,TPsi(0,0,0))

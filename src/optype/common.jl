@@ -114,7 +114,7 @@ end
 
 function ul(l::Int)::SparseMatrixCSC{Float64, Int}
    n = floor(Int, 0.5*(l-1))
-   if !iszero(n)
+   if !isone(n)
    out = spzeros(1:2n+1,1:2n+1)
    out[diagind(out)[1:n]] .= -√.5
    out[diagind(out)[n+2:end]] .= √.5

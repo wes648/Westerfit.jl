@@ -7,7 +7,7 @@
 ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages < 3)
 
 function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,UR::SparseMatrixCSC{Float64,Int},
-               check=false)::SparseMatrixCSC#{T,Int} where T <: Number
+               )::SparseMatrixCSC#{T,Int} where T <: Number
 #   out = enact_init(O,ψ.R,val) #potentially replace with just 0.5*val for improved readability
    #@show O.nam
    out = Diagonal(fill(0.5*val,ψ.R.lng))
@@ -27,7 +27,7 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,UR::SparseMatrixCSC{Float64,
          if stage_allow(wvs.ttp)
 #            println("hi!")
             tpart = sand(tpart, 
-               wvs.ttp.vecs[:,:,nσfinder(O.tf[i].q, ψ.T.σs[O.tf[i].q], ψ.T.nfs)] )
+               wvs.ttp.vecs[:,:, ψ.σ] )
          end #top-top if
       end #for i
       out = kron(tpart,out)
@@ -38,10 +38,7 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,val::Float64,UR::SparseMatrixCSC{Float64,
    end #tor if
    #if
    #end vib
-   droptol!(out,5eps())
-   if check
-      tplus!(out)
-   end #check if
+   droptol!(out,1e-11)
 #   tplus!(out)#val gets multiplied by 0.5 in advance of this
    return out
 end
@@ -51,7 +48,7 @@ function enact_1t(O::Op,ψ::TPsi,val::Float64)
    @inbounds for i ∈ eachindex(O.tf)
       out *= eval_top(O.tf[i], ψ)
    end
-   droptol!(out,2eps())
+   droptol!(out,1e-11)
 #   tplus!(out)
    return out
 end 
@@ -64,7 +61,7 @@ function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs,val::Float64)
       part = eval_top(O.tf[i], ψ, wvs.top) 
       out *= part
    end #for
-   droptol!(out,2eps())
+   droptol!(out,1e-11)
    #tplus!(out)
    return out
 end
@@ -160,16 +157,16 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,prms::Vector{Float64},ops,ψ,σid)
    offset = hccount + 4*length(ctrl.NFOLD)
    H = hrot2_hc(prms[1:4],ψ.R.N)
    if 0.0 < ψ.R.S < 1.0
-      hsr!(H,prms[5:8], ψ.R)
+      H += hsr(prms[5:8], ψ.R)
    elseif 1.0 ≤ ψ.R.S
-      hsr!(H,prms[5:8], ψ.R)
-      hqu!(H,prms[9:11], ψ.R)
+      H += hsr!(prms[5:8], ψ.R)
+      H += hqu!(prms[9:11], ψ.R)
    else
       #nothing
    end
    U = ur(ψ.R.J,ψ.R.S)
    H = sand(H, U)
-#   H += htsr2_hc(prms,wvs,ψ,σid)
+   H += htsr2_hc(prms[hccount:offset],wvs,ψ,σid)
    if !isnothing(wvs.ttp)
       H = kron(sparse(I(size(wvs.ttp.vals,1))), H )
       H[diagind(H)] .+= kron(wvs.ttp.vals[:,σid], fill(0.5,ψ.R.lng))
@@ -230,7 +227,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm_init,ops,jsσs::Matrix{Int})::Eigs
    for i ∈ 1:size(jsσs,1)
       σind = jsσs[i,2]
       j = 0.5*jsσs[i,1]
-      ψ = Psi( RPsi(j, ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σind],ctrl.mcalc) )
+      ψ = Psi( RPsi(j, ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σind],ctrl.mcalc), σind )
       wvs = stageproc0(ctrl,0,wvs,prm,ops,ψ,σind)
    end # σ loop
 #   sparsify!(wvs.rst.vecs)

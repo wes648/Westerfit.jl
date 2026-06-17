@@ -306,7 +306,7 @@ function np_op(qns,p::Int)::SparseMatrixCSC{Float64, Int64}
    elseif p > size(qns,1) && p ≠ 0
       out = spzeros(size(qns,1),size(qns,1))
       #out[diagind(out,-p)] = part
-   else
+   else # p = 0
       out = spdiagm(ones(size(qns,1)))
    end
    return out
@@ -395,19 +395,19 @@ function spm_op(j::Real,s::Real,qns::Array{Int,2},p::Int
          )::SparseMatrixCSC{Float64, Int64} 
    if p≠0
       return sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
-   else
+   else# p = 0
       return spdiagm(ones(size(qns,1)))
    end
 end
-function spm_op(out,j::Real,s::Real,qns::Array{Int,2},p::Int
-         )::SparseMatrixCSC{Float64, Int64} 
-   if p≠0
-      out *= sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
-      return out
-   else
-      return out
-   end
-end
+#function spm_op(out,j::Real,s::Real,qns::Array{Int,2},p::Int
+#         )::SparseMatrixCSC{Float64, Int64} 
+#   if p≠0
+#      out *= sp_op(j,s,qns,p) + sm_op(j,s,qns,p)
+#      return out
+#   else
+#      return out
+#   end
+#end
 
 function npsp(j::Real,s::Real,qns::Array{Int,2},e::Int,f::Int
    )::SparseMatrixCSC{Float64,Int64}
@@ -415,12 +415,12 @@ function npsp(j::Real,s::Real,qns::Array{Int,2},e::Int,f::Int
 #      return spdiagm(ones(size(qns,1)))
 # for some reason the ⟨K|ℋ|K⟩ matrix elements need an additional factor of 1/2
 # but the ⟨K'|ℋ|K⟩ elements don't...
-      return spdiagm(fill(2.0,size(qns,1)))
+      return spdiagm( fill( 1.0, size(qns,1) ) )
    elseif !iszero(e) &&  iszero(f)
       return tplus!(np_op(qns,e))
    elseif  iszero(e) && !iszero(f)
       return tplus!(sp_op(j,s,qns,f))
-   else
+   else # !iszero(e) && !iszero(f)
       return tplus!(np_op(qns,e)*sp_op(j,s,qns,f))
    end
 end
@@ -441,7 +441,7 @@ function sin_op(ms::Array{Int},p::Int)::SparseMatrixCSC{Float64, Int64}
    if p==0
       out = I(size(ms,1))
    else
-      out = fill(0.25, length(ms)-p)
+      out = fill(0.5, length(ms)-p)
       out = spdiagm(-p=>out, p=>out)
    end
    return out

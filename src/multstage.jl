@@ -59,7 +59,7 @@ end
 function twostg_op(prm::Float64,j::Real,s::Real,qns::Array{Int,2},ms::Array{Int},
                   a::Int,b::Int,c::Int,d::Int,e::Int,f::Int,g::Int,h::Int,
                   jp::Int,tvecs::Array{Float64,2})::SparseMatrixCSC{Float64, Int64}
-   out = 0.25*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
+   out = 0.5*prm*rsr_op(j,s,qns,a,b,c,d,e,f,jp)
    if (g≠0)||(h≠0)||(jp≠0)
       out = kron(tvecs' * tor_op(ms,g,h,jp) * tvecs,out)
    else

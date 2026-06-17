@@ -33,9 +33,10 @@ H_xy = ∑_n d² r_n / dxdy
 H(χ²) = -∑_n S_xyn W_n γ_n + J'WJ
 
 geodesic accel:
-solve J α = - [γ' S[:,:,n] γ]
-S[:,:,n] is 2nd deriv mat at state n
-so γ' S[:,:,n] γ is a number and [γ' S[:,:,n] γ] is a vector
+solve J α = -fvv
+fvv is a vector of v' (S[:,:,n]) v
+S[:,:,n] is 2nd deriv mat for transition n
+so v' S[:,:,n] v is a number and [v' S[:,:,n] v] is a vector
 δ = v + 0.5 α
 
 init δ = zeros(length(perm))
@@ -50,27 +51,38 @@ update S = d²E_i/dxdy - d²E_j/dxdy
 update H = -sum(x->S[:,:,x]*W[x,x]*γ[x],eachindex(γ)) + J'WJ
 update δ = (H + λ*Diagonal(H))⁻¹ Jᵀ W γ
 update β .+= δ .* scales[perm]
-
 """
 
 
+function mat_crunch(ψ,mat,q,wvs,puretor::Bool)::SparseMatrixCSC{Float64,Int}
+#this function doesn't work but would be very helpful
+   out = sparse(I,ψ.R.lng,ψ.R.lng)
+   if puretor
+      mat = sand(mat, wvs.ttp.vecs[:,:, ψ.σ] )
+      mat = torsetter() # <------------
+   end
+   out = kron(tpart,out)
+   elseif isnothing(wvs.ttp)
+      out = kron(I(ψ.T.l), out)
+   else # !isnothing(wvs.ttp.vals)
+      out = kron(I(size(wvs.ttp.vals,1)),out)
+   end #tor if
+   #if
+   #end vib
+   droptol!(out,1e-11)
+end
 
-#derivative can be calculated from :
-# enact(O::Op,ψ::Psi,wvs::Eigs, 1.0, UR, true)
-
-function sumder()
+function sumder(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eigs,
+                UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
    ind = rpid+1
-   if ind ≤ length(stg)+ HCLENGTH
-      check = stg[ind-HCLENGTH]
+   if ind ≤ length(ℋ) + HCLENGTH
+      check = ℋ[ind-HCLENGTH].stg
       while check < zero(check)
          pm = prm[ind]
-         out .+= enact(O[ind],ψ,wvs, prm[ind-HCLENGTH, UR, true)
-         #if sum(ms .% 3)≈0 && j==1.5
-         #   @show out
-         #end
+         out .+= enact(ℋ[ind],ψ,wvs, prm[ind-HCLENGTH, UR, true)
          ind += 1
-         if ind-HCLENGTH ≤ length(stg)
-            check = stg[ind-HCLENGTH]
+         if ind-HCLENGTH ≤ length(ℋ)
+            check = ℋ[ind-HCLENGTH].stg
          else
             check = 0
          end
@@ -78,22 +90,42 @@ function sumder()
    end
    return out
 end
-function derivmat(wvs)
-   if scl[rpid] < 0 #should this be ≤ 0 ???
+
+function derivmat(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eigs,
+                  UR::SparseMatrixCSC{Float64,Int})
+   if ℋ[rpid].scl < 0 #should this be ≤ 0 ???
    elseif rpid ≤ 4 #pure rot
-   elseif 5 ≤ rpid ≤ 9 #spin-rot
-   elseif 10 ≤ rpid ≤ 12 #qua
-   elseif rpid==13 # F
-   elseif rpid==16 # Vnf
-   elseif rpid==14 # ρzF
-   elseif rpid==15 # ρxF
-   elseif rpid==17 # ηz
-   elseif rpid==18 # ηx
+      temp = zeros(4)
+      temp[rpid] = 1.0
+      out = hrot2_hc(temp,ψ.R.N)
+      out = kron() # <------------
+   elseif 5 ≤ rpid ≤ 8 #spin-rot
+      temp = zeros(4)
+      temp[rpid-4] = 1.0
+      out = hsr(temp,ψ.R)
+      out = kron()  # <------------
+   elseif 9 ≤ rpid ≤ 11 #qua
+      temp = zeros(3)
+      temp[rpid-8] = 1.0
+      out = hqua(temp,ψ.R)
+      out = kron()  # <------------
+   elseif rpid ∈ hcount + 1 .+ 4*(0:XXX) # F
+      q = floor(Int, 0.25*(rpid - 1))
+      out = enact( Op(tf=OpFunc(Pt,2,q)), ψ,wvs,1.0, UR)
+   elseif rpid ∈ hcount + 2 .+ 4*(0:XXX) # ρz
+      q = floor(Int, 0.25*(rpid - 2))
+      out = htsr2_hc(pr,wvs,ψ,σid)
+   elseif rpid ∈ hcount + 3 .+ 4*(0:XXX) # ρx
+      q = floor(Int, 0.25*(rpid - 3))
+      out = htsr2_hc(pr,wvs,ψ,σid)
+   elseif rpid ∈ hcount + 4 .+ 4*(0:XXX) # Vn
+      q = floor(Int, 0.25*(rpid - 4))
+      htor2_hc([zeros(3); 1.0], ψ.T.tops[q])
    else #user def
       out = enact(O::Op,ψ::Psi,wvs::Eigs, 1.0, UR, true)
       out .= sumder()
    end
-   return out
+   return tplus!(out)
 end
 
 function anaderiv(...)
@@ -128,3 +160,13 @@ function der2_birss_elem(dx,dy,wvs,i)
    end
    return 2.0*out
 end
+
+
+
+"""
+Notes on an alternate cost function for robust fitting:
+pseudo-Huber loss function:
+L(x) = δ²( √(1 + ((k - f(x,y)+g(x,y))/δ)²) - 1)
+
+d/dx L(x) = (-df/dx + dg/dx)*(k - f + g)/ ( √(1 + ((k - f(x,y)+g(x,y))/δ)²) )
+"""

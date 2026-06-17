@@ -23,7 +23,7 @@
 end
 
 function inp_reader(molnam::String)
-   inp = TOML.tryparsefile("$molnam.inp")
+   inp = TOML.tryparsefile("$molnam.toml")
    if typeof(inp)==Base.TOML.ParserError
       @warn "Something is wrong with input TOML! Double check the file.
          Look at line $(inp.line) for a $(inp.type)"

@@ -80,12 +80,12 @@ function ns_el3(j,s,ns::UnitRange)::Vector{Float64}
 end
 
 ns_el(p,j,s,ns) = mapreduce(n->fill(0.5*p*(eh(j)-eh(s)-eh(n)), 2n+1), append!, ns)
-function hsr!(out::SparseMatrixCSC{Float64,Int},pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
+function hsr(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T0_0 T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
    nds = nindsgen(ψ.N)
-   #out = spzeros(ψ.lng,ψ.lng)
+   out = spzeros(ψ.lng,ψ.lng)
    sfact = √3*nred(S)*powneg1(J+S)
    for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
       nb = ψ.N[j]; nk = ψ.N[i]; Δ = nb - nk
@@ -96,12 +96,12 @@ function hsr!(out::SparseMatrixCSC{Float64,Int},pr::Array{Float64},ψ::RPsi)::Sp
          dest = diagind(blck,p)
          kl = (-nk:nk)[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         blck[dest] .+= srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
+         blck[dest] .= srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
       end#p loop
    end
    dropzeros!(out)
    out[diagind(out)] .+= ns_el(-√(1/3)*pr[1], J,S,ψ.N)
-   return nothing
+   return out
 end
 
 function qured(j,s,nb,nk)::Float64
@@ -115,10 +115,11 @@ function quelem(pr::Float64,nb::Int,nk::Int,
    #out .*= pr
    return map(x-> pr*wig3j(nb,2,nk,-x,q,x-q)*powneg1(x), kl)
 end
-function hqu!(out::SparseMatrixCSC{Float64,Int},pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
+function hqu(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    #pr = [T2_0 T2_1 T2_2]
    J = ψ.J
    S = ψ.S
+   out = spzeros(ψ.lng,ψ.lng)
    nds = nindsgen(ψ.N)
    sfact = 0.25*inv(wig3j(S,2,S, -S,0,S))*powneg1(J+S+1)
    for i ∈ 1:length(ψ.N), j ∈ i:min(i+2,length(ψ.N))
@@ -130,11 +131,11 @@ function hqu!(out::SparseMatrixCSC{Float64,Int},pr::Array{Float64},ψ::RPsi)::Sp
          dest = diagind(blck,p)
          kl = (-nk:nk)[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         blck[dest] .+= quelem(pr[1+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,q)
+         blck[dest] .= quelem(pr[1+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,q)
       end
    end
    dropzeros!(out)
-   return nothing #out
+   return out
 end
 
 function htor2_hc(pr::Vector{Float64},ψ::TPsi)::SparseMatrixCSC{Float64,Int}
@@ -166,10 +167,10 @@ function htsr2_hc(pr,wvs,ψ,σid)::SparseMatrixCSC{Float64,Int}
       end
    elseif length(ψ.T.nfs)>1 && isnothing(wvs.top)
       torpart = spzeros(ψ.T.l, ψ.T.l)
-      for i ∈ 1:length(ψ.Tnfs)
+      for i ∈ 1:length(ψ.T.nfs)
          torpart += torsetter!(ψ,i, Pt(ψ.top[i],1,0) )
       end
-   elseif length(ψ.Tnfs)>1
+   elseif length(ψ.T.nfs)>1
       torpart = Pt(ψ.top[1],1,0)
    else
       torpart = spzeros(1,1)

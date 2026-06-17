@@ -58,9 +58,9 @@ function enact_mu(O::Mu,ψb::Psi,σb::Int,ψk::Psi,σk::Int,wvs::Eigs)
          if stage_allow(wvs.ttp)
             # ⟨ ψ' | O_t | ψ ⟩
             tpart = 
-               wvs.ttp.vecs[:,:,nσfinder(O.tf[i].q, ψb.T.σs[O.tf[i].q], ψb.T.nfs)]' *
+               wvs.ttp.vecs[:,:, ψb.σ ]' *
                tpart *
-               wvs.ttp.vecs[:,:,nσfinder(O.tf[i].q, ψk.T.σs[O.tf[i].q], ψk.T.nfs)] 
+               wvs.ttp.vecs[:,:, ψk.σ ] 
          end #top-top if
       end #for i
       out = kron(tpart,out)
@@ -109,8 +109,8 @@ function μσbσk_stage(ctrl,Ops, kT,Q, ϕb,σb, ϕk,σk, wvs)
    ints = spzeros(size(wvs.rst.vals,1), size(wvs.rst.vals,1))
    jbjk = jbjklister(0.5*isodd(ctrl.S), ctrl.Jmax,mΔj, σb==σk)
    for i ∈ 1:size(jbjk,1)
-      ψb = Psi(RPsi(jbjk[i,1],ctrl.S), ϕb)
-      ψk = Psi(RPsi(jbjk[i,2],ctrl.S), ϕk)
+      ψb = Psi(RPsi(jbjk[i,1],ctrl.S), ϕb, σb)
+      ψk = Psi(RPsi(jbjk[i,2],ctrl.S), ϕk, σb)
       ints = μ_proc!(ctrl,ints,Ops,ψb,σb,ψk,σk,wvs)
    end
    outfs = zeros(Float64, nnz(ints),3)
