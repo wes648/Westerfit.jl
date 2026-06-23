@@ -6,7 +6,9 @@ The paper is available [here](https://doi.org/10.1016/j.jms.2024.111928) and the
 
 Please feel free to direct any questions about the program to westerfit@proton.me
 
-Currently the program breaks when doing simulations with no internal rotor. I'll try to fix this in the upcoming 2.0 version of westerfit
+Currently the program breaks when doing simulations with no internal rotor. --- I think this is fixed but let me know if it breaks
+
+My focus is on v2 so the documentation here may not be fully up to date. Please reach out with specific questions & I can update it accordingly 
 
 # Quickstart
 
