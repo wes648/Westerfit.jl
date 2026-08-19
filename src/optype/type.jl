@@ -1,11 +1,36 @@
 
-struct OpFunc{T <: Number, S<:AbPsi}
-   f::FunctionWrapper{SparseMatrixCSC{T,Int}, Tuple{S,Int,Int}} # function
+@kwdef mutable struct Controls
+   apology::Bool = true
+   RUNmode::String = "ESF"
+   stages::Int = 0
+   Irrep::String = "Ir"
+   assign::String = "ram36"
+   NFOLD::Vector{Int} = [0] # vector of symmetry folds of rotors
+   S::Float64 = 0.0 # float for spin value could maybe turn into int for 2s but eh
+   Jmax::Float64 = 0.0 # maximum J value
+   mcalc::Int = 10 # maximum |m| value for free rotor basis, basis size will be 2mmax+1
+   vtcalc::Int = 8 # maximum vt state output by second diag stage & to be used in third. basis size will be vtmax+1
+   vtmax::Int = 0 # maximum vt state output by final diagonalization stage. basis size will be vtmax+1
+   νrange::Vector{Float64} = [0.2; 40.0]
+   TK::Float64 = 8. # temperature in Kelvin to be used in simulation
+   INTthres::Float64 = 1e-6
+   ExactHess::Bool = true # exact hess or not
+   λlm0::Float64 = 0.001
+   turducken::Int = 1
+   maxiter::Int = 60
+   BOLD::Int = 0
+   REJECT::Float64 = 10.0
+   goal::Float64 = 1.0
+   overwrite::Bool = true 
+end
+
+struct OpFunc{S<:AbPsi}
+   f::FunctionWrapper{SparseMatrixCSC{NUMTYPE,Int}, Tuple{S,Int,Int}} # function
    l::Int # power / rank
    q::Int # top / component 
-   OpFunc(T::Type,S::Type,f::Function,l::Int,q=0) = new{T,S}(f,l,q)
+   OpFunc(S::Type,f::Function,l::Int,q=0) = new{S}(f,l,q)
    function OpFunc(f::Function,l::Int,q=0)
-      new{Float64, Tuple(first(methods(f)).sig.parameters[2:end])[1]}(f,l,q)
+      new{Tuple(first(methods(f)).sig.parameters[2:end])[1]}(f,l,q)
    end
 end
 struct MuFunc{T <: Number, S<:AbPsi}
@@ -69,12 +94,26 @@ function eval_tmu(ψb::TTPsi, O::MuFunc, ψk::TTPsi, tvs)#::SparseMatrixCSC{T,In
 end
 
 struct Op
-   nam::String #this is a name field, mostly for debugging
-   rf::Vector{OpFunc} # vec of rot ops
-   tf::Vector{OpFunc} # vec of tor ops
-   stg::Int # stage
-   Op(nam="E",rf=Vector{OpFunc}[],tf=Vector{OpFunc}[],stg=0) = new(nam,rf,tf,stg)
-   Op(O::Op) = new(O.nam,O.rf,O.tf,O.stg)
+   val::Float64
+   rf::Vector{OpFunc{RPsi}}
+   tf::Vector{OpFunc{TPsi}}
+   Op(val=0.0,rf=Vector{OpFunc{RPsi}}[],tf=Vector{OpFunc{TPsi}}[]) = new(val,rf,tf)
+   Op(val::Float64,rf::Vector{OpFunc{RPsi}},tf::Vector{OpFunc{TPsi}}) = new(val,rf,tf)
+   Op(val::Float64,rf::Vector{OpFunc{RPsi}},tf::OpFunc{TPsi}) = new(val,rf,[tf])
+   Op(val::Float64,rf::OpFunc{RPsi},tf::Vector{OpFunc{TPsi}}) = new(val,[rf],tf)
+   Op(val::Float64,rf::OpFunc{RPsi},tf::OpFunc{TPsi}) = new(val,[rf],[tf])
+   Op(O::Op) = new(O.val, O.rf, O.tf)
+end
+mutable struct Term
+   const nam::String
+   val::Float64
+   const ops::Vector{Op}
+   const scl::Float64
+   const stg::Int
+   const l::Int
+   Term(nam::String,val::Float64,ops::Op,scl::Float64,stg::Int) = new(nam,val,[ops],scl,stg,1)
+   Term(nam="E",val=0.0,ops=[Op()],scl=0.0,stg=0) = new(nam,val,ops,scl,stg,length(ops))
+   Term(T::Term) = new(T.nam,T.ops,T.scl,T.stg,T.l)
 end
 struct Mu
    nam::String

@@ -4,20 +4,12 @@ eh(x::Real)::Float64 = x*(x+1)
 fh(x::Real,y::Real)::Float64 = □rt((x-y)*(x+y+1))
 fhv(x::Float64,y::Int)::Float64 = □rt(x - eh(y))
 
-function nz(ns::UnitRange{Int},p::Int)::Vector{Float64}
-   mapreduce(x->(-x:x).^p, append!, ns)
-end
-
-function n2(ns::UnitRange{Int},p::Int)::Vector{Float64}
-   mapreduce(x->fill(eh(x)^p, 2x+1), append!, ns)
-end
-
 function N2(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
-	return spdiagm(n2(ψ.N,p))
+	return spdiagm(mapreduce(x->fill(eh(x)^p, 2x+1), append!, ψ.N))
 end
 
 function Nz(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
-	return spdiagm(nz(ψ.N,p))
+	return spdiagm(mapreduce(x->(-x:x).^p, append!, ψ.N))
 end
 
 function Np(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int64}
@@ -38,8 +30,14 @@ function Npm(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 	return tplus!(Np(ψ,p))
 end
 
+Nx(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5.*Np(ψ,1))^p
+function Ny2(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
+   out = 0.5 .* (N2(ψ,1,0) - Nz(ψ,2,0))
+   out -= 0.25 .* Npm(ψ,2,0)
+   return out^p
+end
 
-function s2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
+function S2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
    return spdiagm( fill(eh(ψ.S)^p,ψ.lng) )
 end
 
@@ -68,7 +66,6 @@ function Sz(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    end
    return dropzeros!(out^p)
 end
-#sq(ψ::Psi,p::Int)::SparseMatrixCSC{Float64,Int} = sq_op(ψ.J,ψ.S,ψ.N,ψ.K,ψ.lng,p)
 
 function Sq(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    J = ψ.J
@@ -89,7 +86,6 @@ function Sq(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-
 Sp(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*Sq(ψ,p,0)
 Sm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = p*Sq(ψ,-p,0)
 Spm(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = tplus!(p*Sq(ψ,p,0))
@@ -102,7 +98,6 @@ function Sx(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    out ^= p
    return out
 end
-
 
 function Pt(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    if iszero(ψ.σ)
@@ -165,3 +160,9 @@ sinα(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,
 sinβ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,2)
 sinγ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sin_tor(ψ,p,3)
 
+# https://doi.org/10.1103/PhysRevA.80.042513
+# hirota 2.5.34
+# edmonds 3.7.8
+function Tμ(ψb,ψk,l,q)
+
+end

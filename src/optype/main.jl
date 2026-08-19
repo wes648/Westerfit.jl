@@ -15,16 +15,19 @@ using TOML
 else
    using WIGXJPFjl
 end
+
+const NUMTYPE = Float64
+
 #using JET
 #using BenchmarkTools
 #using ProfileView
-include("@__DIR__/../file_in.jl")
 include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
+include("@__DIR__/../file_in.jl")
 include("@__DIR__/../common.jl")
 #include("@__DIR__/../derivatives.jl")
 include("@__DIR__/../file_out.jl")
-include("@__DIR__/../hc_ham.jl")
+#include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
@@ -35,13 +38,15 @@ include("@__DIR__/../transitions.jl")
 include("@__DIR__/../baseops.jl")
 include("@__DIR__/../dipoles.jl")
 
-#const csl::Float64 = 29979.2458
 const csl::Float64 = (c_0 * 1e-4).val # MHz / cm⁻¹
 const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
-#csl = 29979.2458
-const hccount::Int = 11
+
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 @show Threads.nthreads()
+
+if NUMTYPE <: Complex
+   @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
+end
 
 function westereng(molnam, ctrl,prm,ℋ)::Eigs 
    wvs = Eigs(ctrl)
@@ -65,7 +70,8 @@ end
 
 function westermain()
    molnam = "test"
-   @time ctrl, ℋ, prms, scls, μs = inp_reader(molnam)
+   @time ctrl, ℋ, μs = inp_reader(molnam)
+   prms = zeros(length(ℋ))
    @time wvs = westereng(molnam, ctrl,prms, ℋ)
    @time westersim(molnam, ctrl, μs, wvs)
    return wvs

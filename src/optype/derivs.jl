@@ -140,37 +140,44 @@ function derivop(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eig
    end
    return tplus!(out)
 end
+function derivop_0(T::Term, ψ::Psi, wvs::Eigs,
+                 UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{NUMTYPE,Int}
+   out = enact(T.ops[1], ψ,wvs, UR)
+   @inbounds for i ∈ 2:T.l
+      out += enact(T.ops[i], ψ,wvs, UR)
+   end
+   return droptol!( tplus!(out), 1e-11)
+end
 
-function anaderiv(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eigs,
+
+function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
                   UR::SparseMatrixCSC{Float64,Int}, jinds::UnitRange{Int})
-   mat = derivop(rpid,prm, ℋ,ψ,wvs, UR)
+   mat = derivop_0(T, ψ,wvs, UR)
    out = sand(mat, wvs.rst.vecs[1:ψ.l,jinds,ψ.σ] )
    return droptol(sparse(out), 1e-10)
 end
 
-function jacob_term(perm, prm, ℋ,ψ,wvs, UR) # <----------
+function jacob_term(perm::Vector{Int}, ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)
    jinds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
    ders = zeros(ψ.l,ψ.l,length(perm))
    for i ∈ 1:length(perm)
-      ders[:,:,i] = anaderiv(perm[i]Sp, prm, ℋ,ψ,wvs, UR, jinds)
+      ders[:,:,i] = anaderiv(ℋ[perm[i]], ψ,wvs, UR, jinds)
    end
    return ders
 end
 
 function dEcalc(ctrl,prm,ℋ,wvs, perm, jσlist)
    σs = σgen(ctrl.NFOLD)
-   X = dgen(ctrl.jmax)*dgen(ctrl.S)*(ctrl.vtmax+1)
-   #out = zeros(X, size(wvs.rst.vals,1) ,length(perm),size(σs,2))
-   J_eng = zeros( size(wvs.rst.vals,1), length(perm) )
-   H_eng = zeros( length(perm), length(perm), size(wvs.rst.vals,1) ) 
+   J_eng = zeros( size(wvs.rst.vals,1), size(σs,2) length(perm) )
+   H_eng = zeros( length(perm), length(perm), size(wvs.rst.vals,1), size(σs,2) ) 
    for i ∈ 1:size(jσlist,1)
       j,σ = jσlist[i,:]
       ψ = Psi( RPsi(j,ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σ],ctrl.mcalc), σ )
-      UR = ???? # <------
-      inds = ???? # <------
+      UR = ur(ψ.R.J, ψ.R.S)
+      inds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
       temp = jacob_term(perm, prm, ℋ,ψ,wvs, UR)
-      J_eng[inds, :] = diag(temp)
-      H_eng[:,:,inds] = der2_block()
+      J_eng[inds,σ+1, :] = diag(temp)
+      H_eng[:,:,inds,σ+1] = der2_block(temp,wvs,inds)
    end
    return J_eng, H_eng
 end
@@ -200,15 +207,17 @@ function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds, perm)
    # γ = W * (ofreq .- cfreq)
    #Jf = zeros(size(linds,1), length(perm) )
    #Hf = zeros(length(perm), length(perm) )
-   Jf .= (Je[linds[:,1],:] .- Je[linds[:,2],:]) .* W  # <------------------
+   σlinds = ???? # <-------
+   Jf[σlinds,:] .= (Je[linds[:,1],:] .- Je[linds[:,2],:]) .* W[σlinds]
    S = He[:,:,linds[:,1]] .- He[:,:,linds[:,2]]
    Hf .= -sum(x->S[:,:,x] * W[x] * γ[x], eachindex(γ)) + Jf' * Jf
    return Jf, Hf
 end
 
-function jac_hess_calc()
-   J_eng, H_eng = dEcalc()
-   J_frq, H_frq = dE2dfconv()
+function jac_hess_calc(Jf,Hf, ctrl,prm,ℋ, wvs, perm,linds,jσlst, W,γ)
+   J_eng, H_eng = dEcalc(ctrl,prm,ℋ,wvs, perm, jσlst)
+   J_frq, H_frq = dE2dfconv(Jf,Hf, Je,He, W,γ, linds, perm)
+   return J_frq, H_frq
 end
 
 

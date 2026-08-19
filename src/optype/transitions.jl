@@ -1,3 +1,4 @@
+
 function qtot_calc(jmax::Float64,s::Float64,nfold::Vector{Int},TK::Float64,wvs::Eigs)::Float64
    jdlist = mapreduce(x->fill(x+1,Int(x)+1), append!, jlister(jmax,s))
    out = exp.(-wvs.rst.vals .* (kb*TK*csl)^-1 ) .* jdlist
