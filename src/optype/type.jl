@@ -15,6 +15,7 @@
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 1e-6
    ExactHess::Bool = true # exact hess or not
+   Δlm0::Float64 = 1.0
    λlm0::Float64 = 0.001
    turducken::Int = 1
    maxiter::Int = 60
@@ -191,26 +192,18 @@ mutable struct Eigs
    end # function
 end # struct
 
-"""
-This function initiates the sparse zeros matrix for the new stage.
-   Unfortunately it is hard coded.
-"""
-function stage_size(stage,stages,wvs)::Int
-   println("stage is $stage")
-   if stage==0# && stages ≥ 1
-      return size(wvs.rst.vals,1)
-   elseif (stage==2 && stages > 2) || (stage==1 && stages==2)
-      return size(wvs.ttp.vals,1)
-   elseif stage==1 && stages==3
-      return size(wvs.top.vals,1)
-   else
-      @warn "stage = $stage is not defined. Going to crash soon."
-
-   end
+struct Lines
+   inds::Matrix{Int}
+   frqs::Vector{Float64}
+   wght::Vector{Float64}
+   Lines(inds,frqs,wght) = new(inds,frqs,wght)
 end
-"""
-Determines if previous stages are needed based on if the wavefunction matrix
-   both exists (set by the stage keyword) and is nonzero (defined from said previous stage)
-"""
-stage_allow(x)::Bool = !isnothing(x) && !iszero(x.vecs)
+
+
+
+
+
+
+
+
 

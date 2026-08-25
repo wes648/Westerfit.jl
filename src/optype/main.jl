@@ -35,8 +35,8 @@ include("@__DIR__/../transitions.jl")
 #include("@__DIR__/../opt-com.jl")
 #include("@__DIR__/../optimizer.jl")
 
-include("@__DIR__/../baseops.jl")
-include("@__DIR__/../dipoles.jl")
+include("@__DIR__/../ops/baseops.jl")
+include("@__DIR__/../ops/dipoles.jl")
 
 const csl::Float64 = (c_0 * 1e-4).val # MHz / cm⁻¹
 const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
@@ -48,10 +48,10 @@ if NUMTYPE <: Complex
    @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
 end
 
-function westereng(molnam, ctrl,prm,ℋ)::Eigs 
+function westereng(molnam, ctrl,ℋ)::Eigs 
    wvs = Eigs(ctrl)
    jsσs = jσlister_full(ctrl.S,ctrl.Jmax, σcount(ctrl.NFOLD))
-   H_calc(ctrl,wvs,prm,ℋ,jsσs)
+   H_calc(ctrl,wvs,ℋ,jsσs)
    if occursin("E",ctrl.RUNmode)
       engwriter(molnam, ctrl.Jmax, ctrl.S, ctrl.vtmax, wvs.rst.vals)
       println("yay! energy levels writen to $molnam.eng")
@@ -61,11 +61,13 @@ end
 
 function westersim(molnam, ctrl, μs, wvs)
    σs = σcount(ctrl.NFOLD)
-   #jlst = jbjk
    frqs, inds = tracalc(ctrl,μs,wvs)
-#   @show size(wvs.rst.vals)
-#   @show inds
    writefreqs(molnam,ctrl,frqs,inds)
+   return inds, frqs
+end
+function westerfit(molnam::String, ctrl::Controls, ℋ::Vector{Op})
+   lines = linereader(ctrl, molnam)
+   ℋ, wvs, endp = opt_calc(molnam, ctrl, ℋ, lins)
 end
 
 function westermain()
@@ -73,7 +75,7 @@ function westermain()
    @time ctrl, ℋ, μs = inp_reader(molnam)
    prms = zeros(length(ℋ))
    @time wvs = westereng(molnam, ctrl,prms, ℋ)
-   @time westersim(molnam, ctrl, μs, wvs)
+   #@time westersim(molnam, ctrl, μs, wvs)
    return wvs
 end
 

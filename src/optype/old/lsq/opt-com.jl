@@ -1,6 +1,4 @@
 
-angle(a::Vector,b::Vector)::Float64 = dot(a,b) / (norm(a)*norm(b))
-
 function λgen(μ::Float64,er::Float64)::Float64
    ρ = 0.5
    er /= 1000.0 #convert err to GHz
@@ -8,8 +6,30 @@ function λgen(μ::Float64,er::Float64)::Float64
    λ += (1.0 - ρ)*μ*er/(1+er) #λARC
    return λ
 end
+function lbmq_gain(β,λ::Float64,jtw,h,omc,nomc)::Float64
+   out = 2β' * (λ*Diagonal(h)*β - jtw*omc)
+   if out < 0
+      printstyled("fucking gain function\n",color=:light_cyan)
+   end
+#   out = 2.0*(sum(abs2, omc .- nomc)) / out#abs(out)
+   out = 2.0*(sum(abs2, omc) - sum(abs2, nomc)) / out#abs(out)
+   return out
+end
+function lbmq_gain2(β,J,omc,nomc)::Float64
+   pred = sum(abs2, J*β + omc)
+   actu = sum(abs2,nomc)
+   curr = sum(abs2,omc)
+   #@show curr - pred > 0.0 
+   if curr - pred < 0.0
+      @warn "fucking gain function"
+   end
+#   @show curr - actu > 0.0 
+   out = (curr - actu) / (curr - pred)
+   return out
+end
 
-function jlister(inds::Matrix{Int})::Matrix{Int}
+
+function jlister(inds)
    #finds all the unique J & σ pairs
    js = vcat(inds[:,1],inds[:,4])
    σs = vcat(inds[:,2],inds[:,5])
@@ -26,15 +46,43 @@ function jlister(inds::Matrix{Int})::Matrix{Int}
    return jsσs
 end
 
-function χ2calc(wvs::Eigs,lins::Lines)::Float64
-   cfreqs = zero(lins.frqs)
+function rmscalc(vals,inds,ofreqs)
+   cfreqs = zero(ofreqs)
    Threads.@threads for i in 1:size(cfreqs,1)
-      cfreqs[i] = wvs.rst.vals[lins.inds[i,2],lins.inds[i,3]] - 
-                        wvs.rst.vals[lins.inds[i,5],lins.inds[i,6]]
+      cfreqs[i] = vals[inds[i,3],inds[i,2]] - vals[inds[i,6],inds[i,5]]
    end
-   omc = lins.frqs - cfreqs
-   χ2 = sum(abs2, omc' * Diagonal(lins.wght) * omc) 
-   return χ2, omc, cfreqs
+   #println(cfreqs)
+   omc = ofreqs - cfreqs
+   rms = BLAS.nrm2(omc)/√(length(omc) - length(perm))
+   #rms = norm(omc)/length(omc)
+   return rms, omc, cfreqs
+end
+function rmscalc(cfreqs,ofreqs,perm)
+   omc = ofreqs - cfreqs
+   rms = BLAS.nrm2(omc)/√(length(omc) - length(perm))
+   return rms, omc
+end
+function wrmscalc(cfreqs,ofreqs,W,perm)
+   omc = ofreqs - cfreqs
+   wrms = sum(abs2, omc' *W* omc) / √(length(omc) - length(perm))
+   return wrms, omc
+end
+
+function hstab(hssn,params)
+   for i in 1:length(params)
+      check = abs(hssn[i,i] / params[i])
+      if check < 1e-12
+         temp = abs(params[i])
+         hssn[:,i] .*= temp
+         hssn[i,:] .*= temp
+      end
+   end
+end
+
+function tsrapprox(j,β,stg)::Vector{Float64}
+   out = zeros(size(j))
+   out = j* β[collect(1:length(β))[(vcat(ones(18),stg) .> 0)]]
+   return out#vec(sum(j,dims=2))
 end
 
 function paramunc(H,W,perm,omc)
@@ -66,11 +114,12 @@ function covarr2(hess,omc)
    return σ2 .* inv(hess)
 end
 
-function fincheck(ctrl,βf,λlm,check,counter,prms,grad)
-   ϵ0 = 0.1E-8 #rms change threshold
-   ϵ1 = 0.1E-6 #step size threshold
-   ϵ2 = 0.1E-3 #gradient threshold
-   if (wrms ≤ ctrl.goal)#&&(counter > 1)
+function permdeterm(scls,stgs)
+   out = collect(1:length(scls))[(scls .> 0) .* (stgs .≥ 0)]
+end
+
+function fincheck!(conv,endp,rms,βf,λlm,goal,check,ϵ0,ϵ1,ϵ2,counter,LIMIT,prms,grad)
+   if (rms ≤ goal)#&&(counter > 1)
       println("A miracle has come to pass. The fit has converged")
       endp = "converge"
       conv = true
@@ -96,7 +145,7 @@ function fincheck(ctrl,βf,λlm,check,counter,prms,grad)
       println("Gradient is now quite small! This should be good")
       endp = "grad"
       conv = true
-   elseif counter ≥ ctrl.maxiter
+   elseif counter ≥ LIMIT
       println("Alas, the iteration count has exceeded the limit")
       endp = "iter"
       conv = true

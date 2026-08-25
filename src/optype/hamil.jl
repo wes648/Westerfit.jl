@@ -6,9 +6,9 @@
 #tstage_check(ostg,stage,stages)::Bool = (ostg==stage) || ( 1  ≥ 1   &&   3  > 1)
 ttstage_check(ostg,stage,stages)::Bool = (ostg==stage) || (ostg≥stage&&stages < 3)
 
-function enact(O::Op,ψ::Psi,wvs::Eigs,UR::SparseMatrixCSC{Float64,Int}
+function enact(val::Float64,O::Op,ψ::Psi,wvs::Eigs,UR::SparseMatrixCSC{Float64,Int}
                )::SparseMatrixCSC{NUMTYPE,Int}
-   out = Diagonal(fill(0.5*O.val,ψ.R.lng))
+   out = Diagonal(fill(0.5*O.val*val,ψ.R.lng))
    @inbounds for i ∈ eachindex(O.rf)
       out *= eval_rop(O.rf[i],ψ.R)
    end
@@ -42,11 +42,11 @@ function enact(O::Op,ψ::Psi,wvs::Eigs,UR::SparseMatrixCSC{Float64,Int}
 end
 function enact_0(T::Term, ψ::Psi, wvs::Eigs,
                  UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{NUMTYPE,Int}
-   out = enact(T.ops[1], ψ,wvs, UR)
+   out = enact(T.val, T.ops[1], ψ,wvs, UR)
    @inbounds for i ∈ 2:T.l
-      out += enact(T.ops[i], ψ,wvs, UR)
+      out += enact(T.val, T.ops[i], ψ,wvs, UR)
    end
-   return droptol!(T.val .*out, 1e-11)
+   return droptol!(out, 1e-11)
 end
 
 function enact_1t(O::Op,ψ::TPsi)::SparseMatrixCSC{NUMTYPE,Int}

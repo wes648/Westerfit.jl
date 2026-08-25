@@ -7,11 +7,8 @@ function inp_reader(molnam::String)
       exit()
    end
    ctrl = controls_in(inp["controls"])
-   #prms, scls, stgs 
-#   secpart = secorder_in(inp["second_order"],length(ctrl.NFOLD))
-   H = ops_in(inp["user_def"])
+   H = ops_in(inp["hamiltonian"])
    μs = mus_in(inp["intensity"])
-#   return ctrl, H, vcat(secpart[1], prms), vcat(secpart[2], scls), μs
    return ctrl, H, μs
 end
 
@@ -36,10 +33,10 @@ function ctrl_sanity(ctrl::Controls)::Controls
    end
    if isodd(2*ctrl.S)&&iseven(2*ctrl.Jmax)
       println("Jmax must be half integer for half interger S. Adding 1/2")
-      setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
+      setproperty!(ctrl, :Jmax, ctrl.Jmax + 0.5)
    elseif iseven(2*ctrl.S)&&isodd(2*ctrl.Jmax)
       println("Jmax must be integer for interger S. Adding 1/2")
-      setproperty!(ctrl, Jmax, ctrl.Jmax + 0.5)
+      setproperty!(ctrl, :Jmax, ctrl.Jmax + 0.5)
    end
    if isone(ctrl.stages) && length(ctrl.NFOLD) > 1
       @warn "Single stage diagonalization is not implemented for multiple tops.
@@ -47,6 +44,11 @@ function ctrl_sanity(ctrl::Controls)::Controls
       One day I may try to implement this but I don't presently want to.
       This code will now terminate. Sorry"
       exit()
+   end
+   if ctrl.stages==3 && isone(length(ctrl.NFOLD))
+      @info "3 stage diagonalization is not compatible with 1 top mode.
+      decreasing to 2 stages"
+      setproperty!(ctrl, :stages, 2)
    end
    return ctrl
 end
@@ -57,44 +59,6 @@ function controls_in(inp::Dict{String,Any})::Controls
    end
    return ctrl_sanity(ctrl)
 end
-
-#function secordinit_lim(topcount=0)::Dict{String,Int}
-#   prd = Dict{String,Int}("A" => 1, "B" => 2, "C" => 3, "Dab" => 4,
-#                          "Z" => 1, "X" => 2, "Y" => 3, "Dxz" => 4, 
-#      "ϵzz" => 5, "ϵxx" => 6, "ϵyy" => 7, "ϵzx" => 8, "ϵxz" => 8,
-#      "Czz" => 5, "Cxx" => 6, "Cyy" => 7, "Czx" => 8, "Cxz" => 8,
-#      "χzz" => 9, "χxz" =>10, "χxmy"=>11, "χxx-χyy"=>11,
-#        "α" => 9,   "δ" =>10,    "β"=>11)#,
-#   if topcount ≥ 1
-#      prd["F"]  = hccount + 1
-#      prd["ρz"] = hccount + 2
-#      prd["ρx"] = hccount + 3
-#      prd["Vn"] = hccount + 4
-#      prd["V3"] = hccount + 4
-#   end
-#   for i ∈ 1:topcount
-#      prd["F_$i"]  = hccount + 1 + 4(i-1)
-#      prd["ρz_$i"] = hccount + 2 + 4(i-1)
-#      prd["ρx_$i"] = hccount + 3 + 4(i-1)
-#      prd["Vn_$i"] = hccount + 4 + 4(i-1)
-#      prd["V3_$i"] = hccount + 4 + 4(i-1)
-#   end
-#   return prd
-#end
-#function secnam_init()::Vector{String}
-#   return ["AZ"; "BX"; "CY"; "Dab"; "ϵzz"; "ϵxx"; "ϵyy"; "ϵzx"; "χzz"; "χxx-χyy"; "χxz"]
-#end
-#function secorder_in(inp::Dict{String,Any},topcount=0)::Tuple{Vector{Float64}, Vector{Float64}, Vector{Int}}
-#   params = zeros(hccount + 4*topcount)
-#   scales = zeros(hccount + 4*topcount)
-#   stages = zeros(Int, hccount + 4*topcount)
-#   sodict = secordinit_lim(topcount)
-#   for i ∈ eachindex(inp)
-#      ind = sodict[i]
-#      params[ind], scales[ind], stages[ind] = inp[i] 
-#   end
-#   return params, scales, stages
-#end
 
 function unit_dict()::Dict{String,Function}
    return Dict{String,Function}("MHz"=>x->x,
@@ -127,7 +91,6 @@ function opfn_parse(x::String)
    return fn,q
 end
 opfn_parse(x::SubString{String}) = opfn_parse(string(x))
-#function opfn_proc(x,rf::Vector{OpFunc},tf::Vector{OpFunc})
 function opfn_proc(x,rf,tf)#::Tuple(Vector{OpFunc},Vector{OpFunc})
    fn,q = opfn_parse(x)
    if methods(fn)[1].sig.parameters[2]==RPsi
@@ -150,8 +113,6 @@ function opfn_proc(x,rf,tf)#::Tuple(Vector{OpFunc},Vector{OpFunc})
    return rf, tf
 end
 function op_parse(fstr::String,v::Float64)::Op
-#   rf=Vector{OpFunc{Float64,RPsi}}[]
-#   tf=Vector{OpFunc{Float64,TPsi}}[]
    rf = Union{}[]
    tf = Union{}[]
    xs = split(fstr, ' ')
@@ -251,3 +212,25 @@ function mus_in(inp::Dict{String,Any})
    end
    return μs
 end
+
+function lin_proc(ctrl,lns)::Matrix{Int}
+   out = zeros(Int,size(lns,1),6)
+   #set J & σ
+   out[:,1] .= Int.(2 * lns[:,1])
+   out[:,2] .= Int.(lns[:,6])
+   out[:,4] .= Int.(2 * lns[:,7])
+   out[:,6] .= Int.(lns[:,12])
+   out[:,3] .= qn2ind(ctrl, lns[:,1:6])
+   out[:,5] .= qn2ind(ctrl, lns[:,7:12])
+   return out
+end
+function linereader(ctrl::Controls,molnam::String)::Lines
+# 1J,2N,3Ka,4Kc,5vt,6σ,7J,8N,9Ka,10Kc,11vt,12σ, 13ν,14δ
+   file = readdlm("$molnam.lne", ',')
+# 1dj,2i,3σ, 4dj,5i,6σ
+   qns = lin_proc(file[:,1:12])
+   frqs = file[:,13]
+   wght = 1 ./ file[:,14]
+   return Lines(qns,frqs,wghts)
+end
+

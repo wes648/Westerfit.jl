@@ -30,9 +30,7 @@ The order of these blocks does not matter.
 The sections will be summarized here and described in detail below.
 The first \[info\] is written by the program and contains the molecule name (molnam), time of last run, and other information.
 The \[controls\] section handles run behavior for the program as well as defining certain global paramters like S and N_fold.
-The \[second_order\] block contains the information for the hard coded Hamiltonian.
-Since these parameters are very commonly called, they are written with especially optimized routines.
-The \[user_def\] section defines additional Hamiltonian operators including distortion terms.
+The \[hamiltonian\] section defines the Hamiltonian operators from the second order through whatever you need.
 Lastly, the \[intensities\] section defines the dipole operators.
 
 ### Control Settings
@@ -107,7 +105,7 @@ Lastly, **eeo** does the expection values of $m$ and $N$ followed by eigenvector
 This does the best job of reproducing SPFIT's DIAG=3. Generally **expect** is recommended but **RAM36** works very nicely for single perturbations (spin or torsion). 
 I'm personally fond of the theory in **eeo** but find its performance lacking. -->
 
-### Second Order Parameters
+<!-- ### Second Order Parameters
 The second order Hamiltonian of westerfit is hardcoded. 
 All the parameters default to zero and there are some internal transformations that occur upon initializing the code.
 Each line must be in the structure of: <br>
@@ -153,17 +151,30 @@ The table below shows how the scale values in the 2nd order section are actually
 | C  | B± $(N_+^2 + N_-^2)$ | ϵyy | T²₂(ϵ) $T^2_{\pm2}(N,S)$ |
 | ρz | rz $P_{\alpha}N_z$   | ϵzx | T²₁(ϵ) $T^2_{\pm1}(N,S)$ |
 | ρx | rx $P_{\alpha}N_x$   | ϵxz | T¹₁(ϵ) $T^1_{\pm1}(N,S)$ |
+-->
 
-### Higher order operators
+### Hamiltonian
 These are manual coded in operators that are implemented as the anti-commutator of what the user codes in.
 Each line must be in the structure of: <br>
-N = [op, val, scale, stage] <br>
+N = [op, val, unit, scale, stage] <br>
 where N is the name of the parameter,<br>
-op is a string defining the operator,<br>
+op is a String defining the operator,<br>
 val is a Float64 for the parameter value,<br>
-scale is a Float64 for multiplying the step size by (0.0 for frozen),<br>
-and lastly stage is an integer.
- 
+unit is a String to allow for non-MHz unit parameters,<br>
+scale is a Float64 for multiplying the derivatives by altering the influence on the steps (0.0 for frozen),<br>
+and lastly stage is an Integer for which diagonalization stage this operator goes into.
+
+Summed operators can be handled in one of two constructions: <br>
+N = [[op1, op2, op3], [val1, val2, val3], unit, scale, stage] <br>
+or <br>
+N = [[op1, val1, unit, scale, stage], <br>
+     [op2, val2, unit2, scale2, stage2], <br>
+     [op3, val3, unit3, scale3, stage3] ]<br>
+These will be equivalent and added to the Hamiltonian as: <br>
+val1\*op1 + val1\*val2\*op2 + val1\*val3*op3 <br>
+Thus val2,val3,... are scale factors for the subsequent operators relative to the first operator.
+In the second construction, the later sets of units, scales, and stages are not read by the program.
+Julia prefers the first construction but Sophie prefers the second.
 
 The stages are defined as:<br>
 2 for one-top terms<br>
@@ -189,6 +200,9 @@ You can add your own operators by editing the baseops.jl file.
 The operator functions must take the arguments of ψ<:Psi, p :: Int, and q::Int and must return a Sparse Matrix.
 Use RPsi for the wavefunction type for rotational operators and TPsi for torsional.
 VPsi will be added later to support vibrational operators.
+
+The available units are: MHz, kHz, Hz, mHz, GHz, THz, cm-1, eV, Hart, nm, and μm.
+Additional options are arb and "" which apply no changes and z which turns the operator into zero.
 
 ### Intensity
 The intensity section is used to define the molecular electric n-pole operators and their Fourier expansions with respect to a torsional coordinate.
@@ -221,7 +235,7 @@ These installation instructions are to the best of our knowledge, but both devel
 There are two possible ways to install westerfit on Windows. The first one is running it natively in Windows, and the second is using the Windows Subsystem for Linux. The latter version is more robust, but the first one is likely easier.
 
 #### Natively in Windows
-1. Install [Julia](https://apps.microsoft.com/detail/9njnww8pvkmn?ocid=webpdpshare).
+1. Install [JuliaLang](https://julialang.org/downloads/).
 2. Open Julia. Press `]` to enter package mode. Enter `update` and then `add Westerfit`. The download may take some time.
 3. Before using westerfit, you will need to create an input file, "molnam.inp", and a line list, "molnam.lne". The "molnam" string should be a helpful file name. Make sure these are in the same directory as each other. 
 4. To use Westerfit, open your Command Line. Navigate to the directory your input "molnam.inp" is in. Enter `julia`. You should see the Julia startup.
@@ -244,7 +258,7 @@ Useful Windows Notes:
 
 ### LINUX
 
-1. Install [Julia](https://julialang.org/). It is recommended that you do so through [juliaup](https://github.com/JuliaLang/juliaup).
+1. Install [JuliaLang](https://julialang.org/). It is recommended that you do so through [juliaup](https://github.com/JuliaLang/juliaup).
 2. Run the command `julia` to enter a REPL session. Enter `]` to enter package mode. Enter `add Westerfit`.
 3. Navigate to a directory in your PATH and create a file named `westerfit` containing the 3 lines below with X replaced by the number of threads you want to run on (more is better, you can also just remove the -tX altogether). You can use `which julia` to determine your exact path to Julia.
 ```

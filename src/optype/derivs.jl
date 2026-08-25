@@ -53,102 +53,16 @@ update δ = (H + λ*Diagonal(H))⁻¹ Jᵀ W γ
 update β .+= δ .* scales[perm]
 """
 
+nfit_count(H::Vector{Term})::Int = length( findall(!zero, ℋ[:].scl ))
 
-function mat_crunch(ψ,mat,q,wvs,puretor::Bool)::SparseMatrixCSC{Float64,Int}
-   out = sparse(I,ψ.R.lng,ψ.R.lng)
-   if puretor
-      if isone(length(ψ.nfs)) # cases 0,1,2
-         #nothing
-      elseif length(ψ.nfs)>1 && isnothing(wvs.top.vecs) # cases 3,4,5
-         mat = torsetter!(ψ,O.q,mat)
-      elseif length(ψ.nfs)>1 && !isnothing(wvs.top.vecs) && iszero(wvs.top.vecs[O.q].vecs)
-         #nothing
-      elseif length(ψ.nfs)>1 && !isnothing(wvs.top.vecs) && !iszero(wvs.top.vecs[O.q].vecs)
-         mat = sand(mat,tvs[O.q].vecs[:,:, σ2ind(ψ.σs[O.q], O.q, ψ.nfs[O.q])]) #
-         mat = torsetter!(ψ,O.q,mat)
-      else
-         @warn "unexpected condition in evalulation of tor op"
-      end
-   end # puretor
-   out = kron(mat,out)
-   elseif isnothing(wvs.ttp)
-      out = kron(I(ψ.T.l), out)
-   else # !isnothing(wvs.ttp.vals)
-      out = kron(I(size(wvs.ttp.vals,1)),out)
-   end #tor if
-   return droptol!(out,1e-11)
-end
-
-function sumder(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eigs,
-                UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
-   ind = rpid+1
-   if ind ≤ length(ℋ) + HCLENGTH
-      check = ℋ[ind-HCLENGTH].stg
-      while check < zero(check)
-         pm = prm[ind]
-         out .+= enact(ℋ[ind],ψ,wvs, prm[ind-HCLENGTH], UR, true)*prm[rpid]
-         ind += 1
-         if ind-HCLENGTH ≤ length(ℋ)
-            check = ℋ[ind-HCLENGTH].stg
-         else
-            check = 0
-         end
-      end
-   end
-   return out
-end
-
-function derivop(rpid::Int,prm::Vector{Float64},ℋ::Vector{Op},ψ::Psi,wvs::Eigs,
-                  UR::SparseMatrixCSC{Float64,Int})
-   if rpid > HCLENGTH
-      if ℋ[rpid].scl < 0 #should this be ≤ 0 ???
-      end
-   elseif rpid ≤ 4 #pure rot
-      temp = zeros(4)
-      temp[rpid] = 1.0
-      out = hrot2_hc(temp,ψ.R.N)
-      out = kron(I(size(wvs.ttp.vals,1)),out)
-   elseif 5 ≤ rpid ≤ 8 #spin-rot
-      temp = zeros(4)
-      temp[rpid-4] = 1.0
-      out = hsr(temp,ψ.R)
-      out = kron(I(size(wvs.ttp.vals,1)),out)
-   elseif 9 ≤ rpid ≤ 11 #qua
-      temp = zeros(3)
-      temp[rpid-8] = 1.0
-      out = hqua(temp,ψ.R)
-      out = kron(I(size(wvs.ttp.vals,1)),out)
-   elseif rpid ∈ hcount + 1 .+ 4*(0:XXX) # F
-      q = floor(Int, 0.25*(rpid - 1))
-      out = htor2_hc( [1.0; zeros(3)], ψ.T.tops[q] )
-      out = mat_crunch(ψ,mat,q,wvs,true)
-   elseif rpid ∈ hcount + 2 .+ 4*(0:XXX) # ρz
-      q = floor(Int, 0.25*(rpid - 2))
-      out = htsr2_hc(pr,wvs,ψ,σid)
-      out = mat_crunch(ψ,mat,q,wvs,false)
-   elseif rpid ∈ hcount + 3 .+ 4*(0:XXX) # ρx
-      q = floor(Int, 0.25*(rpid - 3))
-      out = htsr2_hc(pr,wvs,ψ,σid)
-      out = mat_crunch(ψ,mat,q,wvs,false)
-   elseif rpid ∈ hcount + 4 .+ 4*(0:XXX) # Vn
-      q = floor(Int, 0.25*(rpid - 4))
-      out = htor2_hc([zeros(3); 1.0], ψ.T.tops[q])
-      out = mat_crunch(ψ,mat,q,wvs,true)
-   else #user def
-      out = enact(ℋ[rpid-HCLENGTH], ψ,wvs, 1.0, UR, true)
-      out .= sumder(rpid,prm, ℋ,ψ,wvs, UR)
-   end
-   return tplus!(out)
-end
 function derivop_0(T::Term, ψ::Psi, wvs::Eigs,
                  UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{NUMTYPE,Int}
-   out = enact(T.ops[1], ψ,wvs, UR)
+   out = enact(T.scl, T.ops[1], ψ,wvs, UR)
    @inbounds for i ∈ 2:T.l
-      out += enact(T.ops[i], ψ,wvs, UR)
+      out += enact(T.scl, T.ops[i], ψ,wvs, UR)
    end
    return droptol!( tplus!(out), 1e-11)
 end
-
 
 function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
                   UR::SparseMatrixCSC{Float64,Int}, jinds::UnitRange{Int})
@@ -157,25 +71,30 @@ function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
    return droptol(sparse(out), 1e-10)
 end
 
-function jacob_term(perm::Vector{Int}, ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)
+function jacob_term(ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)
    jinds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
-   ders = zeros(ψ.l,ψ.l,length(perm))
-   for i ∈ 1:length(perm)
-      ders[:,:,i] = anaderiv(ℋ[perm[i]], ψ,wvs, UR, jinds)
+   ders = zeros(ψ.l,ψ.l, nfit_count(ℋ))
+   j = 1
+   for i ∈ eachindex(ℋ)
+      if !iszero(ℋ[i].scl)
+         ders[:,:,j] = anaderiv(ℋ[i], ψ,wvs, UR, jinds)
+      end
+      j += 1
    end
    return ders
 end
 
-function dEcalc(ctrl,prm,ℋ,wvs, perm, jσlist)
+function dEcalc(ctrl,ℋ,wvs, jσlist)
    σs = σgen(ctrl.NFOLD)
    J_eng = zeros( size(wvs.rst.vals,1), size(σs,2) length(perm) )
-   H_eng = zeros( length(perm), length(perm), size(wvs.rst.vals,1), size(σs,2) ) 
+   nprm = nfit_count(ℋ)
+   H_eng = zeros( nprm, nprm, size(wvs.rst.vals,1), size(σs,2) ) 
    for i ∈ 1:size(jσlist,1)
       j,σ = jσlist[i,:]
       ψ = Psi( RPsi(j,ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σ],ctrl.mcalc), σ )
       UR = ur(ψ.R.J, ψ.R.S)
       inds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
-      temp = jacob_term(perm, prm, ℋ,ψ,wvs, UR)
+      temp = jacob_term(perm, ℋ,ψ,wvs, UR)
       J_eng[inds,σ+1, :] = diag(temp)
       H_eng[:,:,inds,σ+1] = der2_block(temp,wvs,inds)
    end
@@ -202,22 +121,35 @@ function der2_block(ders,wvs,inds)
    return temp
 end
 
-function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds, perm)
+function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds)
    #W is just inverse freq unc
    # γ = W * (ofreq .- cfreq)
-   #Jf = zeros(size(linds,1), length(perm) )
-   #Hf = zeros(length(perm), length(perm) )
-   σlinds = ???? # <-------
-   Jf[σlinds,:] .= (Je[linds[:,1],:] .- Je[linds[:,2],:]) .* W[σlinds]
-   S = He[:,:,linds[:,1]] .- He[:,:,linds[:,2]]
-   Hf .= -sum(x->S[:,:,x] * W[x] * γ[x], eachindex(γ)) + Jf' * Jf
+   for σ ∈ unique(linds[:,3])
+      dest = findall(x->x==σ, linds[:,3])
+      uσl = linds[dest, 2]
+      lσl = linds[findall(x->x==σ, linds[:,5]), 5]
+      Jf[dest,:] .= (Je[uσl,:,σ+1] .- Je[lσl,:,σ+1]) .* W[dest]
+      S = He[:,:,uσl,σ+1] .- He[:,:,lσl,σ+1]
+      Hf .= -sum(x->S[:,:,x] * W[x] * γ[x], eachindex(γ)[dest])
+   end
+   Hf += Jf' * Jf
    return Jf, Hf
 end
 
-function jac_hess_calc(Jf,Hf, ctrl,prm,ℋ, wvs, perm,linds,jσlst, W,γ)
-   J_eng, H_eng = dEcalc(ctrl,prm,ℋ,wvs, perm, jσlst)
-   J_frq, H_frq = dE2dfconv(Jf,Hf, Je,He, W,γ, linds, perm)
-   return J_frq, H_frq
+function deriv_calc!(Jf,Hf, ctrl,ℋ,wvs,lins, γ)
+   jσlst = jlister(lins.inds)
+   J_eng, H_eng = dEcalc(ctrl, ℋ,wvs, jσlst)
+   Jf, Hf .= dE2dfconv(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   return Jf, Hf
+end
+function deriv_calc(ctrl,ℋ,wvs,lins, γ)
+   nprm = nfit_count(ℋ)
+   Jf = zeros(length(γ), nprm)
+   Hf = zeros(nprm,nprm)
+   jσlst = jlister(lins.inds)
+   J_eng, H_eng = dEcalc(ctrl, ℋ,wvs, jσlst)
+   Jf, Hf .= dE2dfconv(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   return Jf, Hf
 end
 
 

@@ -150,7 +150,7 @@ function qnlab(j,s,vtm)::Array{Int,2}
       part = zeros(Int,nd,3)
       part[:,1] = fill(n,nd)
       part[:,2] = sort(collect(Int,-n:n),by=abs)
-      part[:,3] = k2kc.(part[:,1],part[:,2])
+      part[:,3] = reverse(abs.(part[:,2]))
       out = vcat(out,part)
    end
    out[:,2] = abs.(out[:,2])
@@ -196,6 +196,39 @@ end
 
 kgen(ns::UnitRange{Int})::Vector{UnitRange{Int}} = [-n:n for n ∈ ns]
 
+
+function qn2ind(j,s,n,ka,kc)
+   jp = (2*s+1)*sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)
+   np = sum(2 .* collect((j-s):(n-1)) .+ 1)
+   kp = n + ka - kc + 1
+   ind = jp + np + kp
+   ind = Int(ind)
+   return ind
+end
+function qn2ind(nf,vtm,j,s,n,ka,kc,vt)
+   if (nf≠zero(nf))
+   #ka = abs(ka)
+   ind = sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(vtm+1)
+   #ind += (vtm+floor(Int,m/nf))*(2*j+1) #<--- This function is wrong for vt≠0
+   ind += (vt)*(2*j+1)
+   ind *= Int(2s+1)
+   ind += sum(2 .* collect((j-s):(n-1)) .+ 1) + n + ka - kc + 1
+   ind = Int(ind)
+   return ind
+   else
+   return qn2ind(j,s,n,ka,kc)
+   end
+end
+function qn2ind(ctrl, state)
+   return qn2ind.(ctrl.nf,ctrl.vtmax, state[:,1], ctrl.S, 
+                  state[:,2], state[:,3], state[:,4], state[:,5])
+end
+function qn2ind(nf,vtm,S, state)
+   return qn2ind.(nf,vtm, state[:,1], S, 
+                  state[:,2], state[:,3], state[:,4], state[:,5])
+end
+
+
 #tplus!(a::Diagonal)::SparseMatrixCSC{Float64, Int} = sparse(a)
 #tplus!(a::Array{Float64,2})::Array{Float64,2} = hermitianpart!(2a)
 function tplus!(a::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{Float64,Int}
@@ -204,33 +237,6 @@ end
 function tplus!(a::SparseMatrixCSC{ComplexF64,Int})::SparseMatrixCSC{ComplexF64,Int}
    a .+= permutedims(conj(a))
 end
-
-
-#indexes for ntop operators
-#ti is the top index, nt is the number of tops
-ffind(ti::Int,nt::Int)::Int = 11 + ti
-rzind(ti::Int,nt::Int)::Int = 11 + ti +   nt
-rxind(ti::Int,nt::Int)::Int = 11 + ti + 2*nt
-vnind(ti::Int,nt::Int)::Int = 11 + ti + 3*nt
-ezind(ti::Int,nt::Int)::Int = 11 + ti + 4*nt
-exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
-
-"""
-Applies Kronecker products with identity matrices in order to properly resize the ith one top matrix.
-"""
-function torsetter!(ψ::TTPsi,i::Int,out)
-   lnf = length(ψ.nfs)
-   if lnf > 1
-      lbk = size(out,1)#ψ.tps[i].l
-      l1 = max(lbk^(lnf-i),1)
-      l2 = max(lbk^(i-1),1)
-      out = kron( sparse(I, l1, l1), 
-                  out, 
-                  sparse(I, l2, l2) )
-   end
-   return out
-end
-
 """
 A simple wrapper for making the matrix Symmetric if Real or Hermitian if complex then diagonalize.
 Makes life easier and helps me keep the fully real setup for C_s while permitting the flexibility for C_1
@@ -251,6 +257,32 @@ function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
    return A
 end
 
+
+#indexes for ntop operators
+#ti is the top index, nt is the number of tops
+#ffind(ti::Int,nt::Int)::Int = 11 + ti
+#rzind(ti::Int,nt::Int)::Int = 11 + ti +   nt
+#rxind(ti::Int,nt::Int)::Int = 11 + ti + 2*nt
+#vnind(ti::Int,nt::Int)::Int = 11 + ti + 3*nt
+#ezind(ti::Int,nt::Int)::Int = 11 + ti + 4*nt
+#exind(ti::Int,nt::Int)::Int = 11 + ti + 5*nt
+
+"""
+Applies Kronecker products with identity matrices in order to properly resize the ith one top matrix.
+"""
+function torsetter!(ψ::TTPsi,i::Int,out)
+   lnf = length(ψ.nfs)
+   if lnf > 1
+      lbk = size(out,1)#ψ.tps[i].l
+      l1 = max(lbk^(lnf-i),1)
+      l2 = max(lbk^(i-1),1)
+      out = kron( sparse(I, l1, l1), 
+                  out, 
+                  sparse(I, l2, l2) )
+   end
+   return out
+end
+
 jlister(j,s) = collect(1*isodd(2s):2:Int(2j))
 function jσlister_full(s::Float64,j::Float64,σcount::Int)::Array{Int,2}
    jlist = collect(1*isodd(2s):2:Int(2j))
@@ -260,3 +292,32 @@ function jσlister_full(s::Float64,j::Float64,σcount::Int)::Array{Int,2}
    end
    return out
 end
+
+"""
+This function initiates the sparse zeros matrix for the new stage.
+   Unfortunately it is hard coded.
+"""
+function stage_size(stage,stages,wvs)::Int
+   println("stage is $stage")
+   if stage==0# && stages ≥ 1
+      return size(wvs.rst.vals,1)
+   elseif (stage==2 && stages > 2) || (stage==1 && stages==2)
+      return size(wvs.ttp.vals,1)
+   elseif stage==1 && stages==3
+      return size(wvs.top.vals,1)
+   else
+      @warn "stage = $stage is not defined. Going to crash soon."
+
+   end
+end
+"""
+Determines if previous stages are needed based on if the wavefunction matrix
+   both exists (set by the stage keyword) and is nonzero (defined from said previous stage)
+"""
+stage_allow(x)::Bool = !isnothing(x) && !iszero(x.vecs)
+
+
+
+
+
+
