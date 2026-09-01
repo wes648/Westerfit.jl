@@ -26,15 +26,21 @@ function jlister(inds::Matrix{Int})::Matrix{Int}
    return jsσs
 end
 
-function χ2calc(wvs::Eigs,lins::Lines)::Float64
+function χ2calc(wvs::Eigs,lins::Lines, lnjct)::Float64
    cfreqs = zero(lins.frqs)
    Threads.@threads for i in 1:size(cfreqs,1)
       cfreqs[i] = wvs.rst.vals[lins.inds[i,2],lins.inds[i,3]] - 
                         wvs.rst.vals[lins.inds[i,5],lins.inds[i,6]]
    end
    omc = lins.frqs - cfreqs
-   χ2 = sum(abs2, omc' * Diagonal(lins.wght) * omc) 
+   χ2 = sandwich(Diagonal(lins.wght[1:end .!= lnjct]), omc[1:end .!= lnjct]
    return χ2, omc, cfreqs
+end
+function rmscalc(omc, ℋ, prjct, lnjct)
+   nparam = map(x -> x.scl, ℋ) - length(prjct) + 1
+   dof = length(omc) - lnjct - nparam + 1
+   rms = √(sum(abs2, omc)/dof)
+   return rms, √(χ2/dof)
 end
 
 function paramunc(H,W,perm,omc)

@@ -131,9 +131,9 @@ function ham_print(io,ℋ::Vector{Op},δ::Vector{Float64},prjct::Vector{Int})
    j = 1
    @inbounds for i ∈ eachindex(ℋ)
       if !iszero(ℋ[i].scl) && j ∉ prjct
+         j += 1
          ℋ[i].val += δ[j]
       end
-      j += 1
    end
 end
 function sum_print(io, ℋ, prjct, lnjct, rms, wrms, χ2)
@@ -145,7 +145,7 @@ function sum_print(io, ℋ, prjct, lnjct, rms, wrms, χ2)
    end
    println(io, "Temporarily frozen parameters = ", length(prjct))
    if !iszero(prjct)
-      println(io, ℋ[prjct].nam)
+      println(io, getproperty.(ℋ[prjct] :nam))
    end
 end
 function output_update(ℋ,δ,omc,w, counter)
@@ -159,14 +159,61 @@ function output_update(ℋ,δ,omc,w, counter)
    close(io)
    end
 end
-function ham_final_pring()
-function output_final()
+function ham_final_print(io, ℋ::Vector{Op}, unc)
+   perm = sortperm(getproperty.(ℋ, :nam))
+   j = 0
+   println(io, "Final parameter values (MHz) & uncertanties & milicent")
+   for i ∈ perm
+      if !iszero(ℋ[i].scl) j ∉ prjct
+         mcnt =  abs(round(1e3 * unc[j] / ℋ[i].val, digits=4))
+         println(io, ℋ[i].nam,';', ℋ[i].val,';', unc[j],';', mcnt)
+         j += 1
+      elseif !iszero(ℋ[i].scl) j ∉ prjct
+         println(io, ℋ[i].nam,';', ℋ[i].val,';', "FROZEN BY CODE",';', "UNDEFINED")
+      else
+         println(io, ℋ[i].nam,';', ℋ[i].val,';', "fixed",';', "---")
+      end
+   end
+end
+function triangleprint(mat,nams;io=stdout,d=4,col=5)
+   io ≠ stdout ? io = open(io, "a") : io=stdout
+   println(io,"  Correlation matrix:")
+   l = size(mat,1)
+   blocks = ceil(Int,l/col)
+   for j in 1:blocks
+   start = col*(j-1)+1
+   stop = min(l,col*j)
+   println(io,"\n"*prod(fill(" ",d))prod(lpad.(nams[start:stop],2d+2))*"\n")
+   for i in start:l
+      stop = min(i,col*j)
+      part = lpad(nams[i],4)*prod(lpad.(round.(mat[start:stop,i],digits=d),2d+2))
+      println(io,part)
+   end; end
+   io ≠ stdout ? println(io,"\n\n") : nothing
+   io ≠ stdout ? close(io) : nothing
+end
 
+function triangleprint(mat;io=stdout,d=4,col=5)
+   nams = getproperty.(htrunc, :nam)
+   triangleprint(mat,nams,io,d,col)
+end
+
+function output_final()
+   io = open(molnam*".out", "a")
+   println(io, "Fit completed by method of ", endp)
    # final rms
+   sum_print(io, ℋ, prjct, lnjct, rms, wrms, χ2)
    # final pameters unc, millicent
+   ham_final_print(io, ℋ::Vector{Op}, unc)
    # Journal formater
    # correlation matrix
+   triangleprint(corr, getproperty.(ℋ[1:end .!= prjct], :nam))
    # apology
+   if ctrl.apology
+      println(io, "Again sorry about the name")
+   end
+   close(io)
+   println("output written to ", molnam,".out!")
 end
 
 

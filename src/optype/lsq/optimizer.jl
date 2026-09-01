@@ -9,27 +9,27 @@ end
 
 function prm_rjct(H)::Vector{Int}
    # if hessian diagonal element is too small, temporarily remove from H & J
-   perm = Union{}[]
+   perm = zeros(Int,1)
    dH = diag(H)
    @inbounds for i ∈ eachindex(dH)
       if abs(dH[i]) < TOL
          perm = vcat(perm,i)
       end # if
    end # for
-   if isempty(perm); perm = [0]; end
+   #if isempty(perm); perm = [0]; end
    return perm
 end
 
 function lin_rjct(J,W,omc)::Vector{Int}
    # if omc/W > THRESH, temporarily remove from J & W & omc
-   perm = Union{}[]
+   perm = zeros(Int,1)
    check = (omc ./ W).^2
    @inbounds for i ∈ eachindex(check)
       if check[i] < TOL
          perm = vcat(perm,i)
       end
    end
-   if isempty(perm); perm = [0]; end
+   #if isempty(perm); perm = [0]; end
    return perm
 end
 
@@ -83,6 +83,7 @@ end
 
 
 function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Op},lins::Lines)
+   output_init(molnam::String,ctrl::Controls,ℋ::Vector{Term})
    converged = false
    nwvs = Eigs(ctrl)
    wvs = Eigs(ctrl)
@@ -122,6 +123,7 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Op},lins::Lines)
          χ2, omc, cfq = χ2calc(wvs,lins)
          printstyled(" accepted step: ", color=:green)
          println("χ2 = ",lpad(χ2,5), ", ||δ|| = ", lpad(norm(δ),3), ", θ = " lpad(θ,3))
+         sum_print(io, ℋ, prjct, lnjct, rms, wrms, χ2)
          μlm /= 10.0
          Δlm *= 2.0
       else
@@ -135,15 +137,13 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Op},lins::Lines)
       end # stepcheck if
       converged, enp = fincheck(ctrl,δ,λlm,nχ2-χ2,counter,ℋ[:].val, J'*W*omc)
    end #converged loop
-   opt_finalize()
+   opt_finalize(molnam)
    return ℋ, wvs
 end #function
 
 function opt_finalize(molnam)
-   # parameter uncertainty calc
-   # journal formatter
-   # correlation matrix
-   # final output writing
+   corr = h2conv(H)
+   output_final()
 end
 
 
