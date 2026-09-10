@@ -1,6 +1,6 @@
 
 @kwdef mutable struct Controls
-   apology::Bool = true
+#   apology::Bool = true
    RUNmode::String = "ESF"
    stages::Int = 0
 #   Irrep::String = "Ir"
@@ -15,7 +15,7 @@
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 1e-6
 #   ExactHess::Bool = true # exact hess or not
-   Δlm0::Float64 = 1.0
+   Δlm0::Float64 = 100.0
    λlm0::Float64 = 0.001
 #   turducken::Int = 1
    maxiter::Int = 60

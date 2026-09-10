@@ -1,0 +1,43 @@
+[info]
+molnam = "test_input"
+date = 2026-03-26T19:07:47.793Z
+comment = "this is a test of westerfit v2. the line list is 2ba"
+
+[controls]
+vtmax = 0
+Jmax = 10.0
+stages = 2
+RUNmode = "F"
+mcalc = 8
+S = 0.0
+maxiter = 600
+BOLD = 1
+goal = 1.0
+vtcalc = 8
+NFOLD = [3]
+
+[hamiltonian]
+#Nam = [Func, val, unit, scale, stage]
+A    = ["Nz^2",   11250.0,  "MHz", 1.0, 0]
+B    = ["Nx^2",    1750.0,  "MHz", 1.0, 0]
+C    = ["Ny2",     1550.0,  "MHz", 1.0, 0]
+Dab  = ["Nz Npm",   -16.0,  "MHz", 1.0, 0]
+F    = ["Pα^2",       5.66, "cm-1", 0.0, 2]
+V3   = ["vncα^3",     1.0, "cm-1", 1.0, 2]
+Rz   = ["Pα Nz",  -24.0,  "GHz", 1.0, 0]
+DJ   = ["N2^2",            -4.0e-2,  "kHz", 1.0, 0]
+DJK  = ["N2 Nz^2",        -0.01,  "MHz", 1.0, 0]
+DK   = ["Nz^4",           -0.002,  "MHz", 1.0, 0]
+d1   = ["N2 Npm^2",      -2.3e-5,  "MHz", 1.0, 0]
+d2   = ["Npm^4",          -2.0e-5,  "MHz", 1.0, 0]
+FN   = ["N2 Pα^2",         -0.03,  "MHz", 1.0, 0]
+rN   = ["N2 Nz Pα",         0.03,  "MHz", 1.0, 0]
+rK   = ["Nz^3 Pα",         0.01,  "MHz", 1.0, 0]
+rbc  = ["Nz Npm^2 Pα",   -0.0007,  "MHz", 1.0, 0]
+#F12 = ["Pα Pβ", 0.1, "cm-1", 1.0, 1]
+
+[intensity]
+"μz" = ["μz", 1.4]
+"μx" = ["μx", 1.0]
+"μz^(3)" = ["μz μcosα^3", 0.2]
+#"μy^(3)" = ["μy μsinα^3", 0.1]

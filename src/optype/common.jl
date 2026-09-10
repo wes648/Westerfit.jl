@@ -217,7 +217,7 @@ function qn2ind(nf,vtm,j,s,n,ka,kc,vt)
    end
 end
 function qn2ind(ctrl, state)
-   return qn2ind.(ctrl.nf,ctrl.vtmax, state[:,1], ctrl.S, 
+   return qn2ind.(ctrl.NFOLD,ctrl.vtmax, state[:,1], ctrl.S, 
                   state[:,2], state[:,3], state[:,4], state[:,5])
 end
 function qn2ind(nf,vtm,S, state)

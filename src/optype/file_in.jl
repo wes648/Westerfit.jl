@@ -9,13 +9,10 @@ function inp_reader(molnam::String)
    ctrl = controls_in(inp["controls"])
    H = ops_in(inp["hamiltonian"])
    μs = mus_in(inp["intensity"])
-   return ctrl, H, μs
+   return inp["info"], ctrl, H, μs
 end
 
 function ctrl_sanity(ctrl::Controls)::Controls
-   if ctrl.apology
-      println("Sorry about the name...")
-   end
    if length(ctrl.NFOLD) > 1
       @info "It appears you are using the n-top mode of westerfit.
       By doing so, you agree to not complain about the runtime to Julia (fka Wes).
@@ -217,21 +214,21 @@ function lin_proc(ctrl,lns)::Matrix{Int}
    out = zeros(Int,size(lns,1),6)
    #set J & σ
    out[:,1] .= Int.(2 * lns[:,1])
-   out[:,2] .= Int.(lns[:,6])
+   out[:,3] .= Int.(lns[:,6])
    out[:,4] .= Int.(2 * lns[:,7])
    out[:,6] .= Int.(lns[:,12])
-   out[:,3] .= qn2ind(ctrl, lns[:,1:6])
+   out[:,2] .= qn2ind(ctrl, lns[:,1:6])
    out[:,5] .= qn2ind(ctrl, lns[:,7:12])
    return out
 end
-function linereader(ctrl::Controls,molnam::String)::Lines
+function linereader(ctrl::Controls,molnam::String)
 # 1J,2N,3Ka,4Kc,5vt,6σ,7J,8N,9Ka,10Kc,11vt,12σ, 13ν,14δ
-   file = readdlm("$molnam.lne", ',')
+   file = readdlm("$molnam.lne", ',', comments=true, comment_char='#')
 # 1dj,2i,3σ, 4dj,5i,6σ
-   inds = lin_proc(file[:,1:12])
+   inds = lin_proc(ctrl,file[:,1:12])
    frqs = file[:,13]
    wght = 1 ./ file[:,14]
    qns = file[:,1:12]
-   return Lines(inds,frqs,wghts), qns
+   return Lines(inds,frqs,wght), qns
 end
 

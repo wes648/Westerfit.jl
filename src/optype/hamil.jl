@@ -205,14 +205,13 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,ops,ψ,σid)::Eigs
    return wvs
 end
 
-function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,jsσs::Matrix{Int})::Eigs
-   #@show prm
+function H_calc(ctrl::Controls,wvs::Eigs,ops,jsσs::Matrix{Int})::Eigs
    σlist = unique(jsσs[:,2])
    σs = σgen(ctrl.NFOLD)
    if ctrl.stages==3
       #one top
       wvs = stage_1tproc(wvs,ops,ctrl)
-      println("one top stage done!")
+#      println("one top stage done!")
    end
    if ctrl.stages ≥ 2
       # top-top
@@ -226,7 +225,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,jsσs::Matrix{Int})::Eigs
          wvs = stage_ttproc(wvs,ops,ψ,i,ctrl)
          #@show wvs.ttp.vals
       end
-      println("top-top stage done!")
+#      println("top-top stage done!")
    end
    for i ∈ 1:size(jsσs,1)
       σind = jsσs[i,2]
@@ -234,6 +233,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,prm,ops,jsσs::Matrix{Int})::Eigs
       ψ = Psi( RPsi(j, ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σind],ctrl.mcalc), σind )
       wvs = stageproc0(ctrl,0,wvs,ops,ψ,σind)
    end # σ loop
+#   println("rotation stage done!")
 #   sparsify!(wvs.rst.vecs)
    return wvs
 end

@@ -26,15 +26,14 @@ include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
 include("@__DIR__/../file_in.jl")
 include("@__DIR__/../common.jl")
-#include("@__DIR__/../derivatives.jl")
 include("@__DIR__/../file_out.jl")
-#include("@__DIR__/../hc_ham.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
 include("@__DIR__/../transitions.jl")
-#include("@__DIR__/../opt-com.jl")
-#include("@__DIR__/../optimizer.jl")
+include("@__DIR__/../lsq/opt-com.jl")
+include("@__DIR__/../lsq/optimizer.jl")
+include("@__DIR__/../derivs.jl")
 
 include("@__DIR__/../ops/baseops.jl")
 include("@__DIR__/../ops/dipoles.jl")
@@ -44,6 +43,9 @@ const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 #@show Threads.nthreads()
+@warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
+@warn "There is a bug where vtmax & Jmax cause the fitter to break.
+#This happens if they are too big/small relative to the line list"
 
 if NUMTYPE <: Complex
    @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
@@ -66,86 +68,33 @@ function westersim(molnam, ctrl, μs, wvs)
    writefreqs(molnam,ctrl,frqs,inds)
    return inds, frqs
 end
-function westerfit(molnam::String, ctrl::Controls, ℋ::Vector{Op})
-   lines, qns = linereader(ctrl, molnam)
-   ℋ,wvs, omc, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
+function westerfit(molnam::String, ctrl::Controls, ℋ::Vector{Term})
+   lins, qns = linereader(ctrl, molnam)
+   ℋ, omc, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
    reswritter(molnam, qns, lins, omc, cfrqs)
+   return ℋ
 end
 
 function westermain()
-   molnam = "test"
-   @time ctrl, ℋ, μs = inp_reader(molnam)
-   prms = zeros(length(ℋ))
-   @time wvs = westereng(molnam, ctrl,prms, ℋ)
-   #@time westersim(molnam, ctrl, μs, wvs)
+   println("Sorry about the name...")
+   molnam = "test_rt"
+   @time info, ctrl, ℋ, μs = inp_reader(molnam)
+   if occursin("F", ctrl.RUNmode)
+      println("westerfit!")
+      @time wvs = westerfit(molnam, ctrl, ℋ)
+   end # F
+   if occursin("E", ctrl.RUNmode)||occursin("S", ctrl.RUNmode)
+      @time wvs = westereng(molnam, ctrl, ℋ)
+      if occursin("S", ctrl.RUNmode)
+         @time westersim(molnam, ctrl, μs, wvs)
+      end # S
+   end # E / S
    return wvs
 end
 
 
-
-function westermain_old(molnam::String)
-   molnam = String(split(molnam,'.')[1])
-   #read input file
-   ctrl = ctrlinp(molnam)
-   if occursin("T",ctrl.RUNmode)
-      println("This RUNmode is probably not what you want")
-      westersim(molnam,nothing, ctrl)
-      westerfit(molnam, ctrl)
-   else
-      if occursin("F",ctrl.RUNmode)
-         prm, pcov = westerfit(molnam, ctrl)
-      else
-         prm = nothing
-         puncs = nothing
-         pcov = nothing
-      end
-      if occursin("E", ctrl.RUNmode)||occursin("S", ctrl.RUNmode)
-         vas,ves,qns,μs,prm,scls,stg,cdo,tvcs = westereng(molnam, prm, ctrl)
-         if occursin("S", ctrl.RUNmode)
-            westersim(molnam,prm,ctrl,vas,ves,qns,μs,prm,scls,stg,cdo,pcov,tvcs)
-         end
-      end
-   end
-end
-
-
-function westerfit(molnam::String,ctrl::Controls)
-"""
-   The fitter!
-"""
-   println("westerfit!")
-   prm, errs, stgs = secordinp(molnam,ctrl)
-   ℋ, stgs, errs, unts = opreader(molnam,ctrl,prm,errs,stgs)
-   #if occursin("F",ctrl.RUNmode) #Normal Fit behavior, overpowers check
-      lines = readdlm("$molnam.lne", ',', Float64,comments=true,comment_char='#',
-                     skipblanks=true)
-      linelength = (size(lines,1))
-#   else # Self-consistency check
-#      lines = readdlm("$molnam.cat", ',', Float64,comments=true,comment_char='#')
-#      lines = pred2lne(lines,ctrl.S)
-#   end
-
-   #determine the states
-   linds, ofreqs, luncs = lineprep(lines,ctrl.NFOLD[1],ctrl.S,ctrl.vtmax)
-   #@show linds
-   jlist = jlister(linds)
-   #opt
-   #outputinit(molnam,prm,errs,linelength,ctrl)
-   outputinit2(molnam,prm,errs,linelength,ctrl,ℋ)#16.0,8.0)
-   tsrp, pcov, omcs, cfrqs, vals = lbmq(ctrl,jlist,ofreqs,luncs,linds,
-                                             prm,errs,ℋ,stgs,molnam)
-   reswritter(molnam,lines,omcs,cfrqs)
-   return tsrp, pcov
-end
-
-
 #Base.@ccallable function main()::Cint
-function main(molnam)
-   #molanm = ARGS[1]
-   @time ctrl = blockfind_all(molnam) #0.3 s
-   @time ctrl = ctrlinp(molnam,ctrl) # 1s
-   #vals,vecs,qns,tvecs = westereng(molnam,ctrl)
-   #westersim(molnam,ctrl,vals,vecs,qns,tvecs)
-   westerfit(molnam,ctrl)
+function main()
+   westermain(ARGS[1])
    return 0
 end

@@ -53,7 +53,7 @@ update δ = (H + λ*Diagonal(H))⁻¹ Jᵀ W γ
 update β .+= δ .* scales[perm]
 """
 
-nfit_count(H::Vector{Term})::Int = length( findall(!zero, ℋ[:].scl ))
+nfit_count(ℋ::Vector{Term})::Int = sum(map(x->!iszero(x.scl), ℋ))
 
 function derivop_0(T::Term, ψ::Psi, wvs::Eigs,
                  UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{NUMTYPE,Int}
@@ -67,56 +67,70 @@ end
 function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
                   UR::SparseMatrixCSC{Float64,Int}, jinds::UnitRange{Int})
    mat = derivop_0(T, ψ,wvs, UR)
-   out = sand(mat, wvs.rst.vecs[1:ψ.l,jinds,ψ.σ] )
-   return droptol(sparse(out), 1e-10)
+   L = 1:size(mat,1)
+   #@show ψ.R.J
+   #@show ψ.σ
+   out = sand(mat, wvs.rst.vecs[ L , jinds, ψ.σ] )
+   return droptol!(sparse(out), 1e-10)
 end
 
-function jacob_term(ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)
-   jinds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
-   ders = zeros(ψ.l,ψ.l, nfit_count(ℋ))
+function jacob_term(ctrl,ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)
+   jind = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
+   L = (ψ.R.lng * (ctrl.vtmax + 1))
+   ders = zeros(L,L, nfit_count(ℋ))
    j = 1
    for i ∈ eachindex(ℋ)
       if !iszero(ℋ[i].scl)
-         ders[:,:,j] = anaderiv(ℋ[i], ψ,wvs, UR, jinds)
+         ders[:,:,j] = anaderiv(ℋ[i], ψ,wvs, UR, jind)
+         j += 1
       end
-      j += 1
    end
    return ders
 end
 
 function dEcalc(ctrl,ℋ,wvs, jσlist)
    σs = σgen(ctrl.NFOLD)
-   J_eng = zeros( size(wvs.rst.vals,1), size(σs,2) length(perm) )
+   J_eng = zeros( size(wvs.rst.vals,1), size(σs,2), nfit_count(ℋ) )
    nprm = nfit_count(ℋ)
    H_eng = zeros( nprm, nprm, size(wvs.rst.vals,1), size(σs,2) ) 
+   #@show size(J_eng)
    for i ∈ 1:size(jσlist,1)
       j,σ = jσlist[i,:]
+      j *= 0.5
+   #   @show σ
       ψ = Psi( RPsi(j,ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σ],ctrl.mcalc), σ )
       UR = ur(ψ.R.J, ψ.R.S)
       inds = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
-      temp = jacob_term(perm, ℋ,ψ,wvs, UR)
-      J_eng[inds,σ+1, :] = diag(temp)
-      H_eng[:,:,inds,σ+1] = der2_block(temp,wvs,inds)
+      temp = jacob_term(ctrl,ℋ,ψ,wvs, UR)
+      #@show size(temp)
+      for l ∈ 1:nprm
+         J_eng[inds, σ, l] = diag(temp[:,:,l])
+      end
+      H_eng[:,:,inds,σ ] = der2_block(temp,wvs,inds, σ)
    end
    return J_eng, H_eng
 end
 
-function der2_birss_elem(dx,dy,wvs,i, inds)
-   e_i = wvs.rst.vals[inds, i]
-   vec_i = wvs.rst.vecs[inds, i]
-   inds = filter(x->!isequal(x,i), inds)
+function der2_birss_elem(dx,dy,wvs,i, inds, σ)
+   e_i = wvs.rst.vals[inds[i], σ]
+   #vec_i = wvs.rst.vecs[inds, i]
+   shift = -minimum(inds) + 1
+   tinds = filter(x->!isequal(x,inds[i]), inds)
    out = 0.0
-   for j ∈ inds
-      vec_j = wvs.rst.vecs[inds, j]
-      e_j = wvs.rst.vals[inds, j]
-      out += dx[i,j]*dy[j,i] / (e_i - e_j)
+   for j ∈ tinds
+      #vec_j = wvs.rst.vecs[inds, j]
+      out += dx[i, j+shift]*dy[j+shift, i] / (e_i - wvs.rst.vals[j, σ])
    end
    return 2.0*out
 end
-function der2_block(ders,wvs,inds)
-   temp = zero(ders)
+function der2_block(ders,wvs,inds,σ)
+   temp = zeros(size(ders,3), size(ders,3), length(inds))
+#   @show size(ders)
+#   @show size(ders,3)
+#   @show length(inds)
    for i ∈ 1:length(inds), x ∈ 1:size(ders,3), y ∈ 1:size(ders,3)
-      temp[x,y,i] = der2_birss_elem(ders[:,:,x],ders[:,:,y], wvs, i, inds)
+#      println("i = $i, x = $x, y = $y")
+      temp[x,y,i] = der2_birss_elem(ders[:,:,x],ders[:,:,y], wvs, i, inds, σ)
    end
    return temp
 end
@@ -124,22 +138,24 @@ end
 function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds)
    #W is just inverse freq unc
    # γ = W * (ofreq .- cfreq)
+   Hf .= zero(Hf)
    for σ ∈ unique(linds[:,3])
       dest = findall(x->x==σ, linds[:,3])
       uσl = linds[dest, 2]
-      lσl = linds[findall(x->x==σ, linds[:,5]), 5]
-      Jf[dest,:] .= (Je[uσl,:,σ+1] .- Je[lσl,:,σ+1]) .* W[dest]
+      lσl = linds[findall(x->x==σ, linds[:,6]), 5]
+      Jf[dest,:] .= (Je[uσl, σ+1, :] .- Je[lσl, σ+1, :]) .* W[dest]
       S = He[:,:,uσl,σ+1] .- He[:,:,lσl,σ+1]
-      Hf .= -sum(x->S[:,:,x] * W[x] * γ[x], eachindex(γ)[dest])
+      Hf .+= sum(x->S[:,:,x] * W[dest[x]] * γ[dest[x]], eachindex(γ[dest]))
    end
-   Hf += Jf' * Jf
+   Hf .= Jf' * Jf
+   #@show size(Hf)
    return Jf, Hf
 end
 
 function deriv_calc!(Jf,Hf, ctrl,ℋ,wvs,lins, γ)
    jσlst = jlister(lins.inds)
-   J_eng, H_eng = dEcalc(ctrl, ℋ,wvs, jσlst)
-   Jf, Hf .= dE2dfconv(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   Je, He = dEcalc(ctrl, ℋ,wvs, jσlst)
+   dE2dfconv!(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
    return Jf, Hf
 end
 function deriv_calc(ctrl,ℋ,wvs,lins, γ)
@@ -147,8 +163,14 @@ function deriv_calc(ctrl,ℋ,wvs,lins, γ)
    Jf = zeros(length(γ), nprm)
    Hf = zeros(nprm,nprm)
    jσlst = jlister(lins.inds)
-   J_eng, H_eng = dEcalc(ctrl, ℋ,wvs, jσlst)
-   Jf, Hf .= dE2dfconv(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   Je, He = dEcalc(ctrl, ℋ,wvs, jσlst)
+   dE2dfconv!(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   if iszero(Jf)
+      println("FUCK JACOBIAN IS ZERO")
+   end
+   if iszero(Hf)
+      println("FUCK HESSIAN IS ZERO")
+   end
    return Jf, Hf
 end
 

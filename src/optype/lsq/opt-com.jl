@@ -12,7 +12,7 @@ end
 function jlister(inds::Matrix{Int})::Matrix{Int}
    #finds all the unique J & σ pairs
    js = vcat(inds[:,1],inds[:,4])
-   σs = vcat(inds[:,2],inds[:,5])
+   σs = vcat(inds[:,3] .+1,inds[:,6] .+1)
    temp = fill((0,0),size(js))
    for i in 1:size(js,1)
       temp[i] = (js[i],σs[i])
@@ -26,19 +26,19 @@ function jlister(inds::Matrix{Int})::Matrix{Int}
    return jsσs
 end
 
-function χ2calc(wvs::Eigs,lins::Lines, lnjct)::Float64
+function χ2calc(wvs::Eigs,lins::Lines, lnjct)#::Float64
    cfreqs = zero(lins.frqs)
    Threads.@threads for i in 1:size(cfreqs,1)
-      cfreqs[i] = wvs.rst.vals[lins.inds[i,2],lins.inds[i,3]] - 
-                        wvs.rst.vals[lins.inds[i,5],lins.inds[i,6]]
+      cfreqs[i] = wvs.rst.vals[lins.inds[i,2],lins.inds[i,3]+1] - 
+                        wvs.rst.vals[lins.inds[i,5],lins.inds[i,6]+1]
    end
    omc = lins.frqs - cfreqs
-   χ2 = sandwich(Diagonal(lins.wght[1:end .!= lnjct]), omc[1:end .!= lnjct]
+   χ2 = sand(Diagonal(lins.wght[1:end .!= lnjct]).^2, omc[1:end .!= lnjct])
    return χ2, omc, cfreqs
 end
-function rmscalc(omc, ℋ, prjct, lnjct)
-   nparam = map(x -> x.scl, ℋ) - length(prjct) + 1
-   dof = length(omc) - lnjct - nparam + 1
+function rmscalc(omc::Vector{Float64}, ℋ, prjct::Vector{Int}, lnjct::Vector{Int}, χ2::Float64)
+   nparam = sum(x -> x.scl, ℋ) - length(prjct) + 1
+   dof = length(omc) - length(lnjct) - nparam + 1
    rms = √(sum(abs2, omc)/dof)
    return rms, √(χ2/dof)
 end
@@ -53,12 +53,13 @@ function paramunc(H,W,perm,omc)
    uncs .*= (omc' * W * omc)/(length(omc)-length(perm))
    return □rt.(uncs)
 end
-function correl(H)
-   out = zeros(size(H))
+function correl(H,wrms)
+   out = inv(H)
+   uncs = □rt.(diag(out) .* wrms)
    for i in 1:size(H,1), j in i:size(H,2)
-      out[i,j] = H[i,j] / √(H[i,i]*H[j,j])
+      out[i,j] = out[i,j] / √(out[i,i]*out[j,j])
    end
-   return Symmetric(out)
+   return Symmetric(out), uncs
 end
 function covarr(corr,pσ)
    out = zeros(size(corr))
@@ -72,7 +73,19 @@ function covarr2(hess,omc)
    return σ2 .* inv(hess)
 end
 
-function fincheck(ctrl,βf,λlm,check,counter,prms,grad)
+function stepsizehcekcer(δ,ℋ,prjct)
+   out = 0.0
+   j = 1
+   for i ∈ 1:length(ℋ)
+      if !iszero(ℋ[i].scl) && j ∉ prjct
+         out += (δ[j] / ℋ[i].val)^2
+         j += 1
+      end
+   end
+   return √out
+end
+
+function fincheck(ctrl,βf,λlm,check,counter,ℋ,prjct,grad,wrms)
    ϵ0 = 0.1E-8 #rms change threshold
    ϵ1 = 0.1E-6 #step size threshold
    ϵ2 = 0.1E-3 #gradient threshold
@@ -80,33 +93,37 @@ function fincheck(ctrl,βf,λlm,check,counter,prms,grad)
       println("A miracle has come to pass. The fit has converged")
       endp = "converge"
       conv = true
-   elseif (check < ϵ0)
+   elseif (check) < ϵ0
+      @show check
       println("The RMS has stopped decreasing. Hopefully it is low")
-      endp = "RMS"
+      endp = "RMS convergence"
       conv = true
 #   elseif (norm(βf))<ϵ1*(norm(prms)+ϵ1)
-   elseif norm(βf ./ prms)<ϵ1
+   elseif stepsizehcekcer(βf,ℋ,prjct) <ϵ1
    #This stopping criteria needs to be scaled for the wildly varying parameter
    #magnitues. 3 dec 24
       slλ = (@sprintf("%0.4f", log10(λlm)))
       println("It would appear step size has converged. log₁₀(λ) = $slλ")
       @show norm(βf)
-      endp = "step size"
+      endp = "step size convergence"
       conv = true
    elseif (λlm > 1.0e+9)#&&(Δlm == 0.0)
       println("λlm exceeded threshold.")
       println("If you were using the turducken, try again without it")
-      endp = "LMthresh"
+      endp = "λlm exceeded threshold"
+      @show λlm
       conv = true
    elseif norm(grad) < ϵ2
       println("Gradient is now quite small! This should be good")
-      endp = "grad"
+      endp = "gradient convergence"
       conv = true
    elseif counter ≥ ctrl.maxiter
       println("Alas, the iteration count has exceeded the limit")
-      endp = "iter"
+      endp = "maximum number of iterations achieved"
       conv = true
    else
+      conv = false
+      endp = ""
    end #check if
    return conv, endp
 end
