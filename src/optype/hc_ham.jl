@@ -69,9 +69,6 @@ end
 
 function srelem(pr::Float64,nb::Int,nk::Int,
          kl::UnitRange{Int},l::Int,q::Int)::Vector{Float64}
-   #out = wig3j.(nb,l,nk,-kl,q,kl.-q) 
-   #out .*= powneg1.(kl)
-   #out .*= pr
    out = map(x-> pr*wig3j(nb,l,nk,-x,q,x-q)*powneg1(x), kl)
    return out
 end
@@ -90,13 +87,13 @@ function hsr(pr::Array{Float64},ψ::RPsi)::SparseMatrixCSC{Float64,Int}
    for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
       nb = ψ.N[j]; nk = ψ.N[i]; Δ = nb - nk
       blck = view(out,nds[j],nds[i])
-      frac = jsred(J,S,nb,nk)*nsred2(nb,nk)*sfact
+      fac = jsred(J,S,nb,nk)*nsred2(nb,nk)*sfact
       for p ∈ (-2-Δ):Δ
          q = Δ+p
          dest = diagind(blck,p)
          kl = (-nk:nk)[(1:length(dest)).+δi(1,p)]
          #the q in the phase factor is for T2_1 = -T2_-1
-         blck[dest] .= srelem(pr[2+abs(q)]*frac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
+         blck[dest] .= srelem(pr[2+abs(q)]*fac*powneg1(δi(q,-1)),nb,nk,kl,2,q)
       end#p loop
    end
    dropzeros!(out)

@@ -9,13 +9,14 @@ import Printf: @sprintf
 import PhysicalConstants.CODATA2022: c_0, k_B, h
 using SparseArrays
 using TOML
-@static if Sys.iswindows()
-   using WignerSymbols
-   wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
-   wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
-else
-   using WIGXJPFjl
-end
+#@static if Sys.iswindows()
+#@static if true
+using WignerSymbols
+wig3j(a,b,c,d,e,f) = wigner3j(Float64,a,b,c,d,e,f)
+wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
+#else
+#   using WIGXJPFjl
+#end
 
 const NUMTYPE = Float64
 
@@ -43,15 +44,15 @@ const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 #@show Threads.nthreads()
-@warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
-@warn "There is a bug where vtmax & Jmax cause the fitter to break.
-#This happens if they are too big/small relative to the line list"
+#@warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
+#@warn "There is a bug where vtmax & Jmax cause the fitter to break.
+##This happens if they are too big/small relative to the line list"
 
 if NUMTYPE <: Complex
    @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
 end
 
-function westereng(molnam, ctrl,ℋ)::Eigs 
+function westereng(molnam::String, ctrl::Controls,ℋ::Vector{Term})::Eigs 
    wvs = Eigs(ctrl)
    jsσs = jσlister_full(ctrl.S,ctrl.Jmax, σcount(ctrl.NFOLD))
    H_calc(ctrl,wvs,ℋ,jsσs)
@@ -62,7 +63,7 @@ function westereng(molnam, ctrl,ℋ)::Eigs
    return wvs
 end
 
-function westersim(molnam, ctrl, μs, wvs)
+function westersim(molnam::String, ctrl::Controls, μs::Vector{MuOp}, wvs::Eigs)
    σs = σcount(ctrl.NFOLD)
    frqs, inds = tracalc(ctrl,μs,wvs)
    writefreqs(molnam,ctrl,frqs,inds)
@@ -77,7 +78,7 @@ end
 
 function westermain()
    println("Sorry about the name...")
-   molnam = "test_rt"
+   molnam = "test_sr"
    @time info, ctrl, ℋ, μs = inp_reader(molnam)
    if occursin("F", ctrl.RUNmode)
       println("westerfit!")
