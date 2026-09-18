@@ -183,17 +183,23 @@ function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
    perm, out = unc_arrange(ℋ,unc,prjct)
    println(io, "Final parameter values & uncertanties & milicent\n")
    for i ∈ 1:length(perm)
-      j = perm[i]
-      if !iszero(ℋ[j].scl) j ∉ prjct
+      
+      if !iszero(ℋ[perm[i]].scl) && j ∉ prjct
          mcnt =  @sprintf("%0.4f", out[i,3])
-         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad(out[i,2],30),"; ", lpad(mcnt,10))
-      elseif !iszero(ℋ[j].scl) j ∉ prjct
-         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad("FROZEN BY CODE",30),
-            "; ", lpad("UNDEFINED",10))
+         println(io, lpad(ℋ[perm[i]].nam,12),"; ", lpad(out[i,1],30),"; ", 
+            lpad(out[i,2],30),"; ", lpad(mcnt,10))
+      elseif !iszero(ℋ[perm[i]].scl) &&  perm[i] ∉ prjct
+         println(io, lpad(ℋ[perm[i]].nam,12),"; ", lpad(out[i,1],30),"; ", 
+            lpad("FROZEN BY CODE",30),"; ", lpad("UNDEFINED",10))
       else
-         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad("fixed",30),"; ", lpad("---",10))
+         println(io, lpad(ℋ[perm[i]].nam,12),"; ", lpad(out[i,1],30),"; ",
+            lpad("fixed",30),"; ", lpad("---",10))
       end
    end
+# >>>>> SOPHIE PLEASE ADD UNCERTAINTY FORMATTER HERE <<<<<<<<
+# out[i,:] has structure of [val unc mill] and is sorted alphabetically by parameter name
+# perm provides the alphabetizing
+# so the goal is : ℋ[perm[i]].nam  out[i,1](out[i,2])
 end
 function triangleprint(mat,nams;io=stdout,d=4,col=5)
    #io ≠ stdout ? io = open(io, "a") : io=stdout
