@@ -73,6 +73,23 @@ function unit_dict()::Dict{String,Function}
        "μm"=>x->c_0.val/x,
          ""=>x->x)
 end
+function unit_undict()::Dict{String,Function}
+   return Dict{String,Function}("MHz"=>x->x,
+     "cm-1"=>x->x / csl,
+      "kHz"=>x-> x / 1e-3,
+       "Hz"=>x-> x / 1e-6,
+      "mHz"=>x-> x / 1e-9,
+      "GHz"=>x-> x / 1e3,
+      "THz"=>x-> x / 1e6,
+      "arb"=>x->x,
+        "z"=>x->0.0,
+       "eV"=>x-> x / 241_798_840.7662022, # <---- REPLACE WITH PHYS CONST
+     "Hart"=>x-> x / 6_579_681_360.732768, # <---- REPLACE WITH PHYS CONST
+       "nm"=>x->c_0.val * 1e3 / x,
+       "μm"=>x->c_0.val / x,
+         ""=>x->x)
+end
+
 
 function opfn_parse(x::String)
    q = [1;0]
@@ -146,7 +163,8 @@ function ops_in(inp::Dict{String,Any})::Vector{Term}
             units[ vec[3] ](vec[2][1] ),
             ops, # operators
             vec[4], # scale
-            vec[5]) # stage
+            vec[5], # stage
+            vec[3]) # unit
       elseif typeof(vec[1]) == Vector{Any} && length(vec[1])==5
          opstr = vec[1][1]
          val = vec[1][2]
@@ -159,7 +177,8 @@ function ops_in(inp::Dict{String,Any})::Vector{Term}
             units[ vec[1][3] ](vec[1][2] ),
             ops, # operator
             vec[1][4], # scale
-            vec[1][5]) # stage
+            vec[1][5], # stage
+            vec[1][3]) # unit
       else
          @warn "Something very weird happed with the input file at key $i"
       end # if

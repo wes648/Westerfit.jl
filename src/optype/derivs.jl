@@ -106,7 +106,9 @@ function dEcalc(ctrl,ℋ,wvs, jσlist)
       for l ∈ 1:nprm
          J_eng[inds, σ, l] = diag(temp[:,:,l])
       end
-      H_eng[:,:,inds,σ ] = der2_block(temp,wvs,inds, σ)
+      if ctrl.trueHess
+         H_eng[:,:,inds,σ ] = der2_block(temp,wvs,inds, σ)
+      end
    end
    return J_eng, H_eng
 end
@@ -135,7 +137,7 @@ function der2_block(ders,wvs,inds,σ)
    return temp
 end
 
-function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds)
+function dE2dfconv!(flag::Bool,Jf,Hf, Je,He, W,γ, linds)
    #W is just inverse freq unc
    # γ = W * (ofreq .- cfreq)
    Hf .= zero(Hf)
@@ -144,10 +146,12 @@ function dE2dfconv!(Jf,Hf, Je,He, W,γ, linds)
       uσl = linds[dest, 2]
       lσl = linds[findall(x->x==σ, linds[:,6]), 5]
       Jf[dest,:] .= (Je[uσl, σ+1, :] .- Je[lσl, σ+1, :]) .* W[dest]
-      S = He[:,:,uσl,σ+1] .- He[:,:,lσl,σ+1]
-      Hf .+= sum(x->S[:,:,x] * W[dest[x]] * γ[dest[x]], eachindex(γ[dest]))
+      if flag
+         S = He[:,:,uσl,σ+1] .- He[:,:,lσl,σ+1]
+         Hf .+= sum(x->S[:,:,x] * W[dest[x]] * γ[dest[x]], eachindex(γ[dest]))
+      end
    end
-   Hf .= Jf' * Jf
+   Hf .+= Jf' * Jf
    #@show size(Hf)
    return Jf, Hf
 end
@@ -155,7 +159,7 @@ end
 function deriv_calc!(Jf,Hf, ctrl,ℋ,wvs,lins, γ)
    jσlst = jlister(lins.inds)
    Je, He = dEcalc(ctrl, ℋ,wvs, jσlst)
-   dE2dfconv!(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   dE2dfconv!(ctrl.trueHess, Jf,Hf, Je,He, lins.wght,γ, lins.inds)
    return Jf, Hf
 end
 function deriv_calc(ctrl,ℋ,wvs,lins, γ)
@@ -163,8 +167,8 @@ function deriv_calc(ctrl,ℋ,wvs,lins, γ)
    Jf = zeros(length(γ), nprm)
    Hf = zeros(nprm,nprm)
    jσlst = jlister(lins.inds)
-   Je, He = dEcalc(ctrl, ℋ,wvs, jσlst)
-   dE2dfconv!(Jf,Hf, Je,He, lins.wght,γ, lins.inds)
+   @time "dE/dx" Je, He = dEcalc(ctrl, ℋ,wvs, jσlst)
+   @time "dν/dx" dE2dfconv!(ctrl.trueHess,Jf,Hf, Je,He, lins.wght,γ, lins.inds)
    if iszero(Jf)
       println("FUCK JACOBIAN IS ZERO")
    end

@@ -6,7 +6,7 @@ include("@__DIR__/../main.jl")
 precompile(westerfit, (String))
 precompile(inp_reader, (String))
 precompile(westereng, (String, Controls, Vector{Term}))
-precompile(westersim, (String, Controls, Vector{MuOp}, Eigs)))
+precompile(westersim, (String, Controls, Vector{Mu}, Eigs))
 precompile(westerfit, (String, Controls, Vector{Term}))
 #precompile(H_calc, (
 #precompile(opt_calc, (

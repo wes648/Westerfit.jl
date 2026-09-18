@@ -9,31 +9,28 @@ end
 
 function prm_rjct(H)::Vector{Int}
    # if hessian diagonal element is too small, temporarily remove from H & J
-   perm = zeros(Int,1)
-   dH = diag(H)
-   #@show diag(H)
-   @inbounds for i ∈ eachindex(dH)
-      if abs(dH[i]) < 1e-3 # TOL
-         @warn "hey julia this Hessian tol should be controllable value"
-         perm = vcat(perm,i)
-      end # if
-   end # for
-   #if isempty(perm); perm = [0]; end
+#   perm = zeros(Int,1)
+#   dH = diag(H)
+#   @inbounds for i ∈ eachindex(dH)
+#      if abs(dH[i]) < 1e-3 # TOL
+#         @warn "hey julia this Hessian tol should be controllable value"
+#         perm = vcat(perm,i)
+#      end # if
+#   end # for
 #   return perm
    return [0]
 end
 
 function lin_rjct(J,W,omc)::Vector{Int}
    # if omc/W > THRESH, temporarily remove from J & W & omc
-   perm = zeros(Int,1)
-   check = (omc ./ W).^2
-   @inbounds for i ∈ eachindex(check)
-      if check[i] > 1e5
-         @warn "hey julia this line tol should be controllable value"
-         perm = vcat(perm,i)
-      end
-   end
-   #if isempty(perm); perm = [0]; end
+#   perm = zeros(Int,1)
+#   check = (omc ./ W).^2
+#   @inbounds for i ∈ eachindex(check)
+#      if check[i] > 1e5
+#         @warn "hey julia this line tol should be controllable value"
+#         perm = vcat(perm,i)
+#      end
+#   end
 #   return perm
    return [0]
 end
@@ -93,11 +90,11 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
    converged = false
    nwvs = Eigs(ctrl);   wvs = Eigs(ctrl)
    jsσs = jlister(lins.inds)
-   @time H_calc(ctrl,wvs,ℋ,jsσs)
+   @time "energy time" H_calc(ctrl,wvs,ℋ,jsσs)
    χ2, omc, cfq = χ2calc(wvs,lins, [0])
    endp = "not yet"
    lχ2 = copy(χ2)
-   @time J,H = deriv_calc(ctrl,ℋ,wvs,lins, omc)
+   @time "deriv time" J,H = deriv_calc(ctrl,ℋ,wvs,lins, omc)
    δ = zeros(nfit_count(ℋ)); oδ = ones(nfit_count(ℋ))
    io = open(molnam*".out","a")
    sum_init_print(io, sum(map(x->x.scl, ℋ)), lins, omc)
@@ -120,7 +117,7 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
 
       ℋ = update_prm(ℋ,δ,prjct)
       # @show δ
-      @time nwvs = H_calc(ctrl,nwvs,ℋ,jsσs)
+      @time "energy time" nwvs = H_calc(ctrl,nwvs,ℋ,jsσs)
       nχ2, nomc, ncfq = χ2calc(nwvs,lins,lrjt)
       ρdn = (χ2 - nχ2) / approx #(χ2 - approx)
       check = □rt(abs(nχ2 - χ2)/χ2)
@@ -136,12 +133,11 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
          lχ2 = min(nχ2, lχ2)
          wvs = deepcopy(nwvs)
          oδ .= δ
-      @time deriv_calc!(J,H, ctrl,ℋ,wvs,lins, omc)
+      @time "deriv time" deriv_calc!(J,H, ctrl,ℋ,wvs,lins, omc)
          χ2, omc, cfq = χ2calc(wvs,lins,lrjt)
          rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
          printstyled(" accepted step: ", counter, color=:green)
-         println(" wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))
-         
+         println(" wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))         
          println(#"χ2 = ",lpad(round(χ2, digits=5),5),", "
             "||δ|| = ", 
             lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3), ", θ = ", lpad(round(θ,digits=5),3))
@@ -156,8 +152,10 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
          # model failed to decrease
          rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
          printstyled(" rejected step: ", color=:red)
-         println("χ2 = ",lpad(χ2,5), ", ||δ|| = ", lpad(norm(δ),3), ", θ = ", lpad(θ,3))
          println("wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))
+         println(#"χ2 = ",lpad(round(χ2, digits=5),5),", "
+            "||δ|| = ", 
+            lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3), ", θ = ", lpad(round(θ,digits=5),3))
          μlm *= 10.0
 #         λ *= 10.0
          Δ *= 0.9

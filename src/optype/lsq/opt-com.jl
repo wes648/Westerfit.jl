@@ -43,21 +43,12 @@ function rmscalc(omc::Vector{Float64}, ℋ, prjct::Vector{Int}, lnjct::Vector{In
    return rms, √(χ2/dof)
 end
 
-function paramunc(H,W,perm,omc)
-   uncs = zeros(size(H,1))
-   try
-      uncs = diag(inv(Symmetric(H)))
-   catch 
-      uncs = diag(inv(H))
-   end
-   uncs .*= (omc' * W * omc)/(length(omc)-length(perm))
-   return □rt.(uncs)
-end
 function correl(H,wrms)
    out = inv(H)
-   uncs = □rt.(diag(out) .* wrms)
+   uncs = □rt.(diag(out) .* wrms^2)
    for i in 1:size(H,1), j in i:size(H,2)
-      out[i,j] = out[i,j] / √(out[i,i]*out[j,j])
+      out[i,j] = out[i,j] / (uncs[i]*uncs[j])
+#      out[i,j] = out[i,j] / (√(out[i,i]*out[j,j]))
    end
    return Symmetric(out), uncs
 end

@@ -63,7 +63,7 @@ function westereng(molnam::String, ctrl::Controls,ℋ::Vector{Term})::Eigs
    return wvs
 end
 
-function westersim(molnam::String, ctrl::Controls, μs::Vector{MuOp}, wvs::Eigs)
+function westersim(molnam::String, ctrl::Controls, μs::Vector{Mu}, wvs::Eigs)
    σs = σcount(ctrl.NFOLD)
    frqs, inds = tracalc(ctrl,μs,wvs)
    writefreqs(molnam,ctrl,frqs,inds)
@@ -78,7 +78,7 @@ end
 
 function westermain()
    println("Sorry about the name...")
-   molnam = "test_sr"
+   molnam = "test_tsr"
    @time info, ctrl, ℋ, μs = inp_reader(molnam)
    if occursin("F", ctrl.RUNmode)
       println("westerfit!")

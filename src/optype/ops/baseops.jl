@@ -66,15 +66,13 @@ function TN(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 end
 
 ################################## SPIN |S,Σ⟩ OPERATORS ##################################
-function S2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int}
-   return spdiagm( fill(eh(ψ.S)^p,ψ.lng) )
-end
+S2(ψ::RPsi,p::Int)::SparseMatrixCSC{Float64,Int} = spdiagm( fill(eh(ψ.S)^p,ψ.lng) )
 
 function ts_fact(sf::Float64,j::Float64,s::Float64,nb::Int,nk::Int,k::Int)::Float64
    sf*jnred(nb,nk)*wig6j(s,nb,j, nk,s,k)
 end
 function wigeck_elem(x::Int,nb::Int,nk::Int,k::Int,q::Int,fac::Float64)::Float64
-   fac*wig3j(nb,k,nk,-x-q,q,x)*powneg1(x+q)
+   fac*wig3j(nb,k,nk, -x-q,q,x)*powneg1(-x-q)
 end
 function TS(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    @assert abs(q) ≤ k "T^k_q(S) component must be ≤ rank!"
@@ -86,32 +84,23 @@ function TS(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
       p = -q - ψ.N[j] + ψ.N[i] # -q - Δ
       blck = view(view(out,nds[j],nds[i]), diagind(dgen(ψ.N[j]),dgen(ψ.N[i]), p))
       kl = (-ψ.N[i]:ψ.N[i])[(1:length(blck)).+( p>0 ? p : 0)]
-      map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],2,q,fac), blck ,kl)
+      map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],k,q,fac), blck ,kl)
       if q>0
          p = q - ψ.N[j] + ψ.N[i]
          blck = view(view(out,nds[j],nds[i]), diagind(view(out,nds[j],nds[i]), p))
          kl = (-ψ.N[i]:ψ.N[i])[(1:length(blck)).+( p>0 ? p : 0)]
-         map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],2,q,fac*powneg1(q)), blck ,kl)
+         map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],k,q,fac*powneg1(q)), blck ,kl)
       end # q if
    end # i,j
    return Symmetric(out, :L)
 end
+Sz(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int} = dropzeros!(TS(ψ,1,0)^p)
+Spm(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int} = dropzeros!(TS(ψ,k,k) .* (powneg1(k)*√2^k))
 
-function Sz(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
-   dropzeros!(TS(ψ,1,0)^p)
-end
-function Spm(ψ::RPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
-   dropzeros!(TS(ψ,k,k) .* (powneg1(k)*√2^k))
-end
-
-
-function hq_elem(x::Int,nb::Int,nk::Int,q::Int,fac::Float64)::Float64
-   fac*wig3j(nb,2,nk,-x-q,q,x)*powneg1(x+q)
-end
-hq_sfac(j::Float64,s::Float64)::Float64 = 0.25*powneg1(j + s + 1.0) / wig3j(s,2,s, -s,0,s)
+hq_sfac(j::Float64,s::Float64)::Float64 = 0.25*powneg1(j+s) / wig3j(s,2,s, -s,0,s)
 function hq_bfac(j::Float64,s::Float64,nb::Int,nk::Int,sf::Float64)::Float64
-   wig6j(j, s,  nb,
-         2,  nk, s)*jnred(nb,nk)*sf*powneg1(nb+nk)
+   wig6j(j, s, nb,
+         2, nk, s)*jnred(nb,nk)*sf*powneg1(nb+nk)
 end
 function T2Q(ψ::RPsi,q::Int,p::Int)::SparseMatrixCSC{Float64,Int}
    @assert abs(q)≤2 "(T²(Q)⋅T²(V))_q only supports |q| ≤ 2"
@@ -132,7 +121,7 @@ function T2Q(ψ::RPsi,q::Int,p::Int)::SparseMatrixCSC{Float64,Int}
          map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],2,-q,fac*powneg1(q)), blck ,kl)
       end # q if
    end # i,j
-   return Symmetric(out, :L)
+   return Symmetric(dropzeros!(out), :L)
 end
 
 ########################### SPIN-ROTATION |J,S,N,K⟩ OPERATORS ############################
@@ -141,9 +130,6 @@ function NS(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    return out
 end
 
-function srelem(x::Int,pr::Float64,nb::Int,nk::Int,l::Int,q::Int)::Float64
-   pr*wig3j(nb,l,nk,-x-q,q,x)*powneg1(x)
-end
 function nsred2(nb::Int,nk::Int)::Float64
    if nb==nk
    out = nred(nk)*wig6j(1,1,2,nk,nk,nk)
@@ -160,7 +146,7 @@ function jsred(j,s,nb::Int,nk::Int)::Float64
                  s,nb, 1)*jnred(nb,nk)
 end
 function sr_blck_fac(j::Float64,s::Float64,nb::Int,nk::Int,sf::Float64)::Float64
-   jsred(j,s,nb,nk)*nsred2(nb,nk)*sf
+   jsred(j,s,nb,nk)*nsred2(nb,nk)*sf*powneg1(nb-nk)
 end
 
 function TNS(ψ::RPsi, k::Int, q::Int)::SparseMatrixCSC{Float64,Int}
@@ -172,7 +158,7 @@ if iszero(k)
 else   
    out = spzeros(ψ.lng,ψ.lng)
    nds = nindsgen(ψ.N)
-   sfact = √3*nred(ψ.S)*powneg1(ψ.J + ψ.S)
+   sfact = √5*nred(ψ.S)*powneg1(ψ.J + ψ.S)
 #   for i ∈ 1:length(ψ.N), j ∈ max(1,i-1):min(i+1,length(ψ.N))
    for i ∈ 1:length(ψ.N), j ∈ i:min(i+1,length(ψ.N))
 #      nb = ψ.N[j]; nk = ψ.N[i]#; Δ = nb - nk
@@ -180,15 +166,15 @@ else
       p = -q - ψ.N[j] + ψ.N[i] # -q - Δ
       blck = view(view(out,nds[j],nds[i]), diagind(dgen(ψ.N[j]),dgen(ψ.N[i]), p))
       kl = (-ψ.N[i]:ψ.N[i])[(1:length(blck)).+( p>0 ? p : 0)]
-      map!(x::Int-> srelem(x,fac,ψ.N[j],ψ.N[i],k,q), blck ,kl)
+      map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],k,q,fac), blck ,kl)
       if q>0
          p = q - ψ.N[j] + ψ.N[i] # -q - Δ
          blck = view(view(out,nds[j],nds[i]), diagind(dgen(ψ.N[j]),dgen(ψ.N[i]), p))
          kl = (-ψ.N[i]:ψ.N[i])[(1:length(blck)).+( p>0 ? p : 0)]
-         map!(x::Int-> srelem(x,fac*powneg1(q),ψ.N[j],ψ.N[i],k,-q), blck ,kl)
+         map!(x::Int-> wigeck_elem(x,ψ.N[j],ψ.N[i],k,-q,fac*powneg1(q)), blck ,kl)
       end # q
    end # i,j
-   out = Symmetric(out, :L)
+   out = Symmetric(dropzeros!(out), :L)
 end # k if
    return out
 end # func

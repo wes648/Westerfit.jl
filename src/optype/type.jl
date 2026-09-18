@@ -1,7 +1,7 @@
 
 @kwdef mutable struct Controls
 #   apology::Bool = true
-   RUNmode::String = "ESF"
+   RUNmode::String = "ESFD"
    stages::Int = 0
 #   Irrep::String = "Ir"
    assign::String = "ram36"
@@ -14,10 +14,10 @@
    νrange::Vector{Float64} = [0.2; 40.0]
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 1e-6
-#   ExactHess::Bool = true # exact hess or not
    Δlm0::Float64 = 100.0
    λlm0::Float64 = 0.001
 #   turducken::Int = 1
+   trueHess::Bool = true
    maxiter::Int = 60
    BOLD::Int = 0
    REJECT::Float64 = 10.0
@@ -112,9 +112,10 @@ mutable struct Term
    const scl::Float64
    const stg::Int
    const l::Int
-   Term(nam::String,val::Float64,ops::Op,scl::Float64,stg::Int) = new(nam,val,[ops],scl,stg,1)
-   Term(nam="E",val=0.0,ops=[Op()],scl=0.0,stg=0) = new(nam,val,ops,scl,stg,length(ops))
-   Term(T::Term) = new(T.nam,T.ops,T.scl,T.stg,T.l)
+   const unit::String
+   Term(nam::String,val::Float64,ops::Op,scl::Float64,stg::Int,unit::String) = new(nam,val,[ops],scl,stg,1,unit)
+   Term(nam="E",val=0.0,ops=[Op()],scl=0.0,stg=0,unit="MHz") = new(nam,val,ops,scl,stg,length(ops),unit)
+   Term(T::Term) = new(T.nam,T.ops,T.scl,T.stg,T.l,T.unit)
 end
 struct Mu
    nam::String

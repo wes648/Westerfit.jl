@@ -227,7 +227,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,ops,jsσs::Matrix{Int})::Eigs
       end
 #      println("top-top stage done!")
    end
-   for i ∈ 1:size(jsσs,1)
+   Threads.@threads for i ∈ 1:size(jsσs,1)
       σind = jsσs[i,2]
       j = 0.5*jsσs[i,1]
       ψ = Psi( RPsi(j, ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σind],ctrl.mcalc), σind )

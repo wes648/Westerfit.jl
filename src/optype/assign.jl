@@ -87,3 +87,22 @@ function ram36_2stg_assign(vecs,j,s,vtcalc,vtmax)
    return perm
 end # function
 
+"""
+Expect-expect-overlap
+-find & group ⟨ψ|ℋ_t|ψ⟩
+--- this should be equal to ⟨ψ|Diag(E_ts)|ψ⟩
+--- diag( sand( Diagonal( kron(E_ts,ones(ψ.R.lng)) ), vecs ) )
+-find & group ⟨ψ|N²|ψ⟩ with in ℋ_t group
+--- diag( sand( kron(I(vtcalc+1), N2(ψ,2,0)), vecs ) )
+-sort by energy with in N²ℋ_t group
+"""
+function eeo_assign(vecs,j,s,vtcalc,vtmax)
+   ns,nd,ni,jsd = srprep(j,s)
+   count = min(vtmax+4,vtcalc+1)
+   list = tor_expect()
+
+end
+
+
+
+

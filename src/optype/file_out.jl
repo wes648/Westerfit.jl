@@ -104,7 +104,7 @@ end
 function ham_init_print(io,ℋ::Vector{Term})
    perm = sortperm(map(x->x.nam, ℋ))
    for i ∈ perm
-      println(io, lpad(ℋ[i].nam,12),";", lpad(ℋ[i].val, 28),";", lpad(ℋ[i].scl, 5))
+      println(io, lpad(ℋ[i].nam,12),";", lpad(ℋ[i].val, 30),";", lpad(ℋ[i].scl, 6))
    end
 end
 function sum_init_print(io, nparam, lins, omc)
@@ -130,7 +130,7 @@ function ham_print(io,ℋ::Vector{Term},δ::Vector{Float64},prjct::Vector{Int})
    j = 1
    @inbounds for i ∈ eachindex(ℋ)
       if !iszero(ℋ[i].scl) && j ∉ prjct
-         println(io, lpad(ℋ[i].nam,12),";", lpad(ℋ[i].val, 28),";", lpad(δ[j], 5))
+         println(io, lpad(ℋ[i].nam,12),";", lpad(ℋ[i].val, 30),";", lpad(δ[j], 30))
          j += 1
       end
    end
@@ -148,7 +148,7 @@ function sum_print(io, iter, ℋ,δ, prjct, lnjct, rms, wrms, χ2)
    if !iszero(prjct)
       println(io, getproperty.(ℋ[prjct] :nam))
    end
-   println(io, "Current Parameter values:")
+   println(io, "\nCurrent Parameter values:")
    ham_print(io,ℋ,δ, prjct)
 end
 function output_update(ℋ,δ,omc,w, counter)
@@ -162,26 +162,42 @@ function output_update(ℋ,δ,omc,w, counter)
    close(io)
    end
 end
-function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
-   perm = sortperm(getproperty.(ℋ, :nam))
+function unc_arrange(ℋ::Vector{Term}, unc::Vector{Float64},prjct)#::Matrix{Float64}
+   out = zeros(length(ℋ),3)
    j = 1
-   println(io, "Final parameter values (MHz) & uncertanties & milicent\n")
-   for i ∈ perm
+   deunit = unit_undict()
+   for i ∈ 1:length(ℋ)
       if !iszero(ℋ[i].scl) j ∉ prjct
-         mcnt =  abs(round(1e3 * unc[j] / ℋ[i].val, digits=4))
-         println(io, lpad(ℋ[i].nam,10),';', lpad(ℋ[i].val,30),';', lpad(unc[j],30),';', lpad(mcnt,30))
+         out[i,1] = deunit[ℋ[i].unit](ℋ[i].val)
+         out[i,2] = deunit[ℋ[i].unit](unc[j])
+         out[i,3] = 1e3 * abs(unc[j] / ℋ[i].val)
          j += 1
-      elseif !iszero(ℋ[i].scl) j ∉ prjct
-         println(io, lpad(ℋ[i].nam,10),';', lpad(ℋ[i].val,30),';', lpad("FROZEN BY CODE",30),
-            ';', lpad("UNDEFINED",30))
       else
-         println(io, lpad(ℋ[i].nam,10),';', lpad(ℋ[i].val,30),';', lpad("fixed",30),';', lpad("---",30))
+         out[i,1] = deunit[ℋ[i].unit](ℋ[i].val)
+      end
+   end
+   perm = sortperm(getproperty.(ℋ, :nam))
+   return perm, out[perm,:]
+end
+function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
+   perm, out = unc_arrange(ℋ,unc,prjct)
+   println(io, "Final parameter values & uncertanties & milicent\n")
+   for i ∈ 1:length(perm)
+      j = perm[i]
+      if !iszero(ℋ[j].scl) j ∉ prjct
+         mcnt =  @sprintf("%0.4f", out[i,3])
+         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad(out[i,2],30),"; ", lpad(mcnt,10))
+      elseif !iszero(ℋ[j].scl) j ∉ prjct
+         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad("FROZEN BY CODE",30),
+            "; ", lpad("UNDEFINED",10))
+      else
+         println(io, lpad(ℋ[j].nam,12),"; ", lpad(out[i,1],30),"; ", lpad("fixed",30),"; ", lpad("---",10))
       end
    end
 end
 function triangleprint(mat,nams;io=stdout,d=4,col=5)
    #io ≠ stdout ? io = open(io, "a") : io=stdout
-   println(io,"\n  Correlation matrix:")
+   println(io,"\n\n  Correlation matrix:")
    l = size(mat,1)
    blocks = ceil(Int,l/col)
    for j in 1:blocks
