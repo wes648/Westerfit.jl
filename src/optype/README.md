@@ -250,7 +250,7 @@ That should run westerfit!
 2. Open up Ubuntu and do the set-up process, including setting a username and password (you won't be able to see the password when you type it).
 3. From here, move to the LINUX instructions.
 
-Useful Windows Notes:
+Useful WSL Notes:
 1. You can make a folder with the command `mkdir` followed by the name of the folder: `mkdir molecule`. Enter the folder with cd and see what's inside it with ls. You can view text files with vim, and exit vim with Esc+`:q`.
 2. You can access your normal File Explorer by going to your home directory (`cd ~`) and typing `explorer.exe`.
 3. You may run into issues where your files have the wrong type of linebreaks. To fix this, install dos2unix by typing `sudo apt install dos2unix` and typing in your password. Then, type `dos2unix FILENAME`, with your file name inserted. This should fix the problem.
