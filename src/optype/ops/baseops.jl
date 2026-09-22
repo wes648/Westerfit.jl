@@ -216,14 +216,14 @@ function vnct(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    return out
 end
 
-function sint(ψ::TTPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
-   l = 2ψ.mc+1
-   out = spdiagm(p=>fill(0.5im,l-p),-p=>fill(-0.5im,l-p))
-   if iszero(ψ.σs[tid])
-      u = ur(ψ.mc)
-      out = dropzeros!(u*out*u)
+function sint(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
+   p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
+   out = spdiagm(p=>fill(0.5im,ψ.l-p),-p=>fill(-0.5im,ψ.l-p))
+   if iszero(ψ.σ)
+      u = ul(ψ.l)
+      out = dropzeros!(sand(out,u))
    end
-   torsetter!(ψ,tid,out)
+   #torsetter!(ψ,tid,out)
    return out
 end
 
@@ -238,9 +238,9 @@ vncα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnct(ψ,p,1)
 vncβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnct(ψ,p,2)
 vncγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{Float64, Int} = vnct(ψ,p,3)
 
-sinα(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,1)
-sinβ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,2)
-sinγ(ψ::TTPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,3)
+sinα(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,1)
+sinβ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,2)
+sinγ(ψ::TPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64, Int} = sint(ψ,p,3)
 
 # https://doi.org/10.1103/PhysRevA.80.042513
 # hirota 2.5.34

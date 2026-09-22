@@ -40,6 +40,7 @@ function rmscalc(omc::Vector{Float64}, ℋ, prjct::Vector{Int}, lnjct::Vector{In
    nparam = sum(x -> x.scl, ℋ) - length(prjct) + 1
    dof = length(omc) - length(lnjct) - nparam + 1
    rms = √(sum(abs2, omc)/dof)
+   @show dof
    return rms, √(χ2/dof)
 end
 

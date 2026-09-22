@@ -119,10 +119,11 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
       # @show δ
       @time "energy time" nwvs = H_calc(ctrl,nwvs,ℋ,jsσs)
       nχ2, nomc, ncfq = χ2calc(nwvs,lins,lrjt)
+      rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
       ρdn = (χ2 - nχ2) / approx #(χ2 - approx)
       check = □rt(abs(nχ2 - χ2)/χ2)
 
-      if (ctrl.BOLD == 0)|| √(χ2) > 1e5
+      if (ctrl.BOLD == 0)|| wrms > 5e2
          stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-6))
       else
          stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-6)) || ((nχ2*(1-θ)^ctrl.BOLD)<0.2*lχ2)

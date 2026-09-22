@@ -71,14 +71,17 @@ function westersim(molnam::String, ctrl::Controls, μs::Vector{Mu}, wvs::Eigs)
 end
 function westerfit(molnam::String, ctrl::Controls, ℋ::Vector{Term})
    lins, qns = linereader(ctrl, molnam)
+   jmax_bac = ctrl.Jmax
+   setproperty!(ctrl,:Jmax, maximum(qns[:,[1;4]]) )
    ℋ, omc, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
    reswritter(molnam, qns, lins, omc, cfrqs)
+   setproperty!(ctrl,:Jmax, jmax_bac)
    return ℋ
 end
 
 function westermain()
    println("Sorry about the name...")
-   molnam = "test_tsr"
+   molnam = ARGS[1]
    @time info, ctrl, ℋ, μs = inp_reader(molnam)
    if occursin("F", ctrl.RUNmode)
       println("westerfit!")

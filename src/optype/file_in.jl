@@ -6,6 +6,7 @@ function inp_reader(molnam::String)
          Look at line $(inp.line) for a $(inp.type)"
       exit()
    end
+   inp["info"]["date"] = now()
    ctrl = controls_in(inp["controls"])
    H = ops_in(inp["hamiltonian"])
    μs = mus_in(inp["intensity"])

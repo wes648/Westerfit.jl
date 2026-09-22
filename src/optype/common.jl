@@ -202,8 +202,8 @@ function qn2ind(j,s,n,ka,kc)
    ind = Int(ind)
    return ind
 end
-function qn2ind(nf,vtm,j,s,n,ka,kc,vt)
-   if (nf≠zero(nf))
+function qn2ind(bool::Bool,vtm,j,s,n,ka,kc,vt)
+   if !bool
    #ka = abs(ka)
    ind = sum(2 .* collect((0.5*isodd(2*s)):(j-1)) .+ 1)*(vtm+1)
    #ind += (vtm+floor(Int,m/nf))*(2*j+1) #<--- This function is wrong for vt≠0
@@ -217,11 +217,11 @@ function qn2ind(nf,vtm,j,s,n,ka,kc,vt)
    end
 end
 function qn2ind(ctrl, state)
-   return qn2ind.(ctrl.NFOLD,ctrl.vtmax, state[:,1], ctrl.S, 
+   return qn2ind.(iszero(ctrl.NFOLD),ctrl.vtmax, state[:,1], ctrl.S, 
                   state[:,2], state[:,3], state[:,4], state[:,5])
 end
 function qn2ind(nf,vtm,S, state)
-   return qn2ind.(nf,vtm, state[:,1], S, 
+   return qn2ind.(iszero(nf),vtm, state[:,1], S, 
                   state[:,2], state[:,3], state[:,4], state[:,5])
 end
 
@@ -256,6 +256,7 @@ end
 
 
 """
+torsetter!(ψ::TTPsi,i::Int,out::Matrix) -> Matrix
 Applies Kronecker products with identity matrices in order to properly resize the ith one top matrix.
 """
 function torsetter!(ψ::TTPsi,i::Int,out)
@@ -303,8 +304,6 @@ Determines if previous stages are needed based on if the wavefunction matrix
    both exists (set by the stage keyword) and is nonzero (defined from said previous stage)
 """
 stage_allow(x)::Bool = !isnothing(x) && !iszero(x.vecs)
-
-
 
 
 

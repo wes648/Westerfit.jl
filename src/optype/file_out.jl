@@ -184,7 +184,7 @@ function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
    println(io, "Final parameter values & uncertanties & milicent\n")
    for i ∈ 1:length(perm)
       
-      if !iszero(ℋ[perm[i]].scl) && j ∉ prjct
+      if !iszero(ℋ[perm[i]].scl) && perm[i] ∉ prjct
          mcnt =  @sprintf("%0.4f", out[i,3])
          println(io, lpad(ℋ[perm[i]].nam,12),"; ", lpad(out[i,1],30),"; ", 
             lpad(out[i,2],30),"; ", lpad(mcnt,10))
@@ -242,6 +242,37 @@ function output_final(molnam::String,ℋ,unc,corr, prjct, lnjct, rms, wrms, χ2,
    println("output written to ", molnam,".out!")
 end
 
+function inp_info_print(io,molnam,info,rms,wrms,numlin)
+   inf["rms"] = rms
+   inf["wrms"] = wrms
+   inf["line_count"] = numline
+   TOML.print(molnam*".toml", inf)
+end
+function inp_ctrl_print(io,ctrl::Controls)
+   println(io, "\n[controls]")
+   for i ∈ propertynames(ctrl)
+      println(io, i, " = ", getproperty(ctrl,i))
+   end
+end
+function opf2strng(o::OpFunc)::String
+   out = string(o.f)
+   if !iszero(o.q)
+      out *= "^"*string(o.l)*"_"*string(o.q)
+   elseif o.l > 1 && iszero(o.q)
+      out *= "^"*string(o.l)
+   else
+   end
+   return out 
+end
+
+function inp_ham_print(io,ℋ)
+   println(io, "\n[hamiltonian]")
+   println(io, "#Nam = [Func, val, unit, scale, stage]")
+   println(io, "# α β γ δ Δ η ϵ ϕ Φ")
+   for i ∈ sortperm( sortperm(getproperty.(ℋ, :nam)) )
+      println(io, ℋ[i].nam, " = ", "[")
+   end
+end
 
 
 

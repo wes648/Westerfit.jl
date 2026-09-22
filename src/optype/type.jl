@@ -26,7 +26,8 @@
 end
 
 struct OpFunc{S<:AbPsi}
-   f::FunctionWrapper{SparseMatrixCSC{NUMTYPE,Int}, Tuple{S,Int,Int}} # function
+#   f::FunctionWrapper{SparseMatrixCSC{NUMTYPE,Int}, Tuple{S,Int,Int}} # function
+   f::FunctionWrapper{SparseMatrixCSC, Tuple{S,Int,Int}} # function
    l::Int # power / rank
    q::Int # top / component 
    OpFunc(S::Type,f::Function,l::Int,q=0) = new{S}(f,l,q)

@@ -22,12 +22,11 @@ function enact(val::Float64,O::Op,ψ::Psi,wvs::Eigs,UR::SparseMatrixCSC{Float64,
       @inbounds for i ∈ eachindex(O.tf)
          part = eval_top(O.tf[i], ψ.T, wvs.top)
          tpart = tpart*part
-         if stage_allow(wvs.ttp)
-#            println("hi!")
-            tpart = sand(tpart, 
-               wvs.ttp.vecs[:,:, ψ.σ] )
-         end #top-top if
-      end #for i
+      end # top op for 
+      if stage_allow(wvs.ttp)
+         tpart = sand(tpart, 
+         wvs.ttp.vecs[:,:, ψ.σ] )
+      end #top-top if
       out = kron(tpart,out)
    elseif isnothing(wvs.ttp)
       out = kron(I(ψ.T.l), out)
