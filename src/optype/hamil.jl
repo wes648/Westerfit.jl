@@ -120,20 +120,10 @@ end
 
 function stage_ttproc(wvs::Eigs,ops::Vector{Term},
             ψ::TTPsi,σind::Int,ctrl::Controls)::Eigs
-   #println("\nstart σ = $σind")
    stage = 1
-   #offset = hccount + 4*length(ctrl.NFOLD)
    l = ctrl.vtcalc+1
-   #@show l
    if isnothing(wvs.top)
-      ln = 2ctrl.vtcalc+1
       Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
-      #Hmat = htor2_hc(0.5 .*prms[hccount+1:hccount+4], ψ.tps[1])
-      #for i ∈ 2:length(ctrl.NFOLD)
-      #   Hmat = kron(sparse(I,ln,ln), Hmat ) + 
-      #          kron( htor2_hc(prms[hccount+4i-3:hccount+4i], ψ.tps[i]),
-      #          sparse(0.5I, ln^(i-1),ln^(i-1)),  ) 
-      #end
    else
       Hmat = 0.5 * wvs.top[1].vals[:,σ2ind(ψ,1)] 
       for i ∈ 2:length(ctrl.NFOLD)
@@ -145,18 +135,16 @@ function stage_ttproc(wvs::Eigs,ops::Vector{Term},
    end
    for i ∈ eachindex(ops)
       if ttstage_check(ops[i].stg,stage,ctrl.stages)
-         #part = enact_tt(ops[i],ψ,wvs,prms[i + offset])
          Hmat += enact_tt(ops[i],ψ,wvs)
       #elseif ops[i].stg < 0 && ttstage_check(ops[i + ops[i].stg].stg,stage,ctrl.stages)
       #   Hmat += enact_tt(ops[i],ψ,wvs,prms[i + offset]*prms[i + op.stg + offset])
       end # stage if
    end # ops loop
-   #if isone(σind)
-   #   @show Hmat
-   #end
+#   if isone(σind)
+#      @show Hmat
+#   end
    vals, vecs = diagwrap(tplus!(Hmat))
    wvs.ttp.vals[:,σind], wvs.ttp.vecs[:,:,σind] = vals[1:l], vecs[:,1:l]
-   #println("end σ = $σind\n")
    return wvs
 end
 

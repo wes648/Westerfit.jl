@@ -37,10 +37,12 @@ function χ2calc(wvs::Eigs,lins::Lines, lnjct)#::Float64
    return χ2, omc, cfreqs
 end
 function rmscalc(omc::Vector{Float64}, ℋ, prjct::Vector{Int}, lnjct::Vector{Int}, χ2::Float64)
-   nparam = sum(x -> x.scl, ℋ) - length(prjct) + 1
+   nparam = sum(x -> !iszero(x.scl), ℋ) - length(prjct) + 1
    dof = length(omc) - length(lnjct) - nparam + 1
+   if 0 > dof
+      @warn "Negative degrees of freedom. time to die"
+   end
    rms = √(sum(abs2, omc)/dof)
-   @show dof
    return rms, √(χ2/dof)
 end
 

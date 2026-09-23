@@ -199,20 +199,16 @@ function cost(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
    out = spdiagm(p=>fill(0.5,ψ.l-p),-p=>fill(0.5,ψ.l-p))
    if iszero(ψ.σ)
-      u = ul(ψ.l)
-      out = dropzeros!(sand(out,u))
+      out = dropzeros!(sand(out, ul(ψ.l)))
    end
-   #torsetter!(ψ,tid,out)
    return out
 end
 function vnct(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
    out = spdiagm(0=>fill(0.5,ψ.l),p=>fill(-0.25,ψ.l-p),-p=>fill(-0.25,ψ.l-p))
    if iszero(ψ.σ)
-      u = ul(ψ.l)
-      out = dropzeros!(sand(out,u))
+      out = dropzeros!(sand(out, ul(ψ.l)))
    end
-   #torsetter!(ψ,tid,out)
    return out
 end
 
@@ -220,10 +216,8 @@ function sint(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{ComplexF64, Int}
    p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
    out = spdiagm(p=>fill(0.5im,ψ.l-p),-p=>fill(-0.5im,ψ.l-p))
    if iszero(ψ.σ)
-      u = ul(ψ.l)
-      out = dropzeros!(sand(out,u))
+      out = dropzeros!(sand(out, ul(ψ.l)))
    end
-   #torsetter!(ψ,tid,out)
    return out
 end
 

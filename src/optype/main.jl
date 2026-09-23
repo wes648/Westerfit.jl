@@ -44,9 +44,7 @@ const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 #@show Threads.nthreads()
-#@warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
-#@warn "There is a bug where vtmax & Jmax cause the fitter to break.
-##This happens if they are too big/small relative to the line list"
+@warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
 
 if NUMTYPE <: Complex
    @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
