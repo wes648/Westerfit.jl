@@ -25,9 +25,10 @@ const NUMTYPE = Float64
 #using ProfileView
 include("@__DIR__/../psi.jl")
 include("@__DIR__/../type.jl")
-include("@__DIR__/../file_in.jl")
+include("@__DIR__/../files/file_in.jl")
 include("@__DIR__/../common.jl")
-include("@__DIR__/../file_out.jl")
+include("@__DIR__/../files/file_out.jl")
+include("@__DIR__/../files/inp_copy.jl")
 include("@__DIR__/../hamil.jl")
 include("@__DIR__/../assign.jl")
 include("@__DIR__/../ntop.jl")
