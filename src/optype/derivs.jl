@@ -61,7 +61,8 @@ function derivop_0(T::Term, ψ::Psi, wvs::Eigs,
    @inbounds for i ∈ 2:T.l
       out += enact(T.scl, T.ops[i], ψ,wvs, UR)
    end
-   return droptol!( tplus!(out), 1e-11)
+#   return droptol!( tplus!(out), 1e-11)
+   return tplus!(out)
 end
 
 function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
@@ -71,7 +72,8 @@ function anaderiv(T::Term,ψ::Psi,wvs::Eigs,
    #@show ψ.R.J
    #@show ψ.σ
    out = sand(mat, wvs.rst.vecs[ L , jinds, ψ.σ] )
-   return droptol!(sparse(out), 1e-10)
+#   return droptol!(sparse(out), 1e-10)
+   return sparse(out)
 end
 
 function jacob_term(ctrl,ℋ::Vector{Term},ψ::Psi,wvs::Eigs, UR)

@@ -13,10 +13,9 @@ end
 function thermeff(ν,El,kT,Q)
    x = (kT*csl)^-1
 #   x = abs(ν)*exp(-El*x)*(1.0-exp(-abs(ν)*x)) / Q*csl
-   x = abs(ν/csl)*exp(-El*x)*(1.0-exp(-abs(ν)*x))  
-   return x
+   x = abs(ν/csl)*exp(-El*x)*(1.0-exp(-abs(ν/csl)*x))  
+   return x*1e6
 end
-
 
 function jbjklister(jmin,jmax,mΔj)
    out = zeros(0,2)
@@ -121,12 +120,12 @@ function μσbσk_stage(ctrl,Ops, kT,Q, ϕb,σb, ϕk,σk, wvs)
       r = rinds[i]
       c = cinds[i]
       ν = wvs.rst.vals[r,σb] - wvs.rst.vals[c,σk]
-      if ctrl.νrange[2] > ν*1e-3 > ctrl.νrange[1]
+      if ctrl.frq_rng[2] > ν*1e-3 > ctrl.frq_rng[1]
          outfs[i,1] = ν
          outfs[i,2] = vints[i]*thermeff(ν,wvs.rst.vals[c,σk], kT,Q)
          outfs[i,3] = wvs.rst.vals[c,σk]/csl
          outis[i,:] = [r σb c σk]
-      elseif ctrl.νrange[2] > -ν*1e-3 > ctrl.νrange[1]
+      elseif ctrl.frq_rng[2] > -ν*1e-3 > ctrl.frq_rng[1]
          outfs[i,1] = -ν
          outfs[i,2] = vints[i]*thermeff(-ν,wvs.rst.vals[r,σb], kT,Q)
          outfs[i,3] = wvs.rst.vals[r,σb]/csl
@@ -145,7 +144,7 @@ function tracalc(ctrl,Ops,wvs)
    inds = zeros(Int, 0,4)
    σs = σgen(ctrl.NFOLD)
    frqs = zeros(Float64, 0,3)
-   Q = qtot_calc(ctrl.Jmax,ctrl.S,ctrl.NFOLD,ctrl.TK,wvs)
+   Q = 1.0 # qtot_calc(ctrl.Jmax,ctrl.S,ctrl.NFOLD,ctrl.TK,wvs)
    kT = ctrl.TK * kb
    for σb ∈ 1:σcount(ctrl.NFOLD)#, σk ∈ 1:σb
       ϕb = TTPsi(ctrl.NFOLD,σs[:,σb],ctrl.mcalc) 

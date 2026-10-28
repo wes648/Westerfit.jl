@@ -50,8 +50,8 @@ function correl(H,wrms)
    out = inv(H)
    uncs = □rt.(diag(out) .* wrms^2)
    for i in 1:size(H,1), j in i:size(H,2)
-      out[i,j] = out[i,j] / (uncs[i]*uncs[j])
-#      out[i,j] = out[i,j] / (√(out[i,i]*out[j,j]))
+#      out[i,j] = out[i,j] / (uncs[i]*uncs[j])
+      out[i,j] = H[i,j] / (√(H[i,i]*H[j,j]))
    end
    return Symmetric(out), uncs
 end
@@ -79,9 +79,18 @@ function stepsizehcekcer(δ,ℋ,prjct)
    return √out
 end
 
+function accept_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρ)
+   printstyled(" accepted step: ", counter, color=:green)
+   println(" wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))         
+   println("ρ = ", lpad(round(ρ,digits=5),3),
+      ", ‖δ‖ = ", lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3),
+      ", θ = ", lpad(round(θ,digits=5),3))
+end
+
+
 function fincheck(ctrl,βf,λlm,check,counter,ℋ,prjct,grad,wrms)
    ϵ0 = 0.1E-8 #rms change threshold
-   ϵ1 = 0.1E-6 #step size threshold
+   ϵ1 = 0.1E-5 #step size threshold
    ϵ2 = 0.1E-3 #gradient threshold
    if (wrms ≤ ctrl.goal)#&&(counter > 1)
       println("A miracle has come to pass. The fit has converged")

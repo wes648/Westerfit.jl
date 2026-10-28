@@ -28,13 +28,13 @@ end
 
 #### SIMULATION FILE
 function linestrng(frql,qnu,σu,qnl,σl)   #this formats the lines for the transition writer
-   part  = lpad(qnu[1]*0.5,4)*"," #J
+   part  = lpad(qnu[1]*0.5,5)*"," #J
    part *= lpad(qnu[2],3)*","     #N
    part *= lpad(qnu[3],3)*","     #Ka
    part *= lpad(qnu[4],3)*","     #Kc
    part *= lpad(qnu[5],3)*","     #vt
    part *= lpad(  σu-1,3)*","     #σ
-   part *= lpad(qnl[1]*0.5,4)*"," #J
+   part *= lpad(qnl[1]*0.5,5)*"," #J
    part *= lpad(qnl[2],3)*","     #N
    part *= lpad(qnl[3],3)*","     #Ka
    part *= lpad(qnl[4],3)*","    #Kc
@@ -43,7 +43,7 @@ function linestrng(frql,qnu,σu,qnl,σl)   #this formats the lines for the trans
    part *= " "*@sprintf("%13.4f", frql[1])*","
    #part *= @sprintf("%10.4f", frql[4])*","
    part *= @sprintf("%12.6f", frql[2])*","
-   part *= @sprintf("%10.4f", frql[3])
+   part *= @sprintf("%13.4f", frql[3])
    return part
 end
 function writefreqs(molnam,ctrl,freqs,inds)
@@ -57,7 +57,7 @@ function writefreqs(molnam,ctrl,freqs,inds)
       out[i] = linestrng(freqs[i,:], qunus[inds[i,1],:],inds[i,2], qunus[inds[i,3],:],inds[i,4])
    end
    io = open(molnam*".sim", "w") do io    #printing the lines
-   println(io, "  J', N',Ka',Kc',vt', σ',   J,  N, Ka, Kc, vt,  σ,"*
+   println(io, "   J', N',Ka',Kc',vt', σ',    J,  N, Ka, Kc, vt,  σ,",
          lpad("ν (MHz),",15)*lpad("Int (arb),",13)*lpad("E_low (cm⁻¹)",14))
       for i in out
          println(io, i)
@@ -75,7 +75,7 @@ function reslin(qns,ofrq,omc,cfrq)       #this function does the pretty formatti
    part *= lpad(Int(qns[ 4]),3)*"," # kc
    part *= lpad(Int(qns[ 5]),3)*"," # vt
    part *= lpad(Int(qns[ 6]),3)*"," # m
-   part *= lpad(   (qns[ 7]),6)*","
+   part *= lpad(   (qns[ 7]),5)*","
    part *= lpad(Int(qns[ 8]),3)*","
    part *= lpad(Int(qns[ 9]),3)*","
    part *= lpad(Int(qns[10]),3)*","
@@ -88,6 +88,8 @@ end
 function reswritter(molnam::String,qns,lines::Lines,omcs,cfrqs)  #writes the .res file
    len = size(omcs,1)
    io = open("$molnam.res", "w") do io
+   println(io, "   J', N',Ka',Kc',vt', σ',    J,  N, Ka, Kc, vt,  σ,",
+         lpad("ν_obs (MHz),",18),lpad("obs-calc (MHz),",18),lpad("ν_calc (MHz)",17))
       for i in 1:len
          println(io, reslin(qns[i,:], lines.frqs[i], omcs[i], cfrqs[i]))
       end                   
@@ -230,7 +232,7 @@ function output_final(molnam::String,ℋ,unc,corr, prjct, lnjct, rms, wrms, χ2,
    # final rms
    println(io, "\n Final error values:")
    println(io, "χ2 = ", round(χ2, digits = 5))
-   println(io, "wrms = ", round(rms, digits=5), ", rms = ", round(rms,digits=5), " MHz\n")
+   println(io, "wrms = ", round(wrms, digits=5), ", rms = ", round(rms,digits=5), " MHz\n")
    # final pameters unc, millicent
    ham_final_print(io, ℋ, unc, prjct)
    # Journal formater
@@ -242,37 +244,6 @@ function output_final(molnam::String,ℋ,unc,corr, prjct, lnjct, rms, wrms, χ2,
    println("output written to ", molnam,".out!")
 end
 
-function inp_info_print(io,molnam,info,rms,wrms,numlin)
-   inf["rms"] = rms
-   inf["wrms"] = wrms
-   inf["line_count"] = numline
-   TOML.print(molnam*".toml", inf)
-end
-function inp_ctrl_print(io,ctrl::Controls)
-   println(io, "\n[controls]")
-   for i ∈ propertynames(ctrl)
-      println(io, i, " = ", getproperty(ctrl,i))
-   end
-end
-function opf2strng(o::OpFunc)::String
-   out = string(o.f)
-   if !iszero(o.q)
-      out *= "^"*string(o.l)*"_"*string(o.q)
-   elseif o.l > 1 && iszero(o.q)
-      out *= "^"*string(o.l)
-   else
-   end
-   return out 
-end
-
-function inp_ham_print(io,ℋ)
-   println(io, "\n[hamiltonian]")
-   println(io, "#Nam = [Func, val, unit, scale, stage]")
-   println(io, "# α β γ δ Δ η ϵ ϕ Φ")
-   for i ∈ sortperm( sortperm(getproperty.(ℋ, :nam)) )
-      println(io, ℋ[i].nam, " = ", "[")
-   end
-end
 
 
 

@@ -11,7 +11,7 @@
    mcalc::Int = 10 # maximum |m| value for free rotor basis, basis size will be 2mmax+1
    vtcalc::Int = 8 # maximum vt state output by second diag stage & to be used in third. basis size will be vtmax+1
    vtmax::Int = 0 # maximum vt state output by final diagonalization stage. basis size will be vtmax+1
-   νrange::Vector{Float64} = [0.2; 40.0]
+   frq_rng::Vector{Float64} = [0.2; 40.0]
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 1e-6
    Δlm0::Float64 = 100.0
@@ -141,7 +141,7 @@ mutable struct SubEigs
    SubEigs can be initiated with 3 integers: number of states, basis size, and number of σs
       number of state should be less than or equal to the basis size
    """
-   SubEigs(a::Int,b::Int,c::Int) = new(zeros(a,c), nothing, zeros(b,a,c))
+   SubEigs(a::Int,b::Int,c::Int) = new(zeros(NUMTYPE,a,c), nothing, zeros(NUMTYPE,b,a,c))
 end
 mutable struct Eigs
    #the vector of subeigs refers to different tops
@@ -174,7 +174,7 @@ mutable struct Eigs
 #                    SubEigs(lv, rsd*li, σs) )
       elseif ctrl.stages==2
          l1 = (dgen(ctrl.mcalc)^length(ctrl.NFOLD))
-         l2 = (ctrl.vtcalc + 1)
+         l2 = ctrl.vtcalc*length(ctrl.NFOLD) + 1
          l3 = rscount*(ctrl.vtmax + 1)
          return new(nothing,
                     SubEigs(l2,l1,σs),
@@ -182,7 +182,7 @@ mutable struct Eigs
       elseif ctrl.stages==3
          l1 =  dgen(ctrl.mcalc)
          l2 = (ctrl.vtcalc + 1)
-         l3 = (ctrl.vtcalc + 1)
+         l3 = ctrl.vtcalc*length(ctrl.NFOLD) + 1
          l4 = rscount*(ctrl.vtmax + 1)
          return new([SubEigs(l2,l1,nth_σcount(ctrl.NFOLD[i],i)) for i ∈ 1:length(ctrl.NFOLD)],
                     SubEigs(l3,l2^length(ctrl.NFOLD),σs) ,

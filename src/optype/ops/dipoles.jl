@@ -46,6 +46,7 @@ end
 
 μz(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = μkq(ψb,ψk,1,0)
 μx(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = √(0.5) .* (-μkq(ψb,ψk,1,1) + μkq(ψb,ψk,1,-1))
+μy(ψb::RPsi,ψk::RPsi,k::Int,q::Int) = im*√(0.5) .* (μkq(ψb,ψk,1,1) - μkq(ψb,ψk,1,-1))
 
 function μcos(ψb::TPsi,ψk::TPsi,k::Int,q::Int)::SparseMatrixCSC{Float64,Int}
    mb = collect(ψb.ms)

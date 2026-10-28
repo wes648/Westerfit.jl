@@ -1,7 +1,7 @@
 A fitting program for molecules with two inequivalent methyl tops and a plane of symmetry at equilibrium.  Application to new microwave and millimeter-wave measurements for methyl acetate 
 M. Tudorie, I. Kleiner, J. T. Hougen, S. Melandri, L. W. Sutikdja, W. Stahl
-
-
+RMS = 0.03198 MHz
+WRMS = 1.276
 Table S2: Assignments, Observed Frequencies(a), Calculated Frequencies(b), and Observed-Calculated Residuals for Transitions (c)
 included in the final least-squares fit of the ground torsional state vt=0 of Methyl Acetate (d)
 

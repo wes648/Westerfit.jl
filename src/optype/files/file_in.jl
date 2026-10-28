@@ -7,9 +7,9 @@ function inp_reader(molnam::String)
       exit()
    end
    inp["info"]["date"] = now()
-   ctrl = controls_in(inp["controls"])
-   H = ops_in(inp["hamiltonian"])
-   μs = mus_in(inp["intensity"])
+   @time "contrl read" ctrl = controls_in(inp["controls"])
+   @time "hamilt read" H = ops_in(inp["hamiltonian"])
+   @time "dipole read" μs = mus_in(inp["intensity"])
    return inp["info"], ctrl, H, μs
 end
 
@@ -28,6 +28,8 @@ function ctrl_sanity(ctrl::Controls)::Controls
       setproperty!(ctrl, :mcalc, 0)
       setproperty!(ctrl, :vtcalc, 0)
       setproperty!(ctrl, :vtmax, 0)
+      setproperty!(ctrl, :stages, 1)
+      setproperty!(ctrl, :NFOLD, zeros(0))
    end
    if isodd(2*ctrl.S)&&iseven(2*ctrl.Jmax)
       println("Jmax must be half integer for half interger S. Adding 1/2")
@@ -48,6 +50,7 @@ function ctrl_sanity(ctrl::Controls)::Controls
       decreasing to 2 stages"
       setproperty!(ctrl, :stages, 2)
    end
+   setproperty!(ctrl, :assign, lowercase(ctrl.assign))
    return ctrl
 end
 function controls_in(inp::Dict{String,Any})::Controls
@@ -249,6 +252,16 @@ function linereader(ctrl::Controls,molnam::String)
    frqs = file[:,13]
    wght = 1 ./ file[:,14]
    qns = file[:,1:12]
+   filt1 = findall(x -> x ≤ ctrl.Jmax, qns[:,1])
+      frqs = frqs[filt1]
+      inds = inds[filt1,:]
+      wght = wght[filt1]
+      qns = qns[filt1,:]
+   filt1 = findall(x -> x ≤ ctrl.Jmax, qns[:,7])
+      frqs = frqs[filt1]
+      inds = inds[filt1,:]
+      wght = wght[filt1]
+      qns = qns[filt1,:]
    return Lines(inds,frqs,wght), qns
 end
 

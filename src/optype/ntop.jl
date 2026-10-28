@@ -38,8 +38,8 @@ function σcount(nfold::Vector{Int})::Int
    elseif length(nfold) > 1
       out = size(σgen(nfold), 2)
    else 
-      @warn "How was length(nfold) zero?"
-      out = 0
+#      @warn "How was length(nfold) zero?"
+      out = 1
    end
    return out
 end
@@ -78,8 +78,10 @@ function σgen(nf::Array{Int})::Array{Int,2}
       end#for j
       old = new
    end#for i
-   else
+   elseif isone(length(nf))
       old = σgen(nf[1])
+   else
+      old = zeros(Int,1,1)
    end
    return old
 end
@@ -169,7 +171,8 @@ function σ2ind(ψ::TTPsi,tid::Int)::Int
    elseif tid > 1
       return σcount(ψ.nfs[tid]) - ψ.σs[tid]
    else
-      @warn "why is tid zero?"
+      #@warn "why is tid zero?"
+      return 0
    end
 end
 

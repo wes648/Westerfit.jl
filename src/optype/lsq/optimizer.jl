@@ -93,7 +93,7 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
    @time "energy time" H_calc(ctrl,wvs,ℋ,jsσs)
    χ2, omc, cfq = χ2calc(wvs,lins, [0])
    endp = "not yet"
-   lχ2 = copy(χ2)
+   lχ2 = deepcopy(χ2)
    @time "deriv time" J,H = deriv_calc(ctrl,ℋ,wvs,lins, omc)
    δ = zeros(nfit_count(ℋ)); oδ = ones(nfit_count(ℋ))
    io = open(molnam*".out","a")
@@ -108,25 +108,27 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
    #λ = ctrl.λlm0
    while !converged
 
-#      λ = wrms > 1e3 ? μlm : λgen(μlm, wrms)
-      λ = μlm
+      λ = wrms > 1e3 ? μlm : λgen(μlm, wrms)
+#      λ = μlm
       δ,λ,prjct,lrjt = newt_step(δ,λ,Δ,H,J, lins.wght, omc)
       δ = trust_region(δ,ℋ,prjct,Δ)
-      θ = round(angle(δ,oδ),digits=3)
+      θ = !iszero(counter) ? min(round(angle(δ,oδ),digits=3), 0.9999) : 0.0
       approx = taylor_approx(δ,omc,J,H, prjct,lrjt)
 
       ℋ = update_prm(ℋ,δ,prjct)
       # @show δ
       @time "energy time" nwvs = H_calc(ctrl,nwvs,ℋ,jsσs)
       nχ2, nomc, ncfq = χ2calc(nwvs,lins,lrjt)
-      rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
+      rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, nχ2)
+#      @show (χ2 - nχ2)
+#      @show approx
       ρdn = (χ2 - nχ2) / approx #(χ2 - approx)
       check = □rt(abs(nχ2 - χ2)/χ2)
 
-      if (ctrl.BOLD == 0)|| wrms > 5e2
-         stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-6))
+      if (ctrl.BOLD == 0) || wrms > 5e2
+         stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-5))
       else
-         stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-6)) || ((nχ2*(1-θ)^ctrl.BOLD)<0.2*lχ2)
+         stepcheck = (( nχ2 < χ2 )&&( ρdn >1e-5)) || nχ2*(1-θ)^ctrl.BOLD < 0.2*lχ2
       end
      
       if stepcheck && !iszero(ρdn)
@@ -137,11 +139,8 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
       @time "deriv time" deriv_calc!(J,H, ctrl,ℋ,wvs,lins, omc)
          χ2, omc, cfq = χ2calc(wvs,lins,lrjt)
          rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
-         printstyled(" accepted step: ", counter, color=:green)
-         println(" wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))         
-         println(#"χ2 = ",lpad(round(χ2, digits=5),5),", "
-            "||δ|| = ", 
-            lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3), ", θ = ", lpad(round(θ,digits=5),3))
+         accept_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρdn)
+#         grad = -J'*Diagonal(lins.wght)*omc; @show norm(grad)
          io = open(molnam*".out","a")
 #         rms,wrms = rmscalc(omc, ℋ, prjct, lrjt)
          sum_print(io, counter, ℋ,δ, prjct, lrjt, rms, wrms, χ2)
@@ -151,11 +150,11 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
          Δ *= 1.5
       else
          # model failed to decrease
-         rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
+         #rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
          printstyled(" rejected step: ", color=:red)
          println("wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))
-         println(#"χ2 = ",lpad(round(χ2, digits=5),5),", "
-            "||δ|| = ", 
+         println("ρ = ", lpad(round(ρdn,digits=5),3),#"χ2 = ",lpad(round(χ2, digits=5),5),", "
+            ", ‖δ‖ = ", 
             lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3), ", θ = ", lpad(round(θ,digits=5),3))
          μlm *= 10.0
 #         λ *= 10.0
@@ -165,9 +164,10 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
       end # stepcheck if
 converged, endp = fincheck(ctrl,δ,λ,check,counter, ℋ,prjct, J'*Diagonal(lins.wght)*omc,wrms)
    end #converged loop
+   rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
    opt_finalize(molnam,ℋ,H,prjct,lrjt, rms, wrms, χ2, endp)
    close(io)
-   return ℋ, omc, cfq
+   return ℋ, omc, χ2, cfq
 end #function
 
 function opt_finalize(molnam,ℋ,H,prjct, lnjct, rms, wrms, χ2, endp)

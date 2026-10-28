@@ -245,6 +245,13 @@ function diagwrap(H::AbstractArray)::Eigen
       return eigen!(Hermitian(Matrix(H), :L))
    end
 end
+function diagwrap(H::AbstractArray,rng::UnitRange)::Eigen
+   if eltype(H)<:Real #isreal(eltype(H))
+      return eigen!(Symmetric(Matrix(H), :L), rng)
+   else
+      return eigen!(Hermitian(Matrix(H), :L), rng)
+   end
+end
 
 function sparsify!(A::T,ϵ=1e-12)::T where {T <: AbstractArray}
    Base.Threads.@threads for i ∈ eachindex(A)
@@ -308,3 +315,7 @@ stage_allow(x)::Bool = !isnothing(x) && !iszero(x.vecs)
 
 
 
+function printout(x)
+   show(stdout, "text/plain", x)
+   println()
+end

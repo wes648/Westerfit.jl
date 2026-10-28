@@ -19,6 +19,7 @@ wig6j(a,b,c,d,e,f) = wigner6j(Float64,a,b,c,d,e,f)
 #end
 
 const NUMTYPE = Float64
+#const NUMTYPE = ComplexF64
 
 #using JET
 #using BenchmarkTools
@@ -46,6 +47,7 @@ const kb::Float64 = (k_B/h * 1e-6).val # MHz / K
 BLAS.set_num_threads(Int(0.5*Sys.CPU_THREADS))
 #@show Threads.nthreads()
 @warn "FUCK FUCK FUCK Ψ LENGTH IS MESSED UP. IT NEEDS TO KNOW ABOUT STAGES. FUCK ONE STAGE"
+@warn "Something is fucky with equiv tops in 3 stage. It's related to the topid checker...."
 
 if NUMTYPE <: Complex
    @warn "You have engaged C₁ mode. God have mercy on your soul & your runtimes"
@@ -68,13 +70,21 @@ function westersim(molnam::String, ctrl::Controls, μs::Vector{Mu}, wvs::Eigs)
    writefreqs(molnam,ctrl,frqs,inds)
    return inds, frqs
 end
-function westerfit(molnam::String, ctrl::Controls, ℋ::Vector{Term})
+function westerfit(molnam::String, info, ctrl::Controls, ℋ::Vector{Term}, μs=nothing)
+   iterativecopier(molnam)
    lins, qns = linereader(ctrl, molnam)
-   jmax_bac = ctrl.Jmax
-   setproperty!(ctrl,:Jmax, maximum(qns[:,[1;4]]) )
-   ℋ, omc, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
+#   jmax_bac = ctrl.Jmax
+#   setproperty!(ctrl,:Jmax, maximum(qns[:,[1;4]]) )
+   ℋ, omc, χ2, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
+   rms, wrms = rmscalc(omc, ℋ, [0],[0], χ2)
+
+   if ctrl.overwrite
+      io = open(molnam*".toml", "w")
+         inp_print(io,molnam,info,rms,wrms,size(omc,1), ctrl,ℋ,μs)
+      close(io)
+   end
    reswritter(molnam, qns, lins, omc, cfrqs)
-   setproperty!(ctrl,:Jmax, jmax_bac)
+#   setproperty!(ctrl,:Jmax, jmax_bac)
    return ℋ
 end
 
@@ -84,7 +94,7 @@ function westermain()
    @time info, ctrl, ℋ, μs = inp_reader(molnam)
    if occursin("F", ctrl.RUNmode)
       println("westerfit!")
-      @time wvs = westerfit(molnam, ctrl, ℋ)
+      @time wvs = westerfit(molnam, info, ctrl, ℋ, μs)
    end # F
    if occursin("E", ctrl.RUNmode)||occursin("S", ctrl.RUNmode)
       @time wvs = westereng(molnam, ctrl, ℋ)

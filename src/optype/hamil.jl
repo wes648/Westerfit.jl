@@ -20,12 +20,12 @@ function enact(val::Float64,O::Op,ψ::Psi,wvs::Eigs,UR::SparseMatrixCSC{Float64,
          tpart = sparse(I,dgen(ψ.T.mc)^ψ.T.topcnt,dgen(ψ.T.mc)^ψ.T.topcnt)
       end
       @inbounds for i ∈ eachindex(O.tf)
-         part = eval_top(O.tf[i], ψ.T, wvs.top)
-         tpart = tpart*part
+         #part = eval_top(O.tf[i], ψ.T, wvs.top)
+         #tpart = tpart*part
+         tpart *= eval_top(O.tf[i], ψ.T, wvs.top)
       end # top op for 
       if stage_allow(wvs.ttp)
-         tpart = sand(tpart, 
-         wvs.ttp.vecs[:,:, ψ.σ] )
+         tpart = sand(tpart, wvs.ttp.vecs[:,:, ψ.σ] )
       end #top-top if
       out = kron(tpart,out)
    elseif isnothing(wvs.ttp)
@@ -43,9 +43,13 @@ function enact_0(T::Term, ψ::Psi, wvs::Eigs,
                  UR::SparseMatrixCSC{Float64,Int})::SparseMatrixCSC{NUMTYPE,Int}
    out = enact(T.val, T.ops[1], ψ,wvs, UR)
    @inbounds for i ∈ 2:T.l
+ #     if isone(ψ.R.J)&&isone(ψ.σ)
+ #        @show T.nam
+ #     end
       out += enact(T.val, T.ops[i], ψ,wvs, UR)
    end
-   return droptol!(out, 1e-11)
+#   return droptol!(out, 1e-11)
+   return out
 end
 
 function enact_1t(O::Op,ψ::TPsi)::SparseMatrixCSC{NUMTYPE,Int}
@@ -53,7 +57,7 @@ function enact_1t(O::Op,ψ::TPsi)::SparseMatrixCSC{NUMTYPE,Int}
    @inbounds for i ∈ eachindex(O.tf)
       out *= eval_top(O.tf[i], ψ)
    end
-   droptol!(out,1e-11)
+#   droptol!(out,1e-11)
    return out
 end
 function enact_1t(T::Term, ψ::TPsi)::SparseMatrixCSC{NUMTYPE,Int}
@@ -61,18 +65,18 @@ function enact_1t(T::Term, ψ::TPsi)::SparseMatrixCSC{NUMTYPE,Int}
    @inbounds for i ∈ 2:T.l
       out += enact_1t(T.ops[1], ψ)
    end
-   return droptol!(T.val .*out, 1e-11)
+   return T.val .*out #droptol!(T.val .*out, 1e-11)
 end
 
 function enact_tt(O::Op,ψ::TTPsi,wvs::Eigs)::SparseMatrixCSC{NUMTYPE,Int}
    out = Diagonal(fill(0.5*O.val, size(wvs.ttp.vecs,1)))
    @inbounds for i ∈ eachindex(O.tf)
       tid = O.tf[i].q
-      σid = σ2ind(ψ.tps[O.tf[i].q].σ, tid,ψ.tps[O.tf[i].q].nf)
-      part = eval_top(O.tf[i], ψ, wvs.top) 
-      out *= part
+      #σid = σ2ind(ψ.tps[O.tf[i].q].σ, tid,ψ.tps[O.tf[i].q].nf)
+      #part = eval_top(O.tf[i], ψ, wvs.top) 
+      out *= eval_top(O.tf[i], ψ, wvs.top)  #part
    end #for
-   droptol!(out,1e-11)
+   #droptol!(out,1e-11)
    return out
 end
 function enact_tt(T::Term, ψ::TTPsi, wvs::Eigs)::SparseMatrixCSC{NUMTYPE,Int}
@@ -80,7 +84,7 @@ function enact_tt(T::Term, ψ::TTPsi, wvs::Eigs)::SparseMatrixCSC{NUMTYPE,Int}
    @inbounds for i ∈ 2:T.l
       out += enact_tt(T.ops[i], ψ, wvs)
    end
-   return droptol!( T.val .*out, 1e-11)
+   return T.val .*out #droptol!( T.val .*out, 1e-11)
 end
 
 #processing 1 top hamiltonians
@@ -121,7 +125,7 @@ end
 function stage_ttproc(wvs::Eigs,ops::Vector{Term},
             ψ::TTPsi,σind::Int,ctrl::Controls)::Eigs
    stage = 1
-   l = ctrl.vtcalc+1
+   l = length(wvs.ttp.vals[:,σind])
    if isnothing(wvs.top)
       Hmat = spzeros(size(wvs.ttp.vecs,1),size(wvs.ttp.vecs,1))
    else
@@ -160,13 +164,13 @@ Outputs the Eig structure
 """
 function stageproc0(ctrl,stage::Int,wvs::Eigs,ops,ψ,σid)::Eigs
    H = spzeros(ψ.R.lng, ψ.R.lng)
-   U = ur(ψ.R.J,ψ.R.S)
+   U = ur(ψ.R.J,ψ.R.S) # sparse(1.0I,ψ.R.lng, ψ.R.lng) #
    if !isnothing(wvs.ttp)
       H = kron(sparse(I(size(wvs.ttp.vals,1))), H )
       H[diagind(H)] .+= kron(wvs.ttp.vals[:,σid], fill(0.5,ψ.R.lng))
    elseif isone(ctrl.stages) && isone(length(ctrl.NFOLD)) && !iszero(ctrl.NFOLD[1])
       H = kron(sparse(I,ψ.T.l, ψ.T.l), H ) 
-   elseif isone(ctrl.stages) && isone(length(ctrl.NFOLD)) && iszero(ctrl.NFOLD[1])
+   elseif isone(ctrl.stages) && (isone(length(ctrl.NFOLD)) && iszero(ctrl.NFOLD[1]))||iszero(length(ctrl.NFOLD))
       # do nothing
    else
       @warn "what the fuck? you shouldn't be doing ntop 1 stage. this should have crashed"
@@ -179,16 +183,33 @@ function stageproc0(ctrl,stage::Int,wvs::Eigs,ops,ψ,σid)::Eigs
       else
       end
    end
+#   @show H
    tplus!(H)
+#   @show H
    vals, vecs = diagwrap(H)
+
+   #if ((ψ.R.J==12.0)||(ψ.R.J==11.0)) && isone(ψ.σ)
+   #if ((ψ.R.J==12.0)) && isone(ψ.σ)
+   #   @show vecs[1:50,1:50]
+   #end
+
    if isone(ctrl.stages)&&isone(length(ctrl.NFOLD))
       perm = reshape(collect(1:ψ.R.lng).+ ψ.R.lng*(sortperm(by=abs,ψ.T.tps[1].ms) .-1)', ψ.R.lng*ψ.T.l)
       vecs .= vecs[perm,:]
    end
-   perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
+      
+   if ctrl.assign=="belgi"||ctrl.assign=="BELGI"
+      perm = belgi_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
+   else
+      perm = ram36_2stg_assign(vecs,ψ.R.J,ψ.R.S, ctrl.vtcalc, ctrl.vtmax)
+   end
    vldst = jinds(ψ.R.J, ψ.R.S, ctrl.vtmax+1) 
    vcdst = jinds(ψ.R.J, ψ.R.S, ctrl.vtcalc+1)
-   wvs.rst.vals[vldst,σid], wvs.rst.vecs[1:size(vecs,1),vldst,σid] = vals[perm], vecs[:,perm]
+###   if ((ψ.R.J==12.0)||(ψ.R.J==11.0)) && isone(ψ.σ)
+###      @show allunique(perm)
+###   end
+   wvs.rst.vals[vldst,σid] = vals[perm]
+   wvs.rst.vecs[1:size(vecs,1),vldst,σid] = vecs[:,perm]
    return wvs
 end
 
@@ -214,7 +235,8 @@ function H_calc(ctrl::Controls,wvs::Eigs,ops,jsσs::Matrix{Int})::Eigs
       end
 #      println("top-top stage done!")
    end
-   Threads.@threads for i ∈ 1:size(jsσs,1)
+#   Threads.@threads for i ∈ 1:size(jsσs,1)
+   for i ∈ 1:size(jsσs,1)
       σind = jsσs[i,2]
       j = 0.5*jsσs[i,1]
       ψ = Psi( RPsi(j, ctrl.S), TTPsi(ctrl.NFOLD,σs[:,σind],ctrl.mcalc), σind )
@@ -222,6 +244,7 @@ function H_calc(ctrl::Controls,wvs::Eigs,ops,jsσs::Matrix{Int})::Eigs
    end # σ loop
 #   println("rotation stage done!")
 #   sparsify!(wvs.rst.vecs)
+#   @show wvs
    return wvs
 end
 

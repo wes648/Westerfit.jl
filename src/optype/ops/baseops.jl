@@ -39,6 +39,7 @@ function Npm(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
 end
 
 Nx(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64} = tplus!(0.5.*Np(ψ,1))^p
+Ny(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{ComplexF64,Int64} = (-0.5im.* (Np(ψ,1)-Np(ψ,1)'))^p
 function Ny2(ψ::RPsi,p::Int,q::Int)::SparseMatrixCSC{Float64,Int64}
    out = 0.5 .* (N2(ψ,1,0) - Nz(ψ,2,0))
    out -= 0.25 .* Npm(ψ,2,0)
@@ -181,6 +182,10 @@ end # func
 ################################# TOTAL |J,Ω⟩ OPERATORS ##################################
 
 ################################ TORSION |m,σ⟩ OPERATORS #################################
+function Et(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   return sparse(I, ψ.l, ψ.l)
+end
+
 function Pt(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    if iszero(ψ.σ)
       out = map(x -> abs(x)^p, ψ.ms)
@@ -206,6 +211,14 @@ end
 function vnct(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
    p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
    out = spdiagm(0=>fill(0.5,ψ.l),p=>fill(-0.25,ψ.l-p),-p=>fill(-0.25,ψ.l-p))
+   if iszero(ψ.σ)
+      out = dropzeros!(sand(out, ul(ψ.l)))
+   end
+   return out
+end
+function ecost(ψ::TPsi,p::Int,tid::Int)::SparseMatrixCSC{Float64, Int}
+   p = floor(Int, p/(ψ.nf * (1+iseven(ψ.nf)) ))
+   out = spdiagm(0=>fill(1.0,ψ.l),p=>fill(-0.5,ψ.l-p),-p=>fill(-0.5,ψ.l-p))
    if iszero(ψ.σ)
       out = dropzeros!(sand(out, ul(ψ.l)))
    end
