@@ -36,6 +36,7 @@ include("@__DIR__/../ntop.jl")
 include("@__DIR__/../transitions.jl")
 include("@__DIR__/../lsq/opt-com.jl")
 include("@__DIR__/../lsq/optimizer.jl")
+#include("@__DIR__/../lsq/opt-dog.jl")
 include("@__DIR__/../derivs.jl")
 
 include("@__DIR__/../ops/baseops.jl")
@@ -75,7 +76,12 @@ function westerfit(molnam::String, info, ctrl::Controls, ℋ::Vector{Term}, μs=
    lins, qns = linereader(ctrl, molnam)
 #   jmax_bac = ctrl.Jmax
 #   setproperty!(ctrl,:Jmax, maximum(qns[:,[1;4]]) )
-   ℋ, omc, χ2, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
+   LM = true
+   if LM
+      ℋ, omc, χ2, cfrqs = opt_calc(molnam, ctrl, ℋ, lins)
+   else
+      ℋ, omc, χ2, cfrqs = opt_calc_dl(molnam, ctrl, ℋ, lins)
+   end
    rms, wrms = rmscalc(omc, ℋ, [0],[0], χ2)
 
    if ctrl.overwrite

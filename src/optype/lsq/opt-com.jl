@@ -67,7 +67,7 @@ function covarr2(hess,omc)
    return σ2 .* inv(hess)
 end
 
-function stepsizehcekcer(δ,ℋ,prjct)
+function stepsizechecker(δ,ℋ,prjct)
    out = 0.0
    j = 1
    for i ∈ 1:length(ℋ)
@@ -80,10 +80,17 @@ function stepsizehcekcer(δ,ℋ,prjct)
 end
 
 function accept_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρ)
-   printstyled(" accepted step: ", counter, color=:green)
+   printstyled(" accepted step: ", lpad(counter,4), color=:green)
    println(" wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))         
    println("ρ = ", lpad(round(ρ,digits=5),3),
-      ", ‖δ‖ = ", lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3),
+      ", ‖δ‖ = ", lpad(round(stepsizechecker(δ,ℋ,prjct), digits=5),3),
+      ", θ = ", lpad(round(θ,digits=5),3))
+end
+function reject_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρ)
+   printstyled(" rejected step: ", lpad("",4), color=:red)
+   println("wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))
+   println("ρ = ", lpad(round(ρ,digits=5),3),#"χ2 = ",lpad(round(χ2, digits=5),5),", "
+      ", ‖δ‖ = ", lpad(round(stepsizechecker(δ,ℋ,prjct), digits=5),3), 
       ", θ = ", lpad(round(θ,digits=5),3))
 end
 
@@ -102,7 +109,7 @@ function fincheck(ctrl,βf,λlm,check,counter,ℋ,prjct,grad,wrms)
       endp = "RMS convergence"
       conv = true
 #   elseif (norm(βf))<ϵ1*(norm(prms)+ϵ1)
-   elseif stepsizehcekcer(βf,ℋ,prjct) <ϵ1
+   elseif stepsizechecker(βf,ℋ,prjct) <ϵ1
    #This stopping criteria needs to be scaled for the wildly varying parameter
    #magnitues. 3 dec 24
       slλ = (@sprintf("%0.4f", log10(λlm)))
@@ -129,4 +136,47 @@ function fincheck(ctrl,βf,λlm,check,counter,ℋ,prjct,grad,wrms)
       endp = ""
    end #check if
    return conv, endp
+end
+
+function conv_tr(ϵs::Vector{Float64},iters::Int,wrms::Float64,check::Float64, βf,ℋ,prjct,
+      grad,Δ::Float64)#::Bool
+   count = zeros(Int,length(ϵs)-1)
+   if iters ≥ ϵs[2]
+      println("Alas, the iteration count has exceeded the limit")
+      count[1] = 1 + length(ϵ)
+   end
+   if wrms ≤ ϵs[3]
+      println("A miracle has come to pass. The fit has converged")
+      count[2] = 1
+   end
+   if check ≤ ϵs[4]
+      @show check
+      println("The RMS has stopped decreasing. Hopefully it is low")
+      count[3] = 1
+   end
+   if stepsizechecker(βf,ℋ,prjct) ≤ ϵs[5] # <----- not exactly the write check function
+      @show norm(βf)
+      println("It would appear step size has converged.")#" log₁₀(λ) = $slλ")
+      count[4] = 1
+   end
+   if norm(grad, Inf) ≤ ϵs[6]
+      @show norm(grad, Inf)
+      println("Gradient is now quite small! This should be good")
+      count[5] = 1
+   end
+   if Δ ≤ ϵs[7]
+      @show Δ
+      println("Alas, the trust region has become too restrictive")
+      count[6] = 1 + length(ϵ)
+   end
+   return (sum(count) ≥ ϵs[1] ? true : false), count
+end
+
+function step_accepter(ctrl, ρ, wrms, χ2, nχ2, lχ2)
+   if (ctrl.BOLD == 0) || wrms > 5e2
+      stepcheck = (( nχ2 < χ2 )&&( ρ > 1e-4))
+   else
+      stepcheck = (( nχ2 < χ2 )&&( ρ > ctrl.ρfit)) || nχ2*(1-θ)^ctrl.BOLD < 0.2*lχ2
+   end
+   return stepcheck && !iszero(ρ)
 end

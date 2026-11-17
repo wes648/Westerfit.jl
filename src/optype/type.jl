@@ -15,7 +15,7 @@
    TK::Float64 = 8. # temperature in Kelvin to be used in simulation
    INTthres::Float64 = 1e-6
    Δlm0::Float64 = 100.0
-   λlm0::Float64 = 0.001
+   λlm0::Float64 = 0.00
 #   turducken::Int = 1
    trueHess::Bool = true
    maxiter::Int = 60

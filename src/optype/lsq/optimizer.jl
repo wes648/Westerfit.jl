@@ -76,7 +76,7 @@ function update_prm(ℋ::Vector{Term},δ::Vector{Float64},prjct::Vector{Int})::V
    return ℋ
 end
 function trust_region(δ,ℋ,prjct,Δ)
-   #x = stepsizehcekcer(δ,ℋ,prjct)
+   #x = stepsizechecker(δ,ℋ,prjct)
    #@show x
    if norm(δ) > Δ #if norm(H*δ) > Δ
       δ *= Δ/norm(δ)
@@ -96,9 +96,7 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
    lχ2 = deepcopy(χ2)
    @time "deriv time" J,H = deriv_calc(ctrl,ℋ,wvs,lins, omc)
    δ = zeros(nfit_count(ℋ)); oδ = ones(nfit_count(ℋ))
-   io = open(molnam*".out","a")
-   sum_init_print(io, sum(map(x->x.scl, ℋ)), lins, omc)
-   close(io)
+   sum_init_print(molnam, sum(map(x->x.scl, ℋ)), lins, omc)
    prjct = [0]; lrjt = [0]
    rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
    println("Intitial wrms = ", wrms)
@@ -141,21 +139,15 @@ function opt_calc(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins::Lines)
          rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
          accept_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρdn)
 #         grad = -J'*Diagonal(lins.wght)*omc; @show norm(grad)
-         io = open(molnam*".out","a")
 #         rms,wrms = rmscalc(omc, ℋ, prjct, lrjt)
-         sum_print(io, counter, ℋ,δ, prjct, lrjt, rms, wrms, χ2)
-         close(io)
+         sum_print(molnam, counter, ℋ,δ, prjct, lrjt, rms, wrms, χ2)
          μlm /= 20.0
 #         λ /= 20.0
          Δ *= 1.5
       else
          # model failed to decrease
          #rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
-         printstyled(" rejected step: ", color=:red)
-         println("wrms = ", lpad(round(wrms, digits=5),5), ", rms = ", lpad(round(rms,digits=5),3))
-         println("ρ = ", lpad(round(ρdn,digits=5),3),#"χ2 = ",lpad(round(χ2, digits=5),5),", "
-            ", ‖δ‖ = ", 
-            lpad(round(stepsizehcekcer(δ,ℋ,prjct), digits=5),3), ", θ = ", lpad(round(θ,digits=5),3))
+         reject_print(counter,wrms,rms,δ,ℋ,prjct,θ,ρdn)
          μlm *= 10.0
 #         λ *= 10.0
          Δ *= 0.9
@@ -166,7 +158,7 @@ converged, endp = fincheck(ctrl,δ,λ,check,counter, ℋ,prjct, J'*Diagonal(lins
    end #converged loop
    rms,wrms = rmscalc(omc, ℋ, prjct, lrjt, χ2)
    opt_finalize(molnam,ℋ,H,prjct,lrjt, rms, wrms, χ2, endp)
-   close(io)
+   #close(io)
    return ℋ, omc, χ2, cfq
 end #function
 

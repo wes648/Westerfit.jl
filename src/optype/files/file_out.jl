@@ -109,13 +109,15 @@ function ham_init_print(io,ℋ::Vector{Term})
       println(io, lpad(ℋ[i].nam,12),";", lpad(ℋ[i].val, 30),";", lpad(ℋ[i].scl, 6))
    end
 end
-function sum_init_print(io, nparam, lins, omc)
+function sum_init_print(molnam, nparam, lins, omc)
+   io = open(molnam*".out","a") do io
    χ2 = sand(Diagonal(lins.wght)^2, omc)
    dof = length(omc) - nparam
    rms = √((omc' * omc)/dof)
    println(io, "\nNumber of lines = ",length(omc),", Number of parameters = ", nparam)
    println(io, "Initial χ2 = ", round(χ2, digits = 5),". The optimizer runs in terms of this value")
    println(io, "wrms = ", round(√(χ2/dof), digits=5), ", rms = ", round(rms,digits=5), " MHz\n")
+   close(io);   end
 end
 function output_init(molnam::String,ctrl::Controls,ℋ::Vector{Term},lins)
    io = open(molnam*".out", "w") do io
@@ -138,6 +140,7 @@ function ham_print(io,ℋ::Vector{Term},δ::Vector{Float64},prjct::Vector{Int})
    end
 end
 function sum_print(io, iter, ℋ,δ, prjct, lnjct, rms, wrms, χ2)
+   #io = open(molnam*".out","a") do io
    println(io, "\n",prod(fill("#",80)))
    println(io, "\nIteration: ", lpad(iter, 5))
    println(io, "χ2 = ", round(χ2, digits = 5))
@@ -152,6 +155,12 @@ function sum_print(io, iter, ℋ,δ, prjct, lnjct, rms, wrms, χ2)
    end
    println(io, "\nCurrent Parameter values:")
    ham_print(io,ℋ,δ, prjct)
+   #close(io);   end
+end
+function sum_print(molnam::String, iter, ℋ,δ, prjct, lnjct, rms, wrms, χ2)
+   io = open(molnam*".out","a") do io
+      sum_print(io, iter, ℋ,δ, prjct, lnjct, rms, wrms, χ2)
+   close(io);  end
 end
 function output_update(ℋ,δ,omc,w, counter)
    χ2 = sand(Diagonal(lins.wght)^2, omc)
@@ -161,8 +170,7 @@ function output_update(ℋ,δ,omc,w, counter)
       println(io, "After ",lpad(counter,3)," Iterations:\n")
       sum_print(io, ℋ, prjct, lnjct, rms, √(χ2/dof), χ2)
       println(io, "\n",repeat("-",30), "\n")
-   close(io)
-   end
+   close(io);   end
 end
 function unc_arrange(ℋ::Vector{Term}, unc::Vector{Float64},prjct)#::Matrix{Float64}
    out = zeros(length(ℋ),3)
@@ -182,6 +190,7 @@ function unc_arrange(ℋ::Vector{Term}, unc::Vector{Float64},prjct)#::Matrix{Flo
    return perm, out[perm,:]
 end
 function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
+   #io = open(molnam*".out","a") do io
    perm, out = unc_arrange(ℋ,unc,prjct)
    println(io, "Final parameter values & uncertanties & milicent\n")
    for i ∈ 1:length(perm)
@@ -202,6 +211,7 @@ function ham_final_print(io, ℋ::Vector{Term}, unc, prjct)
 # out[i,:] has structure of [val unc mill] and is sorted alphabetically by parameter name
 # perm provides the alphabetizing
 # so the goal is : ℋ[perm[i]].nam  out[i,1](out[i,2])
+#   close(io);   end
 end
 function triangleprint(mat,nams;io=stdout,d=4,col=5)
    #io ≠ stdout ? io = open(io, "a") : io=stdout
@@ -244,9 +254,49 @@ function output_final(molnam::String,ℋ,unc,corr, prjct, lnjct, rms, wrms, χ2,
    println("output written to ", molnam,".out!")
 end
 
+function output_final2(molnam::String,ℋ,unc,corr, prjct, lnjct, rms, wrms, χ2, how)
+   io = open(molnam*".out", "a")
+   println(io, "Fit completed by", lpad(sum(how),3), " check counts. ")
+   if sum(how) > 4
+      println(io, "The sum is greater than 4 meaning a fatal termination has occured.")
+   end
+   howprint(io,how)
+   # final rms
+   println(io, "\n Final error values:")
+   println(io, "χ2 = ", round(χ2, digits = 5))
+   println(io, "wrms = ", round(wrms, digits=5), ", rms = ", round(rms,digits=5), " MHz\n")
+   # final pameters unc, millicent
+   ham_final_print(io, ℋ, unc, prjct)
+   # Journal formater
+   # correlation matrix
+   triangleprint(corr, getproperty.(ℋ[1:end .!= prjct], :nam), io=io)
+   # apology
+   println(io, "Again sorry about the name")
+   close(io)
+   println("output written to ", molnam,".out!")
+end
 
-
-
+function howprint(io,how)
+   println(io, "Termination causes: ")
+   if !iszero(how[2])
+      println(" - A miracle has come to pass! WRMS less than Goal")
+   end
+   if !iszero(how[5])
+      println(" - Gradient sufficiently small. Hurray!")
+   end
+   if !iszero(how[3])
+      println(" - WRMS decrease is sufficiently small. Hopefully it is small")
+   end
+   if !iszero(how[4])
+      println(" - Step Size is sufficiently small. Hopefully it is in a good well")
+   end
+   if !iszero(how[6])
+      println(" - Trust region is smaller than acceptable. FATAL")
+   end
+   if !iszero(how[1])
+      println(" - The fit has attempted too many iterations. FATAL")
+   end
+end
 
 
 
